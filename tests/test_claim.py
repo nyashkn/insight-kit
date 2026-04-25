@@ -1,6 +1,6 @@
 """Unit tests for Claim + ClaimValue dataclass serialization."""
 from __future__ import annotations
-import pytest
+
 from insight_kit.provenance.claim import Claim, ClaimValue
 
 

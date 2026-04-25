@@ -1,11 +1,14 @@
 """End-to-end tests: full Run lifecycle, claim graph edges, CLI."""
 from __future__ import annotations
+
 import io
 import json
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-import pytest
+
 import pyarrow as pa
+import pytest
+
 from insight_kit import Run
 from insight_kit.cli.__main__ import main as cli_main
 from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
@@ -29,7 +32,7 @@ def test_full_run_lifecycle(kit: Path):
     with Run(topic="t", agent="a") as r:
         r.emit_metric(_t(), name="m")
         r.claim(claim_id="TEST-D-001", statement="s", confidence="high")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     assert (rd / "manifest.json").exists()
     assert (rd / "claims.jsonl").exists()
     assert (rd / "checksums.sha256").exists()
@@ -43,7 +46,7 @@ def test_multi_claim_run(kit: Path):
         r.claim(claim_id="TEST-D-001", statement="a")
         r.claim(claim_id="TEST-D-002", statement="b")
         r.claim(claim_id="TEST-D-003", statement="c")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     manifest = json.loads((rd / "manifest.json").read_text())
     assert len(manifest["claims"]) == 3
     lines = [json.loads(L) for L in (rd / "claims.jsonl").read_text().splitlines() if L.strip()]
@@ -56,7 +59,7 @@ def test_failed_run_manifest(kit: Path):
         with Run(topic="t", agent="a") as r:
             r.emit_metric(_t(), name="m")
             raise ValueError("boom")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     manifest = json.loads((rd / "manifest.json").read_text())
     assert manifest["status"] == "failed"
     assert "boom" in json.dumps(manifest)
@@ -68,7 +71,7 @@ def test_supports_graph_edges(kit: Path):
         r.emit_metric(_t(), name="m")
         r.claim(claim_id="TEST-D-001", statement="a")
         r.claim(claim_id="TEST-D-002", statement="b", supports=["TEST-D-001"])
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     manifest = json.loads((rd / "manifest.json").read_text())
     b = next(c for c in manifest["claims"] if c["claim_id"] == "TEST-D-002")
     assert b["supports"] == ["TEST-D-001"]
@@ -83,7 +86,7 @@ def test_ingest_records_sha(kit: Path, tmp_path: Path):
     with Run(topic="t", agent="a") as r:
         r.ingest(src)
         r.emit_metric(_t(), name="m")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     manifest = json.loads((rd / "manifest.json").read_text())
     assert any(expected in (i.get("sha256") or "") for i in manifest.get("inputs", []))
 
@@ -92,7 +95,7 @@ def test_ingest_records_sha(kit: Path, tmp_path: Path):
 def test_emit_metric_layer(kit: Path):
     with Run(topic="t", agent="a") as r:
         r.emit_metric(_t(), name="m")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     manifest = json.loads((rd / "manifest.json").read_text())
     assert manifest["outputs"][0]["layer"] == "metrics"
 
@@ -101,7 +104,7 @@ def test_emit_metric_layer(kit: Path):
 def test_emit_critique_layer(kit: Path):
     with Run(topic="t", agent="a") as r:
         r.emit_critique(_t(), name="c")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     manifest = json.loads((rd / "manifest.json").read_text())
     assert manifest["outputs"][0]["layer"] == "critique"
 
@@ -111,11 +114,11 @@ def test_checksums_cover_all_files(kit: Path):
     with Run(topic="t", agent="a") as r:
         r.emit_metric(_t(), name="m")
         r.claim(claim_id="TEST-D-001", statement="s")
-    rd = list((kit / ".insight-kit" / "runs").iterdir())[0]
+    rd = next(iter((kit / ".insight-kit" / "runs").iterdir()))
     sums = (rd / "checksums.sha256").read_text()
     # every regular file in run dir except checksums.sha256 itself should be listed
     all_files = {p.relative_to(rd).as_posix() for p in rd.rglob("*") if p.is_file() and p.name != "checksums.sha256"}
-    for f in all_files:
+    for _f in all_files:
         # checksum file may not list .sha sidecars — be lenient: at minimum manifest + parquet + claims.jsonl
         pass
     assert "manifest.json" in sums

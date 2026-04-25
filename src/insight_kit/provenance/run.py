@@ -18,15 +18,17 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 import structlog
 
 from insight_kit.provenance.claim import Claim, Confidence
-from insight_kit.provenance.root import find_kit_root, kit_dir, runs_dir
+from insight_kit.provenance.root import find_kit_root, runs_dir
 
 SCHEMA_VERSION = "2.0"
 
@@ -73,9 +75,6 @@ def _now_iso() -> str:
 
 
 # ---------- record types ----------
-
-
-from dataclasses import dataclass, field, asdict
 
 
 @dataclass
@@ -305,7 +304,7 @@ class Run:
             path=rel_path,
             sha256=_sha256(p),
             bytes=p.stat().st_size,
-            snapshot_mtime=datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc)
+            snapshot_mtime=datetime.fromtimestamp(p.stat().st_mtime, tz=UTC)
             .astimezone()
             .isoformat(timespec="seconds"),
         )
@@ -321,7 +320,7 @@ class Run:
         if loader is not None:
             data = loader(p)
             with suppress(Exception):
-                rec.rows = int(len(data))
+                rec.rows = len(data)
         self._inputs.append(rec)
         return data if loader is not None else p
 
@@ -380,7 +379,7 @@ class Run:
         rows = None
         cols = None
         with suppress(Exception):
-            rows = int(len(df))
+            rows = len(df)
             cols = list(df.columns) if hasattr(df, "columns") else None
 
         schema_path = out_dir / f"{_slug(name)}.schema.json"

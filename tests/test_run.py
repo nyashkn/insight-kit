@@ -1,11 +1,13 @@
 """Unit tests for Run lifecycle, sha determinism, lazy mkdir, claim_id."""
 from __future__ import annotations
+
 import json
 import re
-import time
 from pathlib import Path
-import pytest
+
 import pyarrow as pa
+import pytest
+
 from insight_kit import Run
 from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
 from insight_kit.provenance.run import _sha256
