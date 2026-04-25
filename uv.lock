@@ -234,7 +234,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
-    { name = "sf-hamilton", extras = ["visualization", "caching"], marker = "extra == 'hamilton'", specifier = ">=1.80" },
+    { name = "sf-hamilton", extras = ["visualization", "caching"], marker = "extra == 'hamilton'", specifier = ">=1.83" },
     { name = "structlog", specifier = ">=25.0" },
 ]
 provides-extras = ["hamilton", "polars", "pandas", "evidence", "signet", "dev"]

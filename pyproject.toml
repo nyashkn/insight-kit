@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-hamilton = ["sf-hamilton[visualization,caching]>=1.80"]
+hamilton = ["sf-hamilton[visualization,caching]>=1.83"]
 polars = ["polars>=1.40"]
 pandas = ["pandas>=2.2"]
 evidence = ["jinja2>=3.1"]
