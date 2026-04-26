@@ -32,8 +32,10 @@ from insight_kit.provenance.root import find_kit_root, kit_config, runs_dir
 from insight_kit.validation import (
     check_claim_id_format,
     check_claim_id_namespace,
+    check_claim_id_unique,
     check_critic_edges,
     check_external_caveats,
+    check_input_claims_exist,
 )
 
 SCHEMA_VERSION = "2.0"
@@ -215,9 +217,10 @@ class Run:
         self._status = "failed" if exc else "completed"
         self._error = repr(exc) if exc else None
 
-        # if nothing was written, do not create empty run dir
-        if not self._dirs_created and not exc:
-            logger.info("run.skip_empty", run_id=self.run_id, reason="no artifacts")
+        # always create run dir when there are claims; skip only when truly empty (no artifacts + no claims)
+        has_content = self._dirs_created or self._claims or exc
+        if not has_content:
+            logger.info("run.skip_empty", run_id=self.run_id, reason="no artifacts or claims")
             return
 
         self._ensure_dirs()
@@ -236,11 +239,10 @@ class Run:
             json.dumps(manifest, indent=2, default=str)
         )
 
-        # claims.jsonl (append-only stream, separate from manifest)
-        if self._claims:
-            with (self.run_dir / "claims.jsonl").open("w") as f:
-                for c in self._claims:
-                    f.write(json.dumps(c.to_json(), default=str) + "\n")
+        # claims.jsonl (append-only stream, separate from manifest) — always written
+        with (self.run_dir / "claims.jsonl").open("w") as f:
+            for c in self._claims:
+                f.write(json.dumps(c.to_json(), default=str) + "\n")
 
         # checksums for everything in run dir
         checksums = []
@@ -248,6 +250,14 @@ class Run:
             if p.is_file() and p.name != "checksums.sha256":
                 checksums.append(f"{_sha256(p)}  {p.relative_to(self.run_dir)}")
         (self.run_dir / "checksums.sha256").write_text("\n".join(checksums) + "\n")
+
+        # Layer B: claim-id global uniqueness check across all runs
+        if not exc:
+            unique_errors = check_claim_id_unique(self._kit_root)
+            if unique_errors:
+                for ue in unique_errors:
+                    logger.warning("run.claim_id_duplicate", error=str(ue))
+                raise unique_errors[0]
 
         logger.info(
             "run.end",
@@ -774,6 +784,9 @@ class Run:
         if namespace:
             check_claim_id_namespace(claim_id, namespace)
         check_critic_edges(tier, supports, refutes)
+        # Layer-A: referential integrity for input_claims
+        current_ids = {c.claim_id for c in self._claims}
+        check_input_claims_exist(claim_id, input_claims or [], current_ids, self._kit_root)
 
         cv = None
         if value is not None or unit is not None:

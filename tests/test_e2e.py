@@ -125,6 +125,24 @@ def test_checksums_cover_all_files(kit: Path):
     assert "claims.jsonl" in sums
 
 
+# E-11: claims-only run must persist run dir
+def test_claims_only_run(kit: Path):
+    """Run with only claim() calls (no emit/ingest) must still create run dir + files."""
+    with Run(topic="t", agent="a") as r:
+        r.claim(claim_id="TEST-D-001", statement="claims-only")
+    runs = list((kit / ".insight-kit" / "runs").iterdir())
+    assert len(runs) == 1, "run dir must be created for claims-only run"
+    rd = runs[0]
+    assert (rd / "manifest.json").exists(), "manifest.json must exist"
+    assert (rd / "claims.jsonl").exists(), "claims.jsonl must exist"
+    assert (rd / "checksums.sha256").exists(), "checksums.sha256 must exist"
+    manifest = json.loads((rd / "manifest.json").read_text())
+    assert manifest["status"] == "completed"
+    claims = [json.loads(L) for L in (rd / "claims.jsonl").read_text().splitlines() if L.strip()]
+    assert len(claims) == 1
+    assert claims[0]["claim_id"] == "TEST-D-001"
+
+
 # E-16
 def test_cli_ik_init(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
