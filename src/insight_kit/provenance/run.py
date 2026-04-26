@@ -28,7 +28,13 @@ from typing import Any, Literal
 import structlog
 
 from insight_kit.provenance.claim import Claim, Confidence
-from insight_kit.provenance.root import find_kit_root, runs_dir
+from insight_kit.provenance.root import find_kit_root, kit_config, runs_dir
+from insight_kit.validation import (
+    check_claim_id_format,
+    check_claim_id_namespace,
+    check_critic_edges,
+    check_external_caveats,
+)
 
 SCHEMA_VERSION = "2.0"
 
@@ -361,6 +367,7 @@ class Run:
         metadata: dict | None = None,
         content_type: str = "text/plain",
         confidence_override: str | None = None,
+        caveats: list[str] | None = None,
     ) -> InputRecord:
         """Ingest external source (search, URL, API, scrape); snapshot + hash.
 
@@ -371,10 +378,19 @@ class Run:
             metadata: provider-specific metadata (status, model, params, etc.)
             content_type: MIME type (default: text/plain)
             confidence_override: provider's confidence rating if any
+            caveats: caveats list for downstream claims; defaults to
+                ['external_source', 'non_audited'] if not provided.
 
         Returns:
             InputRecord with all external metadata populated.
         """
+        # Layer-A guard: caveats must not be explicitly empty
+        check_external_caveats(caveats)
+        # Apply default caveats if not provided
+        resolved_caveats: list[str] = (
+            caveats if caveats is not None else ["external_source", "non_audited"]
+        )
+
         self._ensure_dirs()
 
         # Convert content to bytes if needed
@@ -432,6 +448,7 @@ class Run:
             source_id=source_id,
             content_type=content_type,
             confidence_override=confidence_override,
+            default_caveats=resolved_caveats,
         )
         self._inputs.append(rec)
         return rec
@@ -750,6 +767,13 @@ class Run:
     ) -> Claim:
         """Emit a structured claim. claim_id (not `id`) per A5 hygiene."""
         from insight_kit.provenance.claim import ClaimValue
+
+        # Layer-A guards — fire before any state mutation
+        check_claim_id_format(claim_id)
+        namespace = kit_config(self._kit_root).get("namespace", "")
+        if namespace:
+            check_claim_id_namespace(claim_id, namespace)
+        check_critic_edges(tier, supports, refutes)
 
         cv = None
         if value is not None or unit is not None:
