@@ -189,7 +189,7 @@ def test_dict_input_recorded_as_json(kit: Path):
     output = "skill output"
 
     with Run(topic="skill_test", agent="tester") as r:
-        rec = r.ingest_skill(
+        r.ingest_skill(
             skill_name="api-skill",
             input=input_dict,
             output=output,
