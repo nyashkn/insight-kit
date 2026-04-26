@@ -9,6 +9,7 @@ from pathlib import Path
 
 from insight_kit import __version__
 from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
+from insight_kit.validation import check_claim_id_unique
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -49,6 +50,23 @@ def cmd_annotate(args: argparse.Namespace) -> int:
         f"acted={rec['acted_on']}  validated={rec['validated']}"
     )
     return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Layer C: scan all runs and report validation errors."""
+    try:
+        root = find_kit_root()
+    except FileNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    errors = check_claim_id_unique(root)
+    if not errors:
+        print("ok: no validation errors found")
+        return 0
+    for err in errors:
+        print(f"[{err.rule_id}] {err}", file=sys.stderr)
+    print(f"error: {len(errors)} validation error(s) found", file=sys.stderr)
+    return 1
 
 
 def cmd_annotations(args: argparse.Namespace) -> int:
@@ -105,6 +123,9 @@ def main(argv: list[str] | None = None) -> int:
         "--annotator", default=None, help="annotator name (default: $USER)"
     )
     p_annotate.set_defaults(func=cmd_annotate)
+
+    p_validate = sub.add_parser("validate", help="run Layer-C validations across all runs")
+    p_validate.set_defaults(func=cmd_validate)
 
     p_annotations = sub.add_parser("annotations", help="list recorded annotations")
     p_annotations.add_argument(
