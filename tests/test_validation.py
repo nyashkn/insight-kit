@@ -19,8 +19,10 @@ from insight_kit.validation import (
     ValidationError,
     check_claim_id_format,
     check_claim_id_namespace,
+    check_claim_id_unique,
     check_critic_edges,
     check_external_caveats,
+    check_input_claims_exist,
 )
 
 # ---------- fixtures ----------
@@ -233,3 +235,141 @@ def test_run_claim_critic_with_refutes_ok(kit: Path):
             refutes=["TEST-D-001"],
         )
     assert c.claim_id == "TEST-C-001"
+
+
+# ---------- Fix #8: input-claims referential integrity ----------
+
+
+def test_input_claims_no_refs_passes():
+    """Empty input_claims always passes."""
+    check_input_claims_exist("TEST-D-002", [], set(), Path("/nonexistent"))
+
+
+def test_input_claims_ref_in_current_run_passes(kit: Path):
+    """input_claims ref to claim in current run's already-emitted claims passes."""
+    with Run(topic="t", agent="a") as r:
+        r.claim(claim_id="TEST-D-001", statement="base claim")
+        # TEST-D-002 references TEST-D-001 which is already in current run
+        c = r.claim(
+            claim_id="TEST-D-002",
+            statement="derived from 001",
+            input_claims=["TEST-D-001"],
+        )
+    assert c.claim_id == "TEST-D-002"
+
+
+def test_input_claims_dangling_ref_raises(kit: Path):
+    """input_claims referencing a non-existent claim_id raises ValidationError."""
+    with pytest.raises(ValidationError) as exc_info:
+        with Run(topic="t", agent="a") as r:
+            r.claim(
+                claim_id="TEST-D-001",
+                statement="references a ghost",
+                input_claims=["TEST-D-GHOST-999"],
+            )
+    assert exc_info.value.rule_id == "input-claims-referential-integrity"
+    assert "TEST-D-GHOST-999" in str(exc_info.value)
+
+
+def test_input_claims_ref_in_prior_run_passes(kit: Path):
+    """input_claims ref to claim_id written in a prior run's claims.jsonl passes."""
+    import json as _json
+
+    # Manually create a prior run dir with a claims.jsonl containing TEST-D-001
+    prior_run_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_prior_agent_t"
+    prior_run_dir.mkdir(parents=True, exist_ok=True)
+    (prior_run_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "prior claim"}) + "\n"
+    )
+
+    # Now a new run references TEST-D-001 as an input_claim — should pass
+    with Run(topic="t", agent="a") as r:
+        c = r.claim(
+            claim_id="TEST-D-002",
+            statement="references prior run claim",
+            input_claims=["TEST-D-001"],
+        )
+    assert c.claim_id == "TEST-D-002"
+
+
+# ---------- Fix #10: claim-id globally unique ----------
+
+
+def test_claim_id_unique_no_runs(kit: Path):
+    """No runs → no errors."""
+    errors = check_claim_id_unique(kit)
+    assert errors == []
+
+
+def test_claim_id_unique_single_run_no_errors(kit: Path):
+    """Single run with a claim → no errors."""
+    with Run(topic="t", agent="a") as r:
+        r.claim(claim_id="TEST-D-001", statement="unique")
+    errors = check_claim_id_unique(kit)
+    assert errors == []
+
+
+def test_claim_id_unique_duplicate_across_runs_raises(kit: Path):
+    """Same claim_id in two runs without supersedes → ValidationError."""
+    import json as _json
+    import time
+
+    # First run
+    run1_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_a_t"
+    run1_dir.mkdir(parents=True, exist_ok=True)
+    (run1_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "first"}) + "\n"
+    )
+
+    # Second run with same claim_id, no supersedes
+    run2_dir = kit / ".insight-kit" / "runs" / "2024-01-02_0000_a_t"
+    run2_dir.mkdir(parents=True, exist_ok=True)
+    (run2_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "duplicate"}) + "\n"
+    )
+
+    errors = check_claim_id_unique(kit)
+    assert len(errors) == 1
+    assert errors[0].rule_id == "claim-id-globally-unique"
+    assert "TEST-D-001" in str(errors[0])
+
+
+def test_claim_id_unique_supersedes_chain_ok(kit: Path):
+    """Same claim_id in two runs where one has supersedes → no error."""
+    import json as _json
+
+    run1_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_a_t"
+    run1_dir.mkdir(parents=True, exist_ok=True)
+    (run1_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "first"}) + "\n"
+    )
+
+    run2_dir = kit / ".insight-kit" / "runs" / "2024-01-02_0000_a_t"
+    run2_dir.mkdir(parents=True, exist_ok=True)
+    (run2_dir / "claims.jsonl").write_text(
+        _json.dumps(
+            {"claim_id": "TEST-D-001", "statement": "replacement", "supersedes": "TEST-D-001"}
+        )
+        + "\n"
+    )
+
+    errors = check_claim_id_unique(kit)
+    assert errors == []
+
+
+def test_run_exit_raises_on_duplicate_claim_id(kit: Path):
+    """Run.__exit__ (Layer B) raises if a claim_id was already used in a prior run."""
+    import json as _json
+
+    # Inject a prior run with TEST-D-001
+    prior_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_prior_a_t"
+    prior_dir.mkdir(parents=True, exist_ok=True)
+    (prior_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "prior"}) + "\n"
+    )
+
+    # New run uses the same claim_id without supersedes → should raise on __exit__
+    with pytest.raises(ValidationError) as exc_info:
+        with Run(topic="t", agent="a") as r:
+            r.claim(claim_id="TEST-D-001", statement="duplicate no supersedes")
+    assert exc_info.value.rule_id == "claim-id-globally-unique"

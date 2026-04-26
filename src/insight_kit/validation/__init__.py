@@ -5,7 +5,13 @@ with rule_id + suggestion so the calling agent can self-correct in the same Run.
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from insight_kit.provenance.run import Run
 
 # ---------- error class ----------
 
@@ -83,6 +89,121 @@ def check_critic_edges(
                 message="critic-tier claim must have at least one supports or refutes edge",
                 suggestion="critic-tier claim must declare supports=[...] or refutes=[...]",
             )
+
+
+def _load_prior_claim_ids(kit_root: Path) -> set[str]:
+    """Collect all claim_ids from prior completed runs in .insight-kit/runs/."""
+    ids: set[str] = set()
+    runs_base = kit_root / ".insight-kit" / "runs"
+    if not runs_base.exists():
+        return ids
+    for run_dir in runs_base.iterdir():
+        if not run_dir.is_dir():
+            continue
+        claims_file = run_dir / "claims.jsonl"
+        if not claims_file.exists():
+            continue
+        try:
+            for line in claims_file.read_text().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                cid = rec.get("claim_id")
+                if cid:
+                    ids.add(cid)
+        except Exception:
+            continue
+    return ids
+
+
+def check_input_claims_exist(
+    claim_id: str,
+    input_claims: list[str],
+    current_run_claim_ids: set[str],
+    kit_root: Path,
+) -> None:
+    """Rule: input-claims-referential-integrity.
+
+    Every claim_id in input_claims must exist in the current run's claims so far
+    OR in prior runs' claims.jsonl files under .insight-kit/runs/.
+    """
+    if not input_claims:
+        return
+    prior_ids = _load_prior_claim_ids(kit_root)
+    all_known = current_run_claim_ids | prior_ids
+    dangling = [ref for ref in input_claims if ref not in all_known]
+    if dangling:
+        raise ValidationError(
+            rule_id="input-claims-referential-integrity",
+            message=(
+                f"claim {claim_id!r} references unknown input_claims: {dangling!r}. "
+                "Referenced claims must exist in current run or prior runs."
+            ),
+            suggestion=(
+                f"Ensure input_claims refs exist before referencing them. "
+                f"Dangling refs: {dangling!r}"
+            ),
+        )
+
+
+def check_claim_id_unique(kit_root: Path) -> list[ValidationError]:
+    """Rule: claim-id-globally-unique (Layer B/C).
+
+    Scan all claims.jsonl under .insight-kit/runs/. If the same claim_id appears
+    in 2+ different runs without a supersedes chain, return ValidationError list.
+    """
+    runs_base = kit_root / ".insight-kit" / "runs"
+    if not runs_base.exists():
+        return []
+
+    # claim_id -> list of (run_dir_name, supersedes value)
+    seen: dict[str, list[tuple[str, str | None]]] = {}
+
+    for run_dir in runs_base.iterdir():
+        if not run_dir.is_dir():
+            continue
+        claims_file = run_dir / "claims.jsonl"
+        if not claims_file.exists():
+            continue
+        try:
+            for line in claims_file.read_text().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                rec = json.loads(line)
+                cid = rec.get("claim_id")
+                if not cid:
+                    continue
+                supersedes = rec.get("supersedes")
+                if cid not in seen:
+                    seen[cid] = []
+                seen[cid].append((run_dir.name, supersedes))
+        except Exception:
+            continue
+
+    errors: list[ValidationError] = []
+    for cid, appearances in seen.items():
+        if len(appearances) < 2:
+            continue
+        # Allow duplicates only if at least one has a supersedes chain
+        has_supersedes = any(sup is not None for _, sup in appearances)
+        if not has_supersedes:
+            run_names = [r for r, _ in appearances]
+            errors.append(
+                ValidationError(
+                    rule_id="claim-id-globally-unique",
+                    message=(
+                        f"claim_id {cid!r} appears in {len(appearances)} runs "
+                        f"without supersedes chain: {run_names}"
+                    ),
+                    suggestion=(
+                        f"Use a unique claim_id per run, or set supersedes=<prior_claim_id> "
+                        f"to form a valid replacement chain. Duplicate runs: {run_names}"
+                    ),
+                )
+            )
+    return errors
 
 
 def check_external_caveats(caveats: list[str] | None) -> None:
