@@ -25,6 +25,7 @@ from insight_kit.validation import (
     check_critic_edges,
     check_external_caveats,
     check_input_claims_exist,
+    check_metric_id_allowed,
     check_supersedes_chain_integrity,
 )
 
@@ -496,3 +497,59 @@ def test_run_claim_duplicate_in_run_raises_immediately(kit: Path):
             r.claim(claim_id="TEST-D-001", statement="first")
             r.claim(claim_id="TEST-D-001", statement="second — must raise immediately")
     assert exc_info.value.rule_id == "claim-id-duplicate-in-run"
+
+
+# ---------- M8: metric-id-off-glossary ----------
+
+
+@pytest.fixture
+def kit_with_glossary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Kit fixture with a project glossary.yaml defining topics=["funnel", "zoho"]."""
+    init_kit(tmp_path, namespace="TEST")
+    monkeypatch.chdir(tmp_path)
+    find_kit_root.cache_clear()
+    kit_config.cache_clear()
+    glossary_dir = tmp_path / ".insight-kit" / "templates"
+    glossary_dir.mkdir(parents=True, exist_ok=True)
+    (glossary_dir / "glossary.yaml").write_text("topics:\n  - funnel\n  - zoho\n")
+    return tmp_path
+
+
+def test_metric_id_allowed_known_prefix_passes(kit_with_glossary: Path):
+    """metric name starting with a glossary prefix passes."""
+    check_metric_id_allowed("funnel_volume_b1", kit_with_glossary)  # must not raise
+    check_metric_id_allowed("zoho_pipeline_value", kit_with_glossary)  # must not raise
+
+
+def test_metric_id_allowed_unknown_prefix_raises(kit_with_glossary: Path):
+    """metric name with no glossary prefix raises."""
+    with pytest.raises(ValidationError) as exc_info:
+        check_metric_id_allowed("weather_pressure", kit_with_glossary)
+    assert exc_info.value.rule_id == "metric-id-off-glossary"
+    assert "weather_pressure" in str(exc_info.value)
+
+
+def test_metric_id_no_glossary_is_permissive(kit: Path):
+    """Without a project glossary.yaml, any metric name is accepted."""
+    check_metric_id_allowed("weather_pressure", kit)  # must not raise — no glossary
+
+
+def test_run_emit_metric_off_glossary_raises(kit_with_glossary: Path):
+    """Run.emit_metric raises metric-id-off-glossary for unknown metric name prefix."""
+    import polars as pl
+
+    df = pl.DataFrame({"a": [1, 2, 3]})
+    with pytest.raises(ValidationError) as exc_info:
+        with Run(topic="t", agent="a") as r:
+            r.emit_metric(df, name="weather_pressure_kpa")
+    assert exc_info.value.rule_id == "metric-id-off-glossary"
+
+
+def test_run_emit_metric_known_prefix_passes(kit_with_glossary: Path):
+    """Run.emit_metric passes when name matches a glossary topic prefix."""
+    import polars as pl
+
+    df = pl.DataFrame({"a": [1, 2, 3]})
+    with Run(topic="t", agent="a") as r:
+        path = r.emit_metric(df, name="funnel_volume_b1")
+    assert path.exists()

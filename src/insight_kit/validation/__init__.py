@@ -324,6 +324,51 @@ def check_supersedes_chain_integrity(
         )
 
 
+def _load_glossary_topics(kit_root: Path) -> list[str] | None:
+    """Load allowed metric name prefixes from project glossary.
+
+    Returns list of topic strings if a glossary.yaml exists and has topics,
+    or None if no project glossary is configured (check is skipped).
+    """
+    glossary_path = kit_root / ".insight-kit" / "templates" / "glossary.yaml"
+    if glossary_path.exists():
+        try:
+            data = yaml.safe_load(glossary_path.read_text()) or {}
+            topics = data.get("topics", [])
+            if topics:
+                return list(topics)
+        except Exception:
+            pass
+    return None
+
+
+def check_metric_id_allowed(name: str, kit_root: Path) -> None:
+    """Rule: metric-id-off-glossary.
+
+    emit_metric(name=...) must start with a prefix from the project glossary topics allow-list.
+    Reads .insight-kit/templates/glossary.yaml. If no glossary is configured, check is skipped.
+    """
+    allowed_prefixes = _load_glossary_topics(kit_root)
+    if allowed_prefixes is None:
+        # No project glossary configured — permissive (no enforcement)
+        return
+    for prefix in allowed_prefixes:
+        if name.startswith(prefix):
+            return
+    raise ValidationError(
+        rule_id="metric-id-off-glossary",
+        message=(
+            f"metric name {name!r} does not start with any allowed glossary topic prefix. "
+            f"Allowed prefixes: {allowed_prefixes!r}"
+        ),
+        suggestion=(
+            f"Use a metric name starting with one of the glossary topics: {allowed_prefixes!r}. "
+            f"Example: '{allowed_prefixes[0]}_{name}' or define a new topic in "
+            f".insight-kit/templates/glossary.yaml."
+        ),
+    )
+
+
 def check_external_caveats(caveats: list[str] | None) -> None:
     """Rule: external-requires-caveats.
 

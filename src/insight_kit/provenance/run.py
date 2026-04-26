@@ -38,6 +38,7 @@ from insight_kit.validation import (
     check_critic_edges,
     check_external_caveats,
     check_input_claims_exist,
+    check_metric_id_allowed,
     check_supersedes_chain_integrity,
 )
 
@@ -688,6 +689,8 @@ class Run:
 
     def emit_metric(self, df: Any, name: str, duckdb_view: str | None = None) -> Path:
         """Emit a metric-tier output. Lands in output/metrics/."""
+        # M8: metric name must start with a glossary topic prefix (if glossary configured)
+        check_metric_id_allowed(name, self._kit_root)
         return self._emit(df, name, layer="metrics", duckdb_view=duckdb_view)
 
     def emit_critique(self, df: Any, name: str, duckdb_view: str | None = None) -> Path:
