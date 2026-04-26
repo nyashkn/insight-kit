@@ -525,6 +525,135 @@ class Run:
         self._inputs.append(rec)
         return rec
 
+    def ingest_search(
+        self,
+        *,
+        query: str,
+        tool: str,
+        results: str | dict | list,
+        metadata: dict | None = None,
+    ) -> InputRecord:
+        """Wraps ingest_external with kind='search', source_id=f'{tool}:{query}'.
+
+        Args:
+            query: the search query string
+            tool: search tool name ("tavily", "perplexity", "brave", etc.)
+            results: the raw response payload (str, dict, or list)
+            metadata: optional caller-supplied metadata to merge
+
+        Returns:
+            InputRecord with kind="search" and appropriate content_type.
+        """
+        # Normalize results to string
+        if isinstance(results, (dict, list)):
+            content = json.dumps(results, sort_keys=True)
+            content_type = "application/json"
+        else:
+            content = results
+            content_type = "text/plain"
+
+        # Build source_id
+        source_id = f"{tool}:{query}"
+
+        # Merge metadata
+        meta = {"tool": tool, "query": query}
+        if metadata is not None:
+            meta.update(metadata)
+
+        return self.ingest_external(
+            kind="search",
+            source_id=source_id,
+            content=content,
+            metadata=meta,
+            content_type=content_type,
+        )
+
+    def ingest_url(
+        self,
+        *,
+        url: str,
+        body: str | bytes,
+        fetcher: str = "requests",
+        status: int | None = None,
+        headers: dict | None = None,
+        content_type: str = "text/html",
+    ) -> InputRecord:
+        """Wraps ingest_external with kind='url', source_id=url.
+
+        Args:
+            url: the URL that was fetched
+            body: the response body (str or bytes)
+            fetcher: tool used to fetch ("requests", "playwright", etc.)
+            status: HTTP status code if available
+            headers: response headers dict if available
+            content_type: MIME type (default: text/html)
+
+        Returns:
+            InputRecord with kind="url" and caller-supplied content_type.
+        """
+        # Build metadata
+        meta = {"fetcher": fetcher}
+        if status is not None:
+            meta["status"] = status
+        if headers is not None:
+            meta["headers"] = headers
+
+        return self.ingest_external(
+            kind="url",
+            source_id=url,
+            content=body,
+            metadata=meta,
+            content_type=content_type,
+        )
+
+    def ingest_api(
+        self,
+        *,
+        provider: str,
+        endpoint: str,
+        response: str | bytes | dict,
+        params: dict | None = None,
+        status: int | None = None,
+    ) -> InputRecord:
+        """Wraps ingest_external with kind='api', source_id=f'{provider}:{endpoint}'.
+
+        Args:
+            provider: API provider name (e.g., "meta-graph", "stripe")
+            endpoint: API endpoint path
+            response: the API response (str, bytes, or dict)
+            params: optional request parameters dict
+            status: optional HTTP status code
+
+        Returns:
+            InputRecord with kind="api" and appropriate content_type.
+        """
+        # Normalize response to string
+        if isinstance(response, dict):
+            content = json.dumps(response, sort_keys=True)
+            content_type = "application/json"
+        elif isinstance(response, bytes):
+            content = response
+            content_type = "application/json"  # assume JSON for bytes
+        else:
+            content = response
+            content_type = "text/plain"
+
+        # Build source_id and metadata
+        source_id = f"{provider}:{endpoint}"
+        meta = {"provider": provider, "endpoint": endpoint}
+        if params is not None:
+            meta["params"] = params
+        if status is not None:
+            meta["status"] = status
+
+        return self.ingest_external(
+            kind="api",
+            source_id=source_id,
+            content=content,
+            metadata=meta,
+            content_type=content_type,
+        )
+
     # explicit emit methods (per council Revision A · god-enum killed)
 
     def emit_metric(self, df: Any, name: str, duckdb_view: str | None = None) -> Path:
