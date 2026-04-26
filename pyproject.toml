@@ -1,6 +1,6 @@
 [project]
 name = "insight-kit"
-version = "0.1.0a2"
+version = "0.1.0a3"
 description = "Provenance-first agent insights kit — Run + Claim + DAG primitives for traceable analyst/critic loops."
 readme = "README.md"
 license = { text = "MIT" }
