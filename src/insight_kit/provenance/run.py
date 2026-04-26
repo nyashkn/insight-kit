@@ -30,6 +30,7 @@ import structlog
 from insight_kit.provenance.claim import Claim, Confidence
 from insight_kit.provenance.root import find_kit_root, kit_config, runs_dir
 from insight_kit.validation import (
+    check_citation_referential_integrity,
     check_claim_id_format,
     check_claim_id_namespace,
     check_claim_id_unique,
@@ -790,6 +791,9 @@ class Run:
         check_input_claims_exist(claim_id, input_claims or [], current_ids, self._kit_root)
         # M5: prevent re-superseding an already-superseded claim
         check_supersedes_chain_integrity(claim_id, supersedes, self._kit_root, current_ids)
+        # M6: citation referential integrity in statement/interpretation fields
+        interpretation = None  # Claim.statement is the primary text; no interpretation field yet
+        check_citation_referential_integrity(statement, interpretation, current_ids, self._kit_root)
 
         cv = None
         if value is not None or unit is not None:

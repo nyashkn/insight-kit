@@ -208,6 +208,45 @@ def check_claim_id_unique(kit_root: Path) -> list[ValidationError]:
     return errors
 
 
+CITE_PATTERN = re.compile(r"\[\[CITE:\s*([^\]]+?)\s*\]\]")
+
+
+def check_citation_referential_integrity(
+    statement: str,
+    interpretation: str | None,
+    current_run_claim_ids: set[str],
+    kit_root: Path,
+) -> None:
+    """Rule: citation-referential-integrity.
+
+    Parse statement and interpretation strings for [[CITE: <ID>]] patterns.
+    Each <ID> must exist in current run or prior runs.
+    """
+    cited: list[str] = CITE_PATTERN.findall(statement or "")
+    if interpretation:
+        cited.extend(CITE_PATTERN.findall(interpretation))
+
+    if not cited:
+        return
+
+    prior_ids = _load_prior_claim_ids(kit_root)
+    all_known = current_run_claim_ids | prior_ids
+
+    dangling = [cid for cid in cited if cid not in all_known]
+    if dangling:
+        raise ValidationError(
+            rule_id="citation-referential-integrity",
+            message=(
+                f"Statement/interpretation contains [[CITE:]] references to unknown "
+                f"claim_ids: {dangling!r}. Each cited ID must exist in current run or prior runs."
+            ),
+            suggestion=(
+                f"Ensure all [[CITE: ID]] references exist before citing them. "
+                f"Dangling citations: {dangling!r}"
+            ),
+        )
+
+
 def check_supersedes_chain_integrity(
     claim_id: str,
     supersedes: str | None,

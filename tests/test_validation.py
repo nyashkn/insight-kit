@@ -17,6 +17,7 @@ from insight_kit import Run
 from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
 from insight_kit.validation import (
     ValidationError,
+    check_citation_referential_integrity,
     check_claim_id_format,
     check_claim_id_namespace,
     check_claim_id_unique,
@@ -427,3 +428,45 @@ def test_run_supersedes_already_deprecated_raises(kit: Path):
         with Run(topic="t", agent="a") as r:
             r.claim(claim_id="TEST-D-003", statement="also replaces 001", supersedes="TEST-D-001")
     assert exc_info.value.rule_id == "supersedes-already-deprecated"
+
+
+# ---------- M6: citation-referential-integrity ----------
+
+
+def test_citation_no_cites_passes():
+    """Statement with no [[CITE:]] patterns passes."""
+    check_citation_referential_integrity("plain statement", None, set(), Path("/nonexistent"))
+
+
+def test_citation_known_id_passes(kit: Path):
+    """[[CITE: TEST-D-001]] passes when TEST-D-001 is in current_run_claim_ids."""
+    check_citation_referential_integrity(
+        "See [[CITE: TEST-D-001]] for details.",
+        None,
+        {"TEST-D-001"},
+        kit,
+    )
+
+
+def test_citation_unknown_id_raises(kit: Path):
+    """[[CITE: DOCK-D-999]] raises when 999 doesn't exist."""
+    with pytest.raises(ValidationError) as exc_info:
+        check_citation_referential_integrity(
+            "Based on [[CITE: DOCK-D-999]] analysis.",
+            None,
+            set(),
+            kit,
+        )
+    assert exc_info.value.rule_id == "citation-referential-integrity"
+    assert "DOCK-D-999" in str(exc_info.value)
+
+
+def test_run_citation_unknown_raises(kit: Path):
+    """Run.claim raises citation-referential-integrity for [[CITE: ID]] when ID not found."""
+    with pytest.raises(ValidationError) as exc_info:
+        with Run(topic="t", agent="a") as r:
+            r.claim(
+                claim_id="TEST-D-001",
+                statement="Based on [[CITE: TEST-D-999]] which is unknown.",
+            )
+    assert exc_info.value.rule_id == "citation-referential-integrity"
