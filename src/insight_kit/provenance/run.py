@@ -133,11 +133,19 @@ class Run:
         prompt: str | None = None,
         parent_run_id: str | None = None,
         runs_dir_override: Path | None = None,
-        kit_start: Path | None = None,
+        *,
+        kit_start: Path | str | None = None,
     ) -> None:
+        # resolve kit_start: explicit > env var > default (cwd)
+        resolved_start = None
+        if kit_start is not None:
+            resolved_start = Path(kit_start) if isinstance(kit_start, str) else kit_start
+        elif env_start := os.environ.get("INSIGHT_KIT_ROOT"):
+            resolved_start = Path(env_start)
+
         # resolve kit root + runs dir
-        self._kit_root = find_kit_root(kit_start)
-        self._runs_dir = runs_dir_override or runs_dir(kit_start)
+        self._kit_root = find_kit_root(resolved_start)
+        self._runs_dir = runs_dir_override or runs_dir(resolved_start)
 
         self.topic = _slug(topic)
         self.agent = agent

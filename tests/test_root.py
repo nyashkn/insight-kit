@@ -86,3 +86,89 @@ def test_kit_config_caching(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     c1 = kit_config()
     c2 = kit_config()
     assert c1 is c2  # lru cache returns same object
+
+
+# U-18: kit_start parameter tests
+def test_run_kit_start_resolves_correctly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Run(kit_start=...) resolves correctly when cwd != kit dir."""
+    import pyarrow as pa
+
+    from insight_kit import Run
+
+    kit = tmp_path / "kit"
+    kit.mkdir()
+    init_kit(kit, namespace="TEST")
+
+    # change cwd to a different location
+    other_dir = tmp_path / "other"
+    other_dir.mkdir()
+    monkeypatch.chdir(other_dir)
+    find_kit_root.cache_clear()
+
+    # create Run with explicit kit_start
+    with Run(topic="t", agent="a", kit_start=kit) as r:
+        r.emit_metric(pa.table({"x": [1, 2, 3]}), name="m")
+        assert r._kit_root == kit
+
+    # verify run was created in the correct kit's runs dir
+    runs = list((kit / ".insight-kit" / "runs").iterdir())
+    assert len(runs) == 1
+
+
+def test_run_env_var_insight_kit_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """INSIGHT_KIT_ROOT env var resolves correctly when kit_start not passed."""
+    import pyarrow as pa
+
+    from insight_kit import Run
+
+    kit = tmp_path / "kit"
+    kit.mkdir()
+    init_kit(kit, namespace="TEST")
+
+    # change cwd to a different location
+    other_dir = tmp_path / "other"
+    other_dir.mkdir()
+    monkeypatch.chdir(other_dir)
+    monkeypatch.setenv("INSIGHT_KIT_ROOT", str(kit))
+    find_kit_root.cache_clear()
+
+    # create Run without kit_start but with env var
+    with Run(topic="t", agent="a") as r:
+        r.emit_metric(pa.table({"x": [1, 2, 3]}), name="m")
+        assert r._kit_root == kit
+
+    # verify run was created in the correct kit's runs dir
+    runs = list((kit / ".insight-kit" / "runs").iterdir())
+    assert len(runs) == 1
+
+
+def test_run_kit_start_overrides_env_var(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Explicit kit_start overrides INSIGHT_KIT_ROOT env var."""
+    import pyarrow as pa
+
+    from insight_kit import Run
+
+    kit_a = tmp_path / "kit_a"
+    kit_b = tmp_path / "kit_b"
+    kit_a.mkdir()
+    kit_b.mkdir()
+    init_kit(kit_a, namespace="A")
+    init_kit(kit_b, namespace="B")
+
+    # change cwd to a different location
+    other_dir = tmp_path / "other"
+    other_dir.mkdir()
+    monkeypatch.chdir(other_dir)
+    monkeypatch.setenv("INSIGHT_KIT_ROOT", str(kit_a))
+    find_kit_root.cache_clear()
+
+    # create Run with explicit kit_start that overrides env var
+    with Run(topic="t", agent="a", kit_start=kit_b) as r:
+        r.emit_metric(pa.table({"x": [1, 2, 3]}), name="m")
+        assert r._kit_root == kit_b
+
+    # verify run was created in kit_b, not kit_a
+    runs_a = list((kit_a / ".insight-kit" / "runs").iterdir())
+    runs_b = list((kit_b / ".insight-kit" / "runs").iterdir())
+    assert len(runs_a) == 0
+    assert len(runs_b) == 1
