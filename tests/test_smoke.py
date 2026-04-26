@@ -19,7 +19,7 @@ def _chdir(monkeypatch, path: Path) -> None:
 
 
 def test_version() -> None:
-    assert __version__ == "0.1.0a0"
+    assert __version__ == "0.1.0a2"
 
 
 def test_init_creates_kit_dir(tmp_path: Path, monkeypatch) -> None:

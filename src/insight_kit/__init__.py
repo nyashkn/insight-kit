@@ -4,7 +4,7 @@ from insight_kit.provenance.claim import Claim, ClaimTier, Confidence
 from insight_kit.provenance.root import find_kit_root, kit_config
 from insight_kit.provenance.run import Run
 
-__version__ = "0.1.0a0"
+__version__ = "0.1.0a2"
 
 __all__ = [
     "Claim",

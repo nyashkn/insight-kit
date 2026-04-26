@@ -191,7 +191,7 @@ wheels = [
 
 [[package]]
 name = "insight-kit"
-version = "0.1.0a0"
+version = "0.1.0a2"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
