@@ -23,6 +23,7 @@ from insight_kit.validation import (
     check_critic_edges,
     check_external_caveats,
     check_input_claims_exist,
+    check_supersedes_chain_integrity,
 )
 
 # ---------- fixtures ----------
@@ -373,3 +374,56 @@ def test_run_exit_raises_on_duplicate_claim_id(kit: Path):
         with Run(topic="t", agent="a") as r:
             r.claim(claim_id="TEST-D-001", statement="duplicate no supersedes")
     assert exc_info.value.rule_id == "claim-id-globally-unique"
+
+
+# ---------- M5: supersedes-already-deprecated ----------
+
+
+def test_supersedes_chain_no_supersedes_passes(kit: Path):
+    """No supersedes → no error."""
+    check_supersedes_chain_integrity("TEST-D-002", None, kit, set())  # must not raise
+
+
+def test_supersedes_chain_fresh_target_passes(kit: Path):
+    """supersedes=X where X has no existing successor → passes."""
+    import json as _json
+
+    prior_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_prior_a_t"
+    prior_dir.mkdir(parents=True, exist_ok=True)
+    (prior_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "original"}) + "\n"
+    )
+    # Should not raise — nothing supersedes TEST-D-001 yet
+    check_supersedes_chain_integrity("TEST-D-002", "TEST-D-001", kit, set())
+
+
+def test_supersedes_chain_already_superseded_raises(kit: Path):
+    """supersedes=X where X was already superseded by a prior claim → raises."""
+    import json as _json
+
+    # Y supersedes X already
+    prior_dir = kit / ".insight-kit" / "runs" / "2024-01-02_0000_prior_a_t"
+    prior_dir.mkdir(parents=True, exist_ok=True)
+    (prior_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-002", "statement": "Y supersedes X", "supersedes": "TEST-D-001"}) + "\n"
+    )
+    # Now Z also tries to supersede X → must raise
+    with pytest.raises(ValidationError) as exc_info:
+        check_supersedes_chain_integrity("TEST-D-003", "TEST-D-001", kit, set())
+    assert exc_info.value.rule_id == "supersedes-already-deprecated"
+    assert "TEST-D-001" in str(exc_info.value)
+
+
+def test_run_supersedes_already_deprecated_raises(kit: Path):
+    """Run.claim() raises supersedes-already-deprecated if target already has a successor."""
+    import json as _json
+
+    prior_dir = kit / ".insight-kit" / "runs" / "2024-01-02_0000_prior_a_t"
+    prior_dir.mkdir(parents=True, exist_ok=True)
+    (prior_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-002", "statement": "replacement", "supersedes": "TEST-D-001"}) + "\n"
+    )
+    with pytest.raises(ValidationError) as exc_info:
+        with Run(topic="t", agent="a") as r:
+            r.claim(claim_id="TEST-D-003", statement="also replaces 001", supersedes="TEST-D-001")
+    assert exc_info.value.rule_id == "supersedes-already-deprecated"

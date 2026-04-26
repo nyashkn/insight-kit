@@ -36,6 +36,7 @@ from insight_kit.validation import (
     check_critic_edges,
     check_external_caveats,
     check_input_claims_exist,
+    check_supersedes_chain_integrity,
 )
 
 SCHEMA_VERSION = "2.0"
@@ -787,6 +788,8 @@ class Run:
         # Layer-A: referential integrity for input_claims
         current_ids = {c.claim_id for c in self._claims}
         check_input_claims_exist(claim_id, input_claims or [], current_ids, self._kit_root)
+        # M5: prevent re-superseding an already-superseded claim
+        check_supersedes_chain_integrity(claim_id, supersedes, self._kit_root, current_ids)
 
         cv = None
         if value is not None or unit is not None:

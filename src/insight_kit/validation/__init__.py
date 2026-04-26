@@ -10,6 +10,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import yaml
+
 if TYPE_CHECKING:
     from insight_kit.provenance.run import Run
 
@@ -204,6 +206,60 @@ def check_claim_id_unique(kit_root: Path) -> list[ValidationError]:
                 )
             )
     return errors
+
+
+def check_supersedes_chain_integrity(
+    claim_id: str,
+    supersedes: str | None,
+    kit_root: Path,
+    current_run_claim_ids: set[str],
+) -> None:
+    """Rule: supersedes-already-deprecated.
+
+    If claim X already has a successor in the chain (anything supersedes X already),
+    then a new claim Y supersedes=[X] must raise.
+    """
+    if supersedes is None:
+        return
+
+    target = supersedes
+
+    # Build a set of all claim_ids that already have a successor (someone else supersedes them)
+    already_superseded: set[str] = set()
+
+    # Check prior runs
+    runs_base = kit_root / ".insight-kit" / "runs"
+    if runs_base.exists():
+        for run_dir in runs_base.iterdir():
+            if not run_dir.is_dir():
+                continue
+            claims_file = run_dir / "claims.jsonl"
+            if not claims_file.exists():
+                continue
+            try:
+                for line in claims_file.read_text().splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    rec = json.loads(line)
+                    sup = rec.get("supersedes")
+                    if sup:
+                        already_superseded.add(sup)
+            except Exception:
+                continue
+
+    if target in already_superseded:
+        raise ValidationError(
+            rule_id="supersedes-already-deprecated",
+            message=(
+                f"claim {claim_id!r} tries to supersede {target!r}, "
+                f"but {target!r} already has a successor in the chain."
+            ),
+            suggestion=(
+                f"Cannot supersede {target!r} because it has already been superseded. "
+                f"Supersede the latest claim in the chain instead."
+            ),
+        )
 
 
 def check_external_caveats(caveats: list[str] | None) -> None:
