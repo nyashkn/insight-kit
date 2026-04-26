@@ -70,6 +70,20 @@ def _slug(s: str) -> str:
     return "".join(c if c.isalnum() or c in "-_" else "_" for c in s.lower()).strip("_")
 
 
+def _ext_from_content_type(content_type: str) -> str:
+    """Map MIME type to file extension."""
+    mapping = {
+        "text/plain": "txt",
+        "text/html": "html",
+        "text/xml": "xml",
+        "application/json": "json",
+        "application/pdf": "pdf",
+        "application/octet-stream": "bin",
+    }
+    # return mapped or last part of mime type (e.g., "json" from "application/json")
+    return mapping.get(content_type.lower(), content_type.split("/")[-1] or "bin")
+
+
 def _now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -85,6 +99,12 @@ class InputRecord:
     bytes: int
     rows: int | None = None
     snapshot_mtime: str | None = None
+    kind: str | None = None  # external: "search" | "url" | "api" | "scrape"
+    subkind: str | None = None  # for external sources, repeats kind
+    source_id: str | None = None  # canonical id: query, URL, provider:endpoint
+    content_type: str | None = None  # mime type
+    confidence_override: str | None = None  # provider-specific confidence rating
+    default_caveats: list[str] | None = None  # default caveats for claims citing this input
 
     def to_json(self) -> dict[str, Any]:
         return {k: v for k, v in asdict(self).items() if v is not None}
@@ -331,6 +351,179 @@ class Run:
                 rec.rows = len(data)
         self._inputs.append(rec)
         return data if loader is not None else p
+
+    def ingest_external(
+        self,
+        *,
+        kind: str,
+        source_id: str,
+        content: str | bytes,
+        metadata: dict | None = None,
+        content_type: str = "text/plain",
+        confidence_override: str | None = None,
+    ) -> InputRecord:
+        """Ingest external source (search, URL, API, scrape); snapshot + hash.
+
+        Args:
+            kind: "search" | "url" | "api" | "scrape"
+            source_id: canonical id (query string, URL, "provider:endpoint", etc.)
+            content: response/page body (str or bytes)
+            metadata: provider-specific metadata (status, model, params, etc.)
+            content_type: MIME type (default: text/plain)
+            confidence_override: provider's confidence rating if any
+
+        Returns:
+            InputRecord with all external metadata populated.
+        """
+        self._ensure_dirs()
+
+        # Convert content to bytes if needed
+        if isinstance(content, str):
+            content_bytes = content.encode("utf-8")
+        else:
+            content_bytes = content
+
+        # Compute SHA256
+        sha = hashlib.sha256(content_bytes).hexdigest()
+        sha_short = sha[:12]
+
+        # Get file extension from content type
+        ext = _ext_from_content_type(content_type)
+
+        # Create inputs/external/{kind}/ directory
+        external_dir = self.inputs_dir / "external" / kind
+        external_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write three files
+        content_path = external_dir / f"{sha_short}.{ext}"
+        sha_path = external_dir / f"{sha_short}.{ext}.sha256"
+        meta_path = external_dir / f"{sha_short}.meta.json"
+
+        # Write content
+        content_path.write_bytes(content_bytes)
+
+        # Write SHA256 file
+        sha_path.write_text(f"{sha}\n")
+
+        # Write metadata JSON
+        meta = {
+            "kind": kind,
+            "source_id": source_id,
+            "content_type": content_type,
+            "sha256": sha,
+            "captured_at": datetime.now(UTC).isoformat(),
+        }
+        if metadata is not None:
+            meta["metadata"] = metadata
+        if confidence_override is not None:
+            meta["confidence_override"] = confidence_override
+
+        meta_path.write_text(json.dumps(meta, indent=2, default=str))
+
+        # Create InputRecord
+        rel_path = str(content_path.relative_to(self.run_dir))
+        rec = InputRecord(
+            role="external",
+            kind="external",
+            subkind=kind,
+            path=rel_path,
+            sha256=sha,
+            bytes=len(content_bytes),
+            source_id=source_id,
+            content_type=content_type,
+            confidence_override=confidence_override,
+        )
+        self._inputs.append(rec)
+        return rec
+
+    def ingest_skill(
+        self,
+        *,
+        skill_name: str,
+        input: dict | str,
+        output: str | bytes | dict,
+        metadata: dict | None = None,
+    ) -> InputRecord:
+        """Ingest skill invocation (e.g., tavily-cli, perplexity-mcp); snapshot + hash.
+
+        Args:
+            skill_name: name of the skill (e.g., "tavily-cli", "perplexity-search")
+            input: the args/prompt passed to the skill (str or dict)
+            output: what the skill returned (str, bytes, or dict)
+            metadata: skill version, latency, exit code, etc.
+
+        Returns:
+            InputRecord with skill provenance and default_caveats populated.
+        """
+        self._ensure_dirs()
+
+        # Normalize output to bytes for hashing
+        if isinstance(output, dict):
+            normalized_output = json.dumps(output, sort_keys=True).encode("utf-8")
+            output_ext = "json"
+        elif isinstance(output, str):
+            normalized_output = output.encode("utf-8")
+            output_ext = "txt"
+        else:  # bytes
+            normalized_output = output
+            output_ext = "bin"
+
+        # Compute SHA256
+        skill_sha = hashlib.sha256(normalized_output).hexdigest()
+        sha_short = skill_sha[:12]
+
+        # Create inputs/skill/{skill_name}/ directory
+        skill_dir = self.inputs_dir / "skill" / _slug(skill_name)
+        skill_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write three files: output, input, metadata
+        output_path = skill_dir / f"{sha_short}.output.{output_ext}"
+        input_path = skill_dir / f"{sha_short}.input.json"
+        meta_path = skill_dir / f"{sha_short}.meta.json"
+
+        # Write output
+        output_path.write_bytes(normalized_output)
+
+        # Write input as JSON
+        if isinstance(input, dict):
+            input_json = input
+        else:  # str
+            input_json = {"prompt": input}
+        input_path.write_text(json.dumps(input_json, indent=2, default=str))
+
+        # Write metadata JSON
+        meta = {
+            "skill_name": skill_name,
+            "sha256": skill_sha,
+            "captured_at": _now_iso(),
+        }
+        if metadata is not None:
+            meta["metadata"] = metadata
+
+        # Add input summary for readability
+        if isinstance(input, dict):
+            meta["input_summary"] = {
+                k: str(v)[:100] for k, v in input.items()
+            }
+        else:
+            meta["input_summary"] = input[:100]
+
+        meta_path.write_text(json.dumps(meta, indent=2, default=str))
+
+        # Create InputRecord with default_caveats for skill-based external sources
+        rel_path = str(output_path.relative_to(self.run_dir))
+        rec = InputRecord(
+            role="skill",
+            kind="skill",
+            subkind=skill_name,
+            path=rel_path,
+            sha256=skill_sha,
+            bytes=len(normalized_output),
+            source_id=skill_name,
+            default_caveats=["external_source", "non_audited", "skill_invoked"],
+        )
+        self._inputs.append(rec)
+        return rec
 
     # explicit emit methods (per council Revision A · god-enum killed)
 
