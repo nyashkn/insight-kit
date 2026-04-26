@@ -102,6 +102,20 @@ your-project/
 | 0.5.x | signet identity binding, OpenLineage emitter |
 | 1.0.0 | API stability after 3 months production + 2 consumer projects |
 
+## Security
+
+Pre-commit gitleaks scan enabled to prevent secret leaks. After cloning, run:
+
+```bash
+pre-commit install
+```
+
+The gitleaks hook will run automatically on every commit. To scan the current repository manually:
+
+```bash
+gitleaks detect --source . --no-banner --redact
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
