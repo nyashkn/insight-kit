@@ -208,6 +208,29 @@ def check_claim_id_unique(kit_root: Path) -> list[ValidationError]:
     return errors
 
 
+def check_claim_id_unique_in_run(
+    claim_id: str,
+    current_run_claim_ids: set[str],
+) -> None:
+    """Rule: claim-id-duplicate-in-run (Layer-A).
+
+    Emitting two claims with the same claim_id within ONE Run should raise immediately
+    on the 2nd emit, not wait for __exit__.
+    """
+    if claim_id in current_run_claim_ids:
+        raise ValidationError(
+            rule_id="claim-id-duplicate-in-run",
+            message=(
+                f"claim_id {claim_id!r} has already been emitted in this run. "
+                "Each claim_id must be unique within a run."
+            ),
+            suggestion=(
+                f"Use a unique claim_id for each claim. "
+                f"{claim_id!r} was already emitted in this run."
+            ),
+        )
+
+
 CITE_PATTERN = re.compile(r"\[\[CITE:\s*([^\]]+?)\s*\]\]")
 
 

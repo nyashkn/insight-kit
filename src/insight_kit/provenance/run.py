@@ -34,6 +34,7 @@ from insight_kit.validation import (
     check_claim_id_format,
     check_claim_id_namespace,
     check_claim_id_unique,
+    check_claim_id_unique_in_run,
     check_critic_edges,
     check_external_caveats,
     check_input_claims_exist,
@@ -788,6 +789,8 @@ class Run:
         check_critic_edges(tier, supports, refutes)
         # Layer-A: referential integrity for input_claims
         current_ids = {c.claim_id for c in self._claims}
+        # M7: duplicate claim_id within same run (Layer-A, immediate)
+        check_claim_id_unique_in_run(claim_id, current_ids)
         check_input_claims_exist(claim_id, input_claims or [], current_ids, self._kit_root)
         # M5: prevent re-superseding an already-superseded claim
         check_supersedes_chain_integrity(claim_id, supersedes, self._kit_root, current_ids)

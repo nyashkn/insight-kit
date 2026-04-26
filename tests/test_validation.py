@@ -21,6 +21,7 @@ from insight_kit.validation import (
     check_claim_id_format,
     check_claim_id_namespace,
     check_claim_id_unique,
+    check_claim_id_unique_in_run,
     check_critic_edges,
     check_external_caveats,
     check_input_claims_exist,
@@ -470,3 +471,28 @@ def test_run_citation_unknown_raises(kit: Path):
                 statement="Based on [[CITE: TEST-D-999]] which is unknown.",
             )
     assert exc_info.value.rule_id == "citation-referential-integrity"
+
+
+# ---------- M7: claim-id-duplicate-in-run ----------
+
+
+def test_duplicate_in_run_first_emit_passes():
+    """First emit of a claim_id in empty set passes."""
+    check_claim_id_unique_in_run("TEST-D-001", set())  # must not raise
+
+
+def test_duplicate_in_run_second_emit_raises():
+    """Second emit of same claim_id in run raises immediately."""
+    with pytest.raises(ValidationError) as exc_info:
+        check_claim_id_unique_in_run("TEST-D-001", {"TEST-D-001"})
+    assert exc_info.value.rule_id == "claim-id-duplicate-in-run"
+    assert "TEST-D-001" in str(exc_info.value)
+
+
+def test_run_claim_duplicate_in_run_raises_immediately(kit: Path):
+    """Run.claim raises claim-id-duplicate-in-run on 2nd emit of same ID in same run."""
+    with pytest.raises(ValidationError) as exc_info:
+        with Run(topic="t", agent="a") as r:
+            r.claim(claim_id="TEST-D-001", statement="first")
+            r.claim(claim_id="TEST-D-001", statement="second — must raise immediately")
+    assert exc_info.value.rule_id == "claim-id-duplicate-in-run"
