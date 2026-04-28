@@ -10,13 +10,9 @@
  */
 
 import { parseArgs } from 'node:util';
-import { resolve, join, dirname } from 'node:path';
+import { resolve, join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import type { CheckContext } from './types.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = dirname(__filename);
 
 // ---------------------------------------------------------------------------
 // Arg parsing
