@@ -13,6 +13,7 @@ import { parseArgs } from 'node:util';
 import { resolve, join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { CheckContext } from './types.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = dirname(__filename);
@@ -98,7 +99,7 @@ if (!existsSync(duckdbModulePath)) {
   );
 }
 
-const ctx: Record<string, unknown> = {
+const ctx: CheckContext = {
   reportsDir,
   pagesDir,
   sourcesDir,
