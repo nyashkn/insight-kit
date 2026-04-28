@@ -10,3 +10,7 @@ export const ClaimInline: ComponentType;
 export const ClaimTree: ComponentType;
 export const ClaimTreeNode: ComponentType;
 export const ProvenanceRail: ComponentType;
+
+export function indexClaims(claims: any[]): Record<string, any>;
+export function getClaim(manifest: any, id: string): any;
+export function claimsByTier(manifest: any): Record<string, any[]>;

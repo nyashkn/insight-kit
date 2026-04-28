@@ -8,3 +8,4 @@ export { default as ClaimInline } from './ClaimInline.svelte';
 export { default as ClaimTree } from './ClaimTree.svelte';
 export { default as ClaimTreeNode } from './ClaimTreeNode.svelte';
 export { default as ProvenanceRail } from './ProvenanceRail.svelte';
+export { indexClaims, getClaim, claimsByTier } from './claimsManifest.js';

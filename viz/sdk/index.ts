@@ -7,7 +7,5 @@ export type { Renderer, PageTypeRuleSet } from '@insight-kit/viz-core';
 export { registerRenderer, getRenderer, listRenderers } from '@insight-kit/viz-core';
 export { PAGE_TYPE_RULES } from '@insight-kit/viz-core';
 
-// Re-export all evidence exports (components + claim helpers)
+// Re-export evidence components + claim helpers
 export * from '@insight-kit/viz-evidence';
-// Explicit re-export of claim helpers (from top-level index.js, not components/index.js)
-export { indexClaims, getClaim, claimsByTier } from '@insight-kit/viz-evidence/index.js';
