@@ -1,6 +1,6 @@
 ---
 name: viz-evidence-authoring
-description: Author Evidence pages with insight-kit's claim components and layout-type contract. Use when creating/editing .md pages that consume ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, or ProvenanceRail; or when authoring new layout types or generator scripts.
+description: Author Evidence .md pages with claim components (ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, ProvenanceRail). Invoke on missing evidenceInclude=true, user says "create evidence page", or layout_type contract violations.
 ---
 
 ## Page-type contract

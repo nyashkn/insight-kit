@@ -1,7 +1,7 @@
 ---
 name: eval-protocol
 type: skill
-description: Build and run the golden-set regression suite: golden claim snapshots, run-to-run diff, and claim-stability checks across re-runs.
+description: Regression testing: golden baselines, run-to-run diffs, claim-stability checks. Invoke after refactors, before promotions, or on value-drift >1%, unstable confidence/tier across runs.
 roles_using: [evaluator]
 metadata:
   last_verified: 2026-04-29

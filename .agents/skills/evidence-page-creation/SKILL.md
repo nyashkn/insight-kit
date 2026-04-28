@@ -7,6 +7,8 @@ metadata:
   last_verified: 2026-04-29
 ---
 
+> **Canonical**: This skill is the source of truth for the 6-page-type matrix (receipt | narrative | investigation | metric | browse | audit). Other skills must reference, not duplicate.
+
 ## Purpose
 
 Every Evidence page that uses insight-kit claim components must declare a `layout_type:` in frontmatter. The value drives L6 preflight enforcement: wrong or missing `layout_type` causes the preflight to exit 1 with `layout-type-missing` or `layout-type-rule-violation`. This skill maps page intent to the correct `layout_type` and enforces the component/chart minimums.

@@ -1,7 +1,7 @@
 ---
 name: citation-hygiene
 type: skill
-description: Format external citations correctly, attach required caveats, detect dead links, and archive sources so claims remain reproducible.
+description: Cite external sources + archive. Invoke on [external-requires-caveats] error, dead-link checks, inline URLs in claims, or user says "archive source", "cite external", "dead link".
 roles_using: [researcher, critic]
 metadata:
   last_verified: 2026-04-29

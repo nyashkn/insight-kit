@@ -1,7 +1,7 @@
 ---
 name: claim-authoring
 type: skill
-description: Author well-formed insight-kit claims with valid IDs, correct tier, supersedes chain, edges, and evidence references.
+description: Author insight-kit claims (D/R/C/I/V/X tiers). Invoke on ValidationError [claim-id-format], [critic-requires-edge], [supersedes-already-deprecated], [claim-id-globally-unique]; or when user says "create claim", "add claim", "revise claim text".
 roles_using: [analyst, researcher, critic, data-engineer]
 metadata:
   last_verified: 2026-04-29
