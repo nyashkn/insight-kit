@@ -1,0 +1,10 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
+		"noImplicitAny": false
+	},
+	"include": ["*.ts"],
+	"exclude": ["node_modules", "test-exports.ts"]
+}

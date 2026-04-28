@@ -35,6 +35,14 @@
         "@evidence-dev/core-components": "^5.4.0",
       },
     },
+    "viz/sdk": {
+      "name": "@insight-kit/viz",
+      "version": "0.1.0",
+      "dependencies": {
+        "@insight-kit/viz-core": "workspace:*",
+        "@insight-kit/viz-evidence": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
@@ -236,6 +244,8 @@
     "@humanwhocodes/module-importer": ["@humanwhocodes/module-importer@1.0.1", "", {}, "sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA=="],
 
     "@humanwhocodes/object-schema": ["@humanwhocodes/object-schema@2.0.3", "", {}, "sha512-93zYdMES/c1D69yZiKDBj0V24vqNzB/koF26KPaagAfd3P/4gUlh3Dys5ogAK+Exi9QyzlD8x/08Zt7wIKcDcA=="],
+
+    "@insight-kit/viz": ["@insight-kit/viz@workspace:viz/sdk"],
 
     "@insight-kit/viz-core": ["@insight-kit/viz-core@workspace:viz/core"],
 
@@ -1410,8 +1420,6 @@
     "@evidence-dev/sdk/@uwdata/mosaic-sql": ["@uwdata/mosaic-sql@0.10.0", "", {}, "sha512-tPsgrHO8zTwLFMBR+BiG4fskK9RSbH+nXS9ju8433NDq3qicAq4Z46CnYpCs0vWIR7AUAxMvncqP6YPbiQhOug=="],
 
     "@humanwhocodes/config-array/minimatch": ["minimatch@3.1.5", "", { "dependencies": { "brace-expansion": "^1.1.7" } }, "sha512-VgjWUsnnT6n+NUk6eZq77zeFdpW2LWDzP6zFGrCbHXiYNul5Dzqk2HHQ5uFH2DNW5Xbp8+jVzaeNt94ssEEl4w=="],
-
-    "@insight-kit/viz-evidence/@insight-kit/viz-core": ["@insight-kit/viz-core@file:viz/core", { "devDependencies": { "@types/bun": "^1.2.0", "@types/node": "^24.5.2", "typescript": "^5.7.0" } }],
 
     "@isaacs/cliui/string-width": ["string-width@5.1.2", "", { "dependencies": { "eastasianwidth": "^0.2.0", "emoji-regex": "^9.2.2", "strip-ansi": "^7.0.1" } }, "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA=="],
 

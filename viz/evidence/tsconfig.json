@@ -1,0 +1,9 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true
+	},
+	"include": ["*.ts", "layouts/**/*.ts", "generators/**/*.ts"],
+	"exclude": ["node_modules", "../sdk"]
+}
