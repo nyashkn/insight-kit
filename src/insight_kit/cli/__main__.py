@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from insight_kit import __version__
+from insight_kit.agents.cli import add_agents_parser
 from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
 from insight_kit.validation import check_claim_id_unique
 
@@ -237,6 +238,8 @@ def main(argv: list[str] | None = None) -> int:
         help="overwrite existing +layout.svelte files",
     )
     viz_install.set_defaults(func=cmd_viz_install)
+
+    add_agents_parser(sub)
 
     args = parser.parse_args(argv)
     return args.func(args)

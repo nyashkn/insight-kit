@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/0xNyk/insight-kit/schema/agents-config/v1",
+  "title": "insight-kit Agents Configuration",
+  "description": "Schema for .agents/config.yaml — defines roles, skills, council membership, and bootstrap behavior.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project", "roles", "personas", "skills", "council", "bootstrap"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Configuration format version (immutable: 1)"
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Project identifier (slug format: lowercase alphanumeric + hyphens)"
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "data-engineer",
+          "analyst",
+          "researcher",
+          "critic",
+          "renderer",
+          "evaluator",
+          "operator"
+        ]
+      },
+      "minItems": 1,
+      "description": "Assigned roles for this project"
+    },
+    "personas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Domain-specific personas (free-form, extensible)"
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local", "global", "domain_bundles"],
+      "properties": {
+        "local": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Local skills (project-specific)"
+        },
+        "global": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Global skills (shared across projects)"
+        },
+        "domain_bundles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domain-specific skill bundles"
+        }
+      }
+    },
+    "council": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "source", "members"],
+      "properties": {
+        "required": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30,
+          "description": "Target council size (target, not enforced count)"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to council repository"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed council members (canonical list, not count-enforced)"
+        }
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on_init", "symlink_to_user", "pull_missing_council", "fail_on_missing_global"],
+      "properties": {
+        "on_init": {
+          "type": "boolean",
+          "description": "Run bootstrap on initialization"
+        },
+        "symlink_to_user": {
+          "type": "boolean",
+          "description": "Create symlink to user home directory"
+        },
+        "pull_missing_council": {
+          "type": "boolean",
+          "description": "Automatically pull missing council members"
+        },
+        "fail_on_missing_global": {
+          "type": "boolean",
+          "description": "Fail hard or warn when global skills are missing"
+        }
+      }
+    }
+  }
+}

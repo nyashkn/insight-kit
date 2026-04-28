@@ -21,6 +21,7 @@ dependencies = [
     "structlog>=25.0",
     "pyarrow>=15",
     "duckdb>=1.5",
+    "jsonschema>=4.20",
 ]
 
 [project.optional-dependencies]
@@ -55,8 +56,9 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers -m 'not slow and not eval'"
+addopts = "-q --strict-markers -m 'not slow and not eval and not network'"
 markers = [
     "slow: integration tests run separately (opt-in via -m slow)",
     "eval: probabilistic/quality gates, not pass/fail (opt-in via -m eval)",
+    "network: tests that make real network calls (opt-in via -m network)",
 ]
