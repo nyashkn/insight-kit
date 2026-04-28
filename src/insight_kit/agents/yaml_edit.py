@@ -10,7 +10,7 @@ from typing import Any
 
 # Try ruamel.yaml first for comment-preserving round-trip
 try:
-    from ruamel.yaml import YAML as _RuamelYAML  # noqa: F401  # optional dep
+    from ruamel.yaml import YAML as _RuamelYAML  # noqa: N811  # optional dep, alias for None-fallback
 
     _HAS_RUAMEL = True
 except ImportError:
