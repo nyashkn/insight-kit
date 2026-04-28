@@ -116,6 +116,22 @@
           "description": "Fail hard or warn when global skills are missing"
         }
       }
+    },
+    "default_role_for": {
+      "type": "object",
+      "description": "Maps work-phase keywords to a default role (optional). Values must be one of the 7 canonical role names.",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "data-engineer",
+          "analyst",
+          "researcher",
+          "critic",
+          "renderer",
+          "evaluator",
+          "operator"
+        ]
+      }
     }
   }
 }

@@ -70,6 +70,11 @@ class BootstrapConfig:
         )
 
 
+VALID_ROLES = frozenset(
+    ["data-engineer", "analyst", "researcher", "critic", "renderer", "evaluator", "operator"]
+)
+
+
 @dataclass
 class AgentsConfig:
     """Top-level agents configuration."""
@@ -81,6 +86,7 @@ class AgentsConfig:
     skills: SkillsConfig
     council: CouncilConfig
     bootstrap: BootstrapConfig
+    default_role_for: dict[str, str] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AgentsConfig":
@@ -93,11 +99,12 @@ class AgentsConfig:
             skills=SkillsConfig.from_dict(data.get("skills", {})),
             council=CouncilConfig.from_dict(data.get("council", {})),
             bootstrap=BootstrapConfig.from_dict(data.get("bootstrap", {})),
+            default_role_for=data.get("default_role_for", None),
         )
 
 
 def validate_config(data: dict[str, Any], schema_path: Path) -> None:
-    """Validate config dict against JSON Schema.
+    """Validate config dict against JSON Schema and post-schema rules.
 
     Args:
         data: Configuration dictionary.
@@ -118,6 +125,17 @@ def validate_config(data: dict[str, Any], schema_path: Path) -> None:
         ) from e
     except Exception as e:
         raise ConfigError(f"Config validation error: {e}") from e
+
+    # Post-schema: all default_role_for values must be in the configured roles list
+    default_role_for = data.get("default_role_for")
+    if default_role_for:
+        configured_roles = set(data.get("roles", []))
+        for phase, role in default_role_for.items():
+            if role not in configured_roles:
+                raise ConfigError(
+                    f"default_role_for['{phase}'] = '{role}' is not in the configured"
+                    f" roles list: {sorted(configured_roles)}"
+                )
 
 
 def load_config(

@@ -33,3 +33,7 @@ bootstrap:
   symlink_to_user: true
   pull_missing_council: true
   fail_on_missing_global: false  # warn-only
+
+default_role_for:
+  ingest: data-engineer
+  orchestration: operator

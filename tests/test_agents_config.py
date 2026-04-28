@@ -260,3 +260,107 @@ bootstrap:
         assert config.bootstrap.symlink_to_user is False
         assert config.bootstrap.pull_missing_council is False
         assert config.bootstrap.fail_on_missing_global is True
+
+
+class TestDefaultRoleFor:
+    """Test default_role_for routing block."""
+
+    _base_yaml = """
+version: 1
+project: test-project
+roles: [data-engineer, analyst, researcher, critic, renderer, evaluator, operator]
+personas: []
+skills:
+  local: []
+  global: []
+  domain_bundles: []
+council:
+  required: 0
+  source: https://example.com
+  members: []
+bootstrap:
+  on_init: true
+  symlink_to_user: true
+  pull_missing_council: true
+  fail_on_missing_global: false
+"""
+
+    def test_parses_correctly_when_present(self, config_dir):
+        """default_role_for is parsed and returned when present."""
+        config_file = config_dir / "config.yaml"
+        config_file.write_text(
+            self._base_yaml
+            + """
+default_role_for:
+  ingest: data-engineer
+  analysis: analyst
+  visualization: renderer
+  validation: critic
+  evaluation: evaluator
+  orchestration: operator
+  hypothesis: researcher
+"""
+        )
+
+        config = load_config(config_file)
+        assert config.default_role_for is not None
+        assert config.default_role_for["ingest"] == "data-engineer"
+        assert config.default_role_for["analysis"] == "analyst"
+        assert config.default_role_for["visualization"] == "renderer"
+        assert config.default_role_for["validation"] == "critic"
+        assert config.default_role_for["evaluation"] == "evaluator"
+        assert config.default_role_for["orchestration"] == "operator"
+        assert config.default_role_for["hypothesis"] == "researcher"
+
+    def test_accepts_none_when_absent(self, config_dir):
+        """default_role_for is None when not present in config."""
+        config_file = config_dir / "config.yaml"
+        config_file.write_text(self._base_yaml)
+
+        config = load_config(config_file)
+        assert config.default_role_for is None
+
+    def test_raises_when_value_not_in_configured_roles(self, config_dir):
+        """Raises ConfigError when a role value is not in the project roles list."""
+        config_file = config_dir / "config.yaml"
+        # Only data-engineer is in roles, but we try to map to analyst
+        config_file.write_text(
+            """
+version: 1
+project: test-project
+roles: [data-engineer]
+personas: []
+skills:
+  local: []
+  global: []
+  domain_bundles: []
+council:
+  required: 0
+  source: https://example.com
+  members: []
+bootstrap:
+  on_init: true
+  symlink_to_user: true
+  pull_missing_council: true
+  fail_on_missing_global: false
+default_role_for:
+  analysis: analyst
+"""
+        )
+
+        with pytest.raises(ConfigError, match="default_role_for"):
+            load_config(config_file)
+
+    def test_raises_when_value_is_not_a_valid_role_enum(self, config_dir):
+        """Raises ConfigError when value is not one of the 7 canonical role names."""
+        config_file = config_dir / "config.yaml"
+        config_file.write_text(
+            self._base_yaml
+            + """
+default_role_for:
+  ingest: not-a-real-role
+"""
+        )
+
+        with pytest.raises(ConfigError):
+            load_config(config_file)

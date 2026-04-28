@@ -566,6 +566,77 @@ ik agents resolve-skill preflight
 
 ---
 
+## AGENT.md Frontmatter — `personas_compatible`
+
+Each role's `AGENT.md` declares which personas it can be composed with via a `personas_compatible:` array in the YAML frontmatter. This is derived by inverting the `composes_with` field in each persona's `persona.md`.
+
+**Location**: `.agents/agents/<role>/AGENT.md`
+
+**Field placement**: immediately before `metadata:` in the frontmatter block.
+
+**Example** (analyst role):
+
+```yaml
+---
+name: analyst
+role: analyst
+description: Derive descriptive and predictive claims ...
+phase: derive
+tier_produces: [D]
+modes: []
+personas_compatible: [acquisition, activation, ad-spend, catalog, funnel, retention]
+metadata:
+  last_verified: 2026-04-29
+---
+```
+
+**Inversion table** (as of 2026-04-29):
+
+| Role | personas_compatible |
+|------|---------------------|
+| analyst | acquisition, activation, ad-spend, catalog, funnel, retention |
+| critic | acquisition, activation, ad-spend, catalog, funnel, retention |
+| researcher | acquisition, activation, ad-spend, catalog, funnel, retention |
+| renderer | acquisition, ad-spend, catalog, retention |
+| data-engineer | *(none)* |
+| evaluator | *(none)* |
+| operator | *(none)* |
+
+The `personas_compatible` field is informational (not schema-validated). It ensures the persona axis is no longer orphaned from the role axis — consumers can look up which roles a persona applies to without re-reading every `persona.md`.
+
+---
+
+## Config — `default_role_for` Routing Block
+
+`config.yaml` may declare an optional `default_role_for` block that maps work-phase keywords to a default role. This lets orchestrators and CLI tools route a task to the right role without requiring a user to name the role explicitly.
+
+**Location**: `.agents/config.yaml` (top-level, optional)
+
+**Example**:
+
+```yaml
+default_role_for:
+  ingest: data-engineer
+  analysis: analyst
+  visualization: renderer
+  validation: critic
+  evaluation: evaluator
+  orchestration: operator
+  hypothesis: researcher
+```
+
+**Constraints**:
+- Keys are free-form phase keywords (e.g., `ingest`, `analysis`, `visualization`).
+- Values must be one of the 7 canonical role names: `data-engineer`, `analyst`, `researcher`, `critic`, `renderer`, `evaluator`, `operator`.
+- Each value must also appear in the project's `roles:` list — you cannot route to a role that is not active in the project.
+- The block is entirely optional; `AgentsConfig.default_role_for` is `None` when absent.
+
+**Schema**: `config.schema.json` enforces value enum (7 canonical roles) via `additionalProperties: { type: "string", enum: [...] }`.
+
+**Runtime validation** (`validate_config`): after schema check, each value is verified to be present in the project's `roles` list. A value that passes the schema enum but is not in `roles` raises `ConfigError`.
+
+---
+
 ## See Also
 
 - `.agents/SETUP.md` — symlink instructions
