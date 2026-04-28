@@ -1,0 +1,37 @@
+version: 1
+project: insight-kit
+
+# This repo is a meta-tool — only data-engineer + operator roles
+roles:
+  - data-engineer
+  - operator
+
+personas: []  # no domain personas — generic infra
+
+skills:
+  local:
+    - preflight
+    - viz-evidence-authoring
+    - claim-authoring
+    - ingest-flow
+    - bun-monorepo-setup
+    - agents-bootstrap
+    - goal-management
+  global:
+    - evidence-dev
+    - evidence-dashboards
+    - agent-browser
+    - council
+    - create-skill
+  domain_bundles: []
+
+council:
+  required: 18
+  source: https://github.com/0xNyk/council-of-high-intelligence
+  members: [ada, aristotle, aurelius, feynman, kahneman, karpathy, lao-tzu, machiavelli, meadows, munger, musashi, rams, socrates, sun-tzu, sutskever, taleb, torvalds, watts]
+
+bootstrap:
+  on_init: true
+  symlink_to_user: true
+  pull_missing_council: true
+  fail_on_missing_global: false  # warn-only
