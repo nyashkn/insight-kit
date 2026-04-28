@@ -316,7 +316,6 @@ def test_claim_id_unique_single_run_no_errors(kit: Path):
 def test_claim_id_unique_duplicate_across_runs_raises(kit: Path):
     """Same claim_id in two runs without supersedes → ValidationError."""
     import json as _json
-    import time
 
     # First run
     run1_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_a_t"

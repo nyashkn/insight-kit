@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import yaml
 
 if TYPE_CHECKING:
-    from insight_kit.provenance.run import Run
+    from insight_kit.provenance.run import Run as Run
 
 # ---------- error class ----------
 

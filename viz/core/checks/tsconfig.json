@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@insight-kit/viz-core": ["../index.ts"],
+      "@insight-kit/viz-core/types": ["../types.ts"],
+      "@insight-kit/viz-core/types.ts": ["../types.ts"],
+      "@insight-kit/viz-core/page-type-rules": ["../pageTypeRules.ts"]
+    }
+  },
+  "include": ["*.ts", "**/*.ts"],
+  "exclude": ["node_modules"]
+}

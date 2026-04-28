@@ -1,9 +1,10 @@
-"""`ik` CLI — minimal v0.1: init, info, annotate."""
+"""`ik` CLI — minimal v0.1: init, info, annotate, preflight, viz."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -88,6 +89,56 @@ def cmd_annotations(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_preflight(args: argparse.Namespace) -> int:
+    """Run preflight checks via Bun entry point."""
+    cli_ts = Path(__file__).resolve().parents[3] / "viz" / "core" / "cli.ts"
+    if not cli_ts.exists():
+        print(f"error: cli.ts not found at {cli_ts}", file=sys.stderr)
+        return 1
+
+    cmd = ["bun", str(cli_ts)]
+    cmd += ["--reports-dir", str(Path(args.reports_dir).resolve())]
+    if args.layer != "all":
+        cmd += ["--layer", args.layer]
+    if args.pages:
+        cmd += ["--pages", args.pages]
+    if args.strict:
+        cmd += ["--strict"]
+    if args.no_screenshots:
+        cmd += ["--no-screenshots"]
+    if args.explain:
+        cmd += ["--explain"]
+
+    return subprocess.call(cmd)
+
+
+def cmd_viz_install(args: argparse.Namespace) -> int:
+    """Install a viz renderer's components/layouts into a consumer reports dir."""
+    if args.renderer != "evidence":
+        print(
+            f"Renderer '{args.renderer}' not supported. Available: evidence",
+            file=sys.stderr,
+        )
+        return 1
+
+    install_ts = (
+        Path(__file__).resolve().parents[3] / "viz" / "evidence" / "install-cli.ts"
+    )
+    if not install_ts.exists():
+        print(f"error: install-cli.ts not found at {install_ts}", file=sys.stderr)
+        return 1
+
+    cmd = [
+        "bun",
+        str(install_ts),
+        "--reports-dir",
+        str(Path(args.reports_dir).resolve()),
+    ]
+    if args.force:
+        cmd += ["--force"]
+    return subprocess.call(cmd)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ik", description="insight-kit CLI")
     parser.add_argument("--version", action="version", version=__version__)
@@ -137,6 +188,55 @@ def main(argv: list[str] | None = None) -> int:
         help="print summary stats to stderr",
     )
     p_annotations.set_defaults(func=cmd_annotations)
+
+    p_preflight = sub.add_parser(
+        "preflight", help="run preflight checks against an Evidence reports dir"
+    )
+    p_preflight.add_argument(
+        "--reports-dir", default="./reports", help="path to Evidence reports dir"
+    )
+    p_preflight.add_argument(
+        "--layer",
+        default="all",
+        help="comma-separated layer numbers (1-6) or 'all' (default: all)",
+    )
+    p_preflight.add_argument(
+        "--pages",
+        default=None,
+        help="comma-separated page slug fragments to filter",
+    )
+    p_preflight.add_argument(
+        "--strict",
+        action="store_true",
+        help="treat warnings as failures",
+    )
+    p_preflight.add_argument(
+        "--no-screenshots",
+        action="store_true",
+        help="skip screenshot capture during L3 render checks",
+    )
+    p_preflight.add_argument(
+        "--explain",
+        action="store_true",
+        help="print rule matrix and per-layer hints, then exit",
+    )
+    p_preflight.set_defaults(func=cmd_preflight)
+
+    p_viz = sub.add_parser("viz", help="manage viz renderer plugins")
+    viz_subs = p_viz.add_subparsers(dest="viz_cmd", required=True)
+    viz_install = viz_subs.add_parser(
+        "install", help="install a renderer into a reports dir"
+    )
+    viz_install.add_argument(
+        "renderer", choices=["evidence"], help="renderer name (currently: evidence)"
+    )
+    viz_install.add_argument("reports_dir", help="path to the Evidence reports directory")
+    viz_install.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing +layout.svelte files",
+    )
+    viz_install.set_defaults(func=cmd_viz_install)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -1,0 +1,26 @@
+{
+	"name": "@insight-kit/viz-core",
+	"version": "0.1.0",
+	"type": "module",
+	"main": "./index.ts",
+	"exports": {
+		".": "./index.ts",
+		"./types": "./types.ts",
+		"./types.ts": "./types.ts",
+		"./renderer": "./renderer.ts",
+		"./page-type-rules": "./pageTypeRules.ts"
+	},
+	"scripts": {
+		"test": "bun test",
+		"typecheck": "tsc --noEmit"
+	},
+	"engines": {
+		"bun": ">=1.3.12"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@types/bun": "^1.2.0",
+		"@types/node": "^24.5.2",
+		"typescript": "^5.7.0"
+	}
+}

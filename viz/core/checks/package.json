@@ -1,0 +1,29 @@
+{
+  "name": "@insight-kit/viz-core-checks",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./sql-blocks": "./sqlBlocks.ts",
+    "./build-gate": "./buildGate.ts",
+    "./numeric-sanity": "./numericSanity.ts",
+    "./provenance-integ": "./provenanceInteg.ts",
+    "./layout-compliance": "./layoutCompliance.ts",
+    "./render-check": "./renderCheck.ts",
+    "./agent-browser": "./agentBrowser.ts",
+    "./dev-server": "./devServer.ts"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "dependencies": {
+    "@insight-kit/viz-core": "file:../"
+  },
+  "peerDependencies": {
+    "@duckdb/node-api": ">=1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5",
+    "@types/node": "^20"
+  }
+}

@@ -1,0 +1,22 @@
+{
+	"name": "insight-kit",
+	"version": "0.1.0",
+	"private": true,
+	"packageManager": "bun@1.3.12",
+	"description": "Provenance-first agent insights kit — viz layer workspace root",
+	"workspaces": [
+		"viz/*"
+	],
+	"scripts": {
+		"lint": "biome check .",
+		"format": "biome format --write .",
+		"typecheck": "bun run --filter '*' typecheck",
+		"test": "bun run --filter '*' test"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@types/bun": "^1.2.0",
+		"@types/node": "^24.5.2",
+		"typescript": "^5.7.0"
+	}
+}

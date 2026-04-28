@@ -1,0 +1,19 @@
+{
+	"name": "@insight-kit/viz",
+	"version": "0.1.0",
+	"type": "module",
+	"main": "index.ts",
+	"exports": {
+		".": "./index.ts",
+		"./core": "./core.ts",
+		"./evidence": "./evidence.ts",
+		"./generators": "./generators.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@insight-kit/viz-core": "workspace:*",
+		"@insight-kit/viz-evidence": "workspace:*"
+	}
+}
