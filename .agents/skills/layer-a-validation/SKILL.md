@@ -1,8 +1,12 @@
 ---
 name: layer-a-validation
 type: skill
-description: Understand what the 8 Phase 2 stress-test fixtures (M1-M8) reveal about Layer-A validation gaps, which rules are now enforced, and which gaps remain in Layer B/C.
+description: Layer-A/B/C validation enforcement status (M1-M8 fixtures). Invoke when asserting rules are enforced, on structural defects (referential, duplicate, stale supersedes), or user says "validation gap".
 roles_using: [critic, annotator, operator]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 metadata:
   last_verified: 2026-04-29
 ---

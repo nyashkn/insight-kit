@@ -1,6 +1,11 @@
 ---
 name: preflight
+type: skill
 description: Run insight-kit preflight checks against an Evidence reports dir. Use when validating before deploy, after adding/editing pages, or diagnosing render failures. Covers 6 layers: SQL blocks, build gate, render check, numeric sanity, provenance integrity, layout-type compliance.
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 ---
 
 ## When to use

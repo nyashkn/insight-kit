@@ -5,6 +5,7 @@ description: Regression and golden-set evaluation of claim chains; drift detecti
 phase: eval
 tier_produces: [eval-report]
 modes: [regression, drift]
+personas_compatible: []
 metadata:
   last_verified: 2026-04-29
 ---

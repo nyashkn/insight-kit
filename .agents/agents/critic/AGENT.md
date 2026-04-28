@@ -5,6 +5,7 @@ description: Challenge any D/X/I/R claim — re-run SQL, audit assumptions, test
 phase: critique
 tier_produces: [C]
 modes: [per-run, sensitivity]
+personas_compatible: [acquisition, activation, ad-spend, catalog, funnel, retention]
 metadata:
   last_verified: 2026-04-29
 ---

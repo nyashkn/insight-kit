@@ -1,8 +1,12 @@
 ---
 name: agent-browser-verify
 type: skill
-description: Verify that Evidence pages render correctly after hydration using DOM-after-hydration inspection; explains why curl/raw HTML can give false passing results.
+description: Post-hydration Evidence page verification. Invoke on curl returning 200 but user sees "Application Error" / blank charts / failed mounts; or for post-deploy smoke tests.
 roles_using: [renderer, critic, analyst]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 metadata:
   last_verified: 2026-04-29
 ---

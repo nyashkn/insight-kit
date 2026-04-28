@@ -5,6 +5,7 @@ description: Author Evidence pages (I-tier initiative pages and V-tier viz specs
 phase: render
 tier_produces: [I, V]
 modes: []
+personas_compatible: [acquisition, ad-spend, catalog, retention]
 metadata:
   last_verified: 2026-04-29
 ---

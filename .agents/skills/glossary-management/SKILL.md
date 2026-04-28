@@ -3,6 +3,10 @@ name: glossary-management
 type: skill
 description: Create and maintain the project glossary.yaml that drives metric_id prefix enforcement (M8 Layer-A guard) and off-glossary detection.
 roles_using: [operator, data-engineer, evaluator]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  python: "3.11+"
 metadata:
   last_verified: 2026-04-29
 ---

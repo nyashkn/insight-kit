@@ -3,6 +3,10 @@ name: schema-drift
 type: skill
 description: Detect and reconcile bronze schema changes using ETL_R claims and DuckDB column diffing; emit a reconciliation claim when drift is found.
 roles_using: [data-engineer, evaluator]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  python: "3.11+"
 metadata:
   last_verified: 2026-04-29
 ---

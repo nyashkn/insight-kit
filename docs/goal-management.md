@@ -1,11 +1,6 @@
----
-name: goal-management
-type: skill
-description: Manage the .insight-kit/goals/ lifecycle — create, queue, close, and bind goals to runs using catalog.yaml, open_queue.jsonl, and closed.jsonl.
-roles_using: [operator]
-metadata:
-  last_verified: 2026-04-29
----
+# Goal Management
+
+**Operational runbook** (previously a SKILL). Use this procedure to manage the `.insight-kit/goals/` lifecycle — create, queue, close, and bind goals to runs.
 
 ## Purpose
 

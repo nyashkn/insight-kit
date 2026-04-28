@@ -5,6 +5,7 @@ description: Bronze ingest, silver transforms, ETL views, source SQL, schema man
 phase: ingest
 tier_produces: [ETL_R, ETL_M, ETL_C]
 modes: [human, worker, spike]
+personas_compatible: []
 metadata:
   last_verified: 2026-04-29
 ---

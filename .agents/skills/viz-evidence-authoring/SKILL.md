@@ -1,28 +1,14 @@
 ---
 name: viz-evidence-authoring
-description: Author Evidence pages with insight-kit's claim components and layout-type contract. Use when creating/editing .md pages that consume ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, or ProvenanceRail; or when authoring new layout types or generator scripts.
+type: skill
+description: Author Evidence .md pages with claim components (ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, ProvenanceRail). Invoke on missing evidenceInclude=true, user says "create evidence page", or layout_type contract violations.
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 ---
 
-## Page-type contract
-
-Every Evidence page consuming claim components must declare its `layout_type:` in frontmatter. This is mandatory and enforced by L6 preflight.
-
-```yaml
----
-layout_type: receipt|narrative|investigation|metric|browse|audit
----
-```
-
-## 6-page-type matrix
-
-| Type | Required components | Min charts | Rail | Constraints |
-|------|--------------------|-----------:|------|-------------|
-| receipt | ClaimBlock (focal) | 0 | forbidden | Transactional; single claim focus |
-| narrative | ClaimInline + ClaimBlock | 1 | optional | Story-driven; multi-claim arc |
-| investigation | ClaimBlock + ClaimTree | 2 | required | Ancestry/supersedes chains mandatory |
-| metric | BigValue + ClaimInline | 1 | optional | KPI dashboard style |
-| browse | ClaimInline (grid) | 0 | forbidden | Link-heavy; minimal charts |
-| audit | ClaimBlock + ProvenanceRail | 1 | required | Full provenance visible |
+> For the canonical page-type rules (component requirements, claim density, ProvenanceRail), see [evidence-page-creation](../evidence-page-creation/SKILL.md). This skill is a component reference for ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, ProvenanceRail.
 
 ## Component catalog
 

@@ -1,15 +1,10 @@
----
-name: agents-bootstrap
-type: skill
-description: Bootstrap the insight-kit agent council from scratch — clone 0xNyk/council-of-high-intelligence, verify global skills, create project-local symlinks, and resolve config.yaml for the first Run.
-roles_using: [operator]
-metadata:
-  last_verified: 2026-04-29
----
+# Agents Bootstrap
+
+**Operational runbook** (previously a SKILL). Follow this procedure to bootstrap the insight-kit agent council from scratch on a new machine or CI runner.
 
 ## Purpose
 
-A fresh machine or CI runner has no skills symlinked and no council config. This skill covers the full cold-start sequence: cloning the council repo, checking that the required global skills are discoverable, symlinking the project-local skills from `.agents/skills/`, and confirming that `config.yaml` resolves correctly so the first `Run` does not fail with `FileNotFoundError: No .insight-kit/ found`.
+A fresh machine or CI runner has no skills symlinked and no council config. This runbook covers the full cold-start sequence: cloning the council repo, checking that the required global skills are discoverable, symlinking the project-local skills from `.agents/skills/`, and confirming that `config.yaml` resolves correctly so the first `Run` does not fail with `FileNotFoundError: No .insight-kit/ found`.
 
 ## When to invoke
 
