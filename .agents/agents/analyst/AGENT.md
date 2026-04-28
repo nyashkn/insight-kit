@@ -5,6 +5,7 @@ description: Derive descriptive and predictive claims (D-tier) from ETL-material
 phase: derive
 tier_produces: [D]
 modes: []
+personas_compatible: [acquisition, activation, ad-spend, catalog, funnel, retention]
 metadata:
   last_verified: 2026-04-29
 ---

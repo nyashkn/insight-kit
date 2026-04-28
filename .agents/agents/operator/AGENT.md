@@ -5,6 +5,7 @@ description: Kit ops, tier hygiene, annotation passes, and goal lifecycle manage
 phase: ops
 tier_produces: []
 modes: [annotation-pass, goal-mgmt]
+personas_compatible: []
 metadata:
   last_verified: 2026-04-29
 ---
