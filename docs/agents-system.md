@@ -124,8 +124,6 @@ Skills are reusable function bundles. Each skill is mapped to roles that use it.
 | claim-authoring | analyst, critic | claim gen/review | local |
 | ingest-flow | data-engineer | ETL pipeline | local |
 | bun-monorepo-setup | operator, data-engineer | tooling | local |
-| agents-bootstrap | operator | bootstrap/init | local |
-| goal-management | operator | lifecycle tracking | local |
 | evidence-dev | analyst, renderer | Evidence.dev framework | global |
 | evidence-dashboards | analyst, renderer | dashboard layouts | global |
 | agent-browser | all roles | multi-tool orchestration | global |
@@ -133,6 +131,10 @@ Skills are reusable function bundles. Each skill is mapped to roles that use it.
 | create-skill | operator | skill creation | global |
 | layer-a-validation | evaluator | test harness | local |
 | eval-protocol | evaluator | golden-set validation | local |
+
+**Operational Runbooks** (formerly skills, now docs):
+- `docs/agents-bootstrap.md` — Bootstrap the insight-kit agent council from scratch
+- `docs/goal-management.md` — Manage the .insight-kit/goals/ lifecycle
 
 **Resolution order** (at runtime when role X needs skill Y):
 1. `<repo>/.agents/skills/Y/` (local, highest priority)
@@ -186,8 +188,6 @@ skills:
     - claim-authoring
     - ingest-flow
     - bun-monorepo-setup
-    - agents-bootstrap
-    - goal-management
   global:
     - evidence-dev
     - evidence-dashboards

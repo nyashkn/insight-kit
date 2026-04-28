@@ -15,8 +15,6 @@ skills:
     - claim-authoring
     - ingest-flow
     - bun-monorepo-setup
-    - agents-bootstrap
-    - goal-management
   global:
     - evidence-dev
     - evidence-dashboards
