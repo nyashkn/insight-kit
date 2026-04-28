@@ -3,6 +3,10 @@ name: ingest-flow
 type: skill
 description: Register external inputs and skill invocations into a Run using ingest_external, ingest_skill, and the convenience wrappers (ingest_search, ingest_url, ingest_api).
 roles_using: [data-engineer, researcher, analyst, critic]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  python: "3.11+"
 metadata:
   last_verified: 2026-04-29
 ---

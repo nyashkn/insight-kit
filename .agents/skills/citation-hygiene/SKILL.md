@@ -3,6 +3,10 @@ name: citation-hygiene
 type: skill
 description: Cite external sources + archive. Invoke on [external-requires-caveats] error, dead-link checks, inline URLs in claims, or user says "archive source", "cite external", "dead link".
 roles_using: [researcher, critic]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 metadata:
   last_verified: 2026-04-29
 ---

@@ -3,6 +3,10 @@ name: bun-monorepo-setup
 type: skill
 description: Set up or extend the Bun workspace monorepo for insight-kit viz layers, including biome.json lint config, bunfig.toml, bun.lock, and the M12-B playbook for adding a new viz layer package.
 roles_using: [data-engineer, operator]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 metadata:
   last_verified: 2026-04-29
 ---

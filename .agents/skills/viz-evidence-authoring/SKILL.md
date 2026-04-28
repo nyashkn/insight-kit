@@ -1,6 +1,11 @@
 ---
 name: viz-evidence-authoring
+type: skill
 description: Author Evidence .md pages with claim components (ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, ProvenanceRail). Invoke on missing evidenceInclude=true, user says "create evidence page", or layout_type contract violations.
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 ---
 
 > For the canonical page-type rules (component requirements, claim density, ProvenanceRail), see [evidence-page-creation](../evidence-page-creation/SKILL.md). This skill is a component reference for ClaimBlock, ClaimInline, ClaimDelta, ClaimTree, ProvenanceRail.

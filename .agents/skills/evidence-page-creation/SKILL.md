@@ -3,6 +3,10 @@ name: evidence-page-creation
 type: skill
 description: Create Evidence .md pages with the correct layout_type frontmatter, required components, and ProvenanceRail placement per the PAGE_TYPE_RULES matrix.
 roles_using: [renderer]
+validated_against:
+  evidence: "v40"
+  duckdb: "1.x"
+  bun: "1.3.x"
 metadata:
   last_verified: 2026-04-29
 ---
