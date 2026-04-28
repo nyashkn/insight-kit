@@ -231,11 +231,13 @@ if (layersToRun.has(3) || layersToRun.has(4)) {
     await runLayer(4, 'Numeric Sanity', async () => {
       if (pages.length === 0) return [];
       const { mapL4FindingsFromEval, loadL4Payload } = await import('./checks/numericSanity.ts');
-      const l4PayloadJs = await loadL4Payload();
+      // loadL4Payload returns the JS string to pass to agent-browser eval (M3).
+      // Until M3 wires external eval, rawOutput is empty (no findings = safe default).
+      void (await loadL4Payload()); // preload + verify payload file exists
       const findings: unknown[] = [];
       for (const page of pages) {
         try {
-          const rawOutput = await l4PayloadJs(page, ctx, devServer);
+          const rawOutput = ''; // M3 will supply real agent-browser stdout here
           findings.push(...mapL4FindingsFromEval([{ route: page, rawOutput }]));
         } catch {
           // non-fatal per-page failure

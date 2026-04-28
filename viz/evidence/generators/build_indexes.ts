@@ -35,9 +35,8 @@ if (!args['project-root']) {
   process.exit(1);
 }
 
-const PROJECT_ROOT = resolve(args['project-root']!);
-const REPORTS_DIR  = args['reports-dir'] ? resolve(args['reports-dir']) : join(PROJECT_ROOT, 'reports');
-const RUNS_DIR     = args['runs-dir']    ? resolve(args['runs-dir'])    : join(PROJECT_ROOT, '.insight-kit', 'runs');
+const PROJECT_ROOT = resolve(String(args['project-root']));
+const REPORTS_DIR  = args['reports-dir'] ? resolve(String(args['reports-dir'])) : join(PROJECT_ROOT, 'reports');
 
 // Derive DB path from .insight-kit/duckdb/, fall back to project dir name
 function inferDbPath(): string {
@@ -50,14 +49,14 @@ function inferDbPath(): string {
   return join(PROJECT_ROOT, '.insight-kit', 'duckdb', `${name}.duckdb`);
 }
 
-const DB_PATH    = args['db'] ? resolve(args['db']) : inferDbPath();
+const DB_PATH    = args['db'] ? resolve(String(args['db'])) : inferDbPath();
 const PAGES_DIR  = join(REPORTS_DIR, 'pages', 'index');
 
 // ── Load @duckdb/node-api from consumer's reports/node_modules ───────────────
 
 function loadDuckDb(reportsDir: string): { DuckDBInstance: { create(path: string): Promise<{ connect(): Promise<{ run(sql: string): Promise<{ getRows(): Promise<unknown[][]> }>; closeSync(): void }> }> } } {
   const pkgJson = resolve(reportsDir, 'package.json');
-  let consumerRequire: NodeRequire;
+  let consumerRequire: ReturnType<typeof createRequire>;
   try {
     consumerRequire = createRequire(pkgJson);
   } catch {

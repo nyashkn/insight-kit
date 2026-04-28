@@ -6,6 +6,7 @@
 	"exports": {
 		".": "./index.ts",
 		"./types": "./types.ts",
+		"./types.ts": "./types.ts",
 		"./renderer": "./renderer.ts",
 		"./page-type-rules": "./pageTypeRules.ts"
 	},

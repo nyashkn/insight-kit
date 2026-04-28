@@ -11,8 +11,6 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 /** Raw finding row emitted by the l4.js IIFE running in agent-browser. */
 export interface L4RawFinding {
   check: string;
@@ -91,10 +89,31 @@ export async function checkNumericSanity(
 }
 
 /**
+ * Map pre-computed eval-output entries (one per page) into typed Finding[].
+ * Each entry carries the page route and raw agent-browser stdout.
+ * Called by cli.ts L4 layer; M3 supplies the rawOutput strings.
+ *
+ * @param pages - per-page eval outputs (route + raw agent-browser stdout)
+ * @returns flat array of Findings across all pages
+ */
+export function mapL4FindingsFromEval(pages: L4PageEvalOutput[]): Finding[] {
+  const findings: Finding[] = [];
+  for (const page of pages) {
+    const raw = parseEvalOutput(page.rawOutput);
+    findings.push(...mapFindings(page.route, raw));
+  }
+  return findings;
+}
+
+/**
  * Load the L4 eval payload JS string from evalPayloads/l4.js.
  * M3 passes this to agent-browser eval --stdin.
  */
 export async function loadL4Payload(): Promise<string> {
-  const payloadPath = path.join(__dirname, 'evalPayloads', 'l4.js');
+  const payloadPath = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'evalPayloads',
+    'l4.js',
+  );
   return fs.readFile(payloadPath, 'utf8');
 }
