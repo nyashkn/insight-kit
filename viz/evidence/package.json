@@ -4,6 +4,15 @@
 	"type": "module",
 	"description": "Evidence renderer plugin for insight-kit: claim components, layouts, generators.",
 	"main": "components/index.js",
+	"exports": {
+		".": "./components/index.js",
+		"./components": "./components/index.js",
+		"./index.js": "./index.js",
+		"./generators/build_provenance.ts": "./generators/build_provenance.ts",
+		"./generators/build_indexes.ts": "./generators/build_indexes.ts",
+		"./generators/build_evidence_views.py": "./generators/build_evidence_views.py",
+		"./layouts/install": "./layouts/install.ts"
+	},
 	"evidence": {
 		"components": true
 	},
