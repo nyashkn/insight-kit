@@ -90,13 +90,13 @@ def cmd_annotations(args: argparse.Namespace) -> int:
 
 
 def cmd_preflight(args: argparse.Namespace) -> int:
-    """Run preflight checks via Node entry point."""
-    cli_mjs = Path(__file__).resolve().parents[3] / "viz" / "core" / "cli.mjs"
-    if not cli_mjs.exists():
-        print(f"error: cli.mjs not found at {cli_mjs}", file=sys.stderr)
+    """Run preflight checks via Bun entry point."""
+    cli_ts = Path(__file__).resolve().parents[3] / "viz" / "core" / "cli.ts"
+    if not cli_ts.exists():
+        print(f"error: cli.ts not found at {cli_ts}", file=sys.stderr)
         return 1
 
-    cmd = ["node", "--experimental-strip-types", str(cli_mjs)]
+    cmd = ["bun", str(cli_ts)]
     cmd += ["--reports-dir", str(Path(args.reports_dir).resolve())]
     if args.layer != "all":
         cmd += ["--layer", args.layer]
@@ -121,17 +121,16 @@ def cmd_viz_install(args: argparse.Namespace) -> int:
         )
         return 1
 
-    install_mjs = (
-        Path(__file__).resolve().parents[3] / "viz" / "evidence" / "install-cli.mjs"
+    install_ts = (
+        Path(__file__).resolve().parents[3] / "viz" / "evidence" / "install-cli.ts"
     )
-    if not install_mjs.exists():
-        print(f"error: install-cli.mjs not found at {install_mjs}", file=sys.stderr)
+    if not install_ts.exists():
+        print(f"error: install-cli.ts not found at {install_ts}", file=sys.stderr)
         return 1
 
     cmd = [
-        "node",
-        "--experimental-strip-types",
-        str(install_mjs),
+        "bun",
+        str(install_ts),
         "--reports-dir",
         str(Path(args.reports_dir).resolve()),
     ]
