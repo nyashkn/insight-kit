@@ -50,9 +50,9 @@ layout_type: receipt|narrative|investigation|metric|browse|audit
 
 Run in this order (dependencies enforce sequence):
 
-1. `npm run build:claim-views` — Generate DuckDB views from Python + claim manifests
-2. `npm run build:provenance` — Per-receipt `.md` authoring from views
-3. `npm run build:indexes` — By-tier indexes + ancestry trees
+1. `bun run build:claim-views` — Generate DuckDB views from Python + claim manifests
+2. `bun run build:provenance` — Per-receipt `.md` authoring from views
+3. `bun run build:indexes` — By-tier indexes + ancestry trees
 
 Skipping a step breaks downstream steps. Re-run all if claim YAML changes.
 

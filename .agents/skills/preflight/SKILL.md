@@ -26,7 +26,7 @@ ik preflight --strict
 | Layer | Name | Catches | When | Typical fix |
 |-------|------|---------|------|-------------|
 | L1 | SQL blocks | Syntax errors, invalid DuckDB | Immediately | Fix query syntax |
-| L2 | Build gate | Missing dependencies, unresolved imports | Build step | Run `npm run build:claim-views` |
+| L2 | Build gate | Missing dependencies, unresolved imports | Build step | Run `bun run build:claim-views` |
 | L3 | Render check | Template syntax, missing components | Full build | Add/import missing components |
 | L4 | Numeric sanity | Out-of-range values (>999%), NaN, Inf | Chart validation | Review upstream calc or fmt prop |
 | L5 | Provenance integrity | Claim cycles, broken supersedes chain | Publish | Break cycle in claim YAML |
