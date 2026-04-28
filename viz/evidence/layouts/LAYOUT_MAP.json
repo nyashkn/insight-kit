@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "layouts": [
+    { "pageType": "receipt",       "folder": "provenance",   "file": "receipt.svelte" },
+    { "pageType": "narrative",     "folder": "narratives",   "file": "narrative.svelte" },
+    { "pageType": "investigation", "folder": "funnel",       "file": "investigation.svelte" },
+    { "pageType": "metric",        "folder": "metrics",      "file": "metric.svelte" },
+    { "pageType": "browse",        "folder": "index",        "file": "browse.svelte" },
+    { "pageType": "audit",         "folder": "debug",        "file": "audit.svelte" }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@insight-kit/viz-evidence",
+  "version": "0.1.0",
+  "description": "Evidence renderer plugin for insight-kit: claim components, layouts, generators.",
+  "main": "components/index.js",
+  "evidence": {
+    "components": true
+  },
+  "files": [
+    "components/",
+    "index.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@evidence-dev/core-components": "^5.4.0"
+  },
+  "dependencies": {
+    "@insight-kit/viz-core": "file:../core"
+  }
+}
