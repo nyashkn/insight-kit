@@ -27,6 +27,8 @@ from typing import Any, Literal
 
 import structlog
 
+import insight_kit
+from insight_kit.errors import ConfigError
 from insight_kit.provenance.claim import Claim, Confidence
 from insight_kit.provenance.root import find_kit_root, kit_config, runs_dir
 from insight_kit.validation import (
@@ -179,6 +181,9 @@ class Run:
         self._kit_root = find_kit_root(resolved_start)
         self._runs_dir = runs_dir_override or runs_dir(resolved_start)
 
+        # kit_version drift check
+        self._check_kit_version_drift(resolved_start)
+
         self.topic = _slug(topic)
         self.agent = agent
         self.agent_kind = agent_kind
@@ -208,6 +213,54 @@ class Run:
         self._status = "running"
         self._error: str | None = None
         self._dirs_created = False
+
+    # ---------- kit_version drift ----------
+
+    def _check_kit_version_drift(self, resolved_start: Path | None) -> None:
+        """Compare config.yaml kit_version against installed insight_kit.__version__."""
+        import warnings
+
+        cfg = kit_config(resolved_start)
+        cfg_ver: str | None = cfg.get("kit_version")
+        current = insight_kit.__version__
+
+        if not cfg_ver:
+            warnings.warn(
+                "kit_version absent from config.yaml; pre-0.1.0 kit. "
+                "Re-run init_kit to stamp.",
+                UserWarning,
+                stacklevel=3,
+            )
+            return
+
+        def _parts(v: str) -> tuple[int, int, str]:
+            """Return (major, minor, rest) parsed from a semver-ish string."""
+            clean = v.lstrip("v")
+            pieces = clean.split(".", 2)
+            try:
+                major = int(pieces[0]) if len(pieces) > 0 else 0
+                minor = int(pieces[1].split("a")[0].split("b")[0].split("rc")[0]) if len(pieces) > 1 else 0
+            except ValueError:
+                major, minor = 0, 0
+            rest = pieces[2] if len(pieces) > 2 else ""
+            return major, minor, rest
+
+        cfg_maj, cfg_min, _ = _parts(cfg_ver)
+        cur_maj, cur_min, _ = _parts(current)
+
+        if cfg_maj != cur_maj:
+            raise ConfigError(
+                f"kit_version major mismatch: kit was init'd with {cfg_ver}, "
+                f"current insight_kit is {current}. Migration required."
+            )
+        if cfg_min != cur_min:
+            warnings.warn(
+                f"kit_version minor mismatch: config has {cfg_ver}, "
+                f"current insight_kit is {current}. Consider re-running init_kit.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        # patch-only difference: silent
 
     def __enter__(self) -> Run:
         self._started = time.monotonic()

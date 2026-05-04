@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/0xNyk/insight-kit/schema/agent-frontmatter/v1",
+  "title": "insight-kit AGENT.md Frontmatter",
+  "description": "Schema for the YAML frontmatter block in .agents/agents/<role>/AGENT.md files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "description", "role"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Canonical agent name (matches directory name under .agents/agents/)"
+    },
+    "description": {
+      "type": "string",
+      "description": "One-sentence description of the agent's mandate and primary output"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "data-engineer",
+        "analyst",
+        "researcher",
+        "critic",
+        "renderer",
+        "evaluator",
+        "operator",
+        "annotator"
+      ],
+      "description": "Canonical role this agent implements"
+    },
+    "phase": {
+      "type": "string",
+      "description": "Work phase label (e.g., ingest, derive, critique, render, evaluate, annotate, operate)"
+    },
+    "tier_produces": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Output tiers this agent emits (e.g., [D], [C], [ETL_M])"
+    },
+    "modes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Supported execution modes (e.g., human, worker, spike, per-run, sensitivity)"
+    },
+    "skills_using": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Skills this agent relies on (must resolve via local, global, or domain_bundle resolution order)"
+    },
+    "personas_compatible": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Personas this agent can be composed with (derived by inverting composes_with in each persona.md)"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "last_verified": {
+          "type": "string",
+          "description": "ISO date when frontmatter was last verified against codebase"
+        },
+        "validated_against": {
+          "type": "string",
+          "description": "insight-kit version or commit SHA this AGENT.md was validated against"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
