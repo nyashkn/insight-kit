@@ -107,7 +107,15 @@ def test_claim_id_namespace_prefix(kit: Path):
 
 # U-28
 def test_claim_kwarg_not_id(kit: Path):
+    """id= kwarg is now a deprecated alias for claim_id=; emits DeprecationWarning.
+    Previously raised TypeError — updated for back-compat shim (feat/agents-system-v2).
+    """
+    import warnings as _warnings
     with Run(topic="t", agent="a") as r:
         r.emit_metric(_table(), name="m")
-        with pytest.raises(TypeError):
-            r.claim(id="X", statement="bad")  # type: ignore[call-arg]
+        with _warnings.catch_warnings(record=True) as caught:
+            _warnings.simplefilter("always")
+            c = r.claim(id="TEST-D-001", statement="back-compat")  # type: ignore[call-arg]
+    dep = [w for w in caught if issubclass(w.category, DeprecationWarning) and "id=" in str(w.message)]
+    assert dep, "Expected DeprecationWarning for Run.claim(id=...)"
+    assert c.claim_id == "TEST-D-001"
