@@ -31,6 +31,15 @@ uv add "insight-kit @ git+ssh://git@github.com/nyashkn/insight-kit@v0.1.0a0"
 uv add "insight-kit[hamilton,polars,evidence]"
 ```
 
+## Agent setup
+
+insight-kit ships an agent council with role-bound skills. To install:
+
+- **Quick:** see [.agents/SETUP.md](.agents/SETUP.md) — symlink the 12 project-local skills into your Claude Code skills dir.
+- **Full bootstrap:** see [docs/agents-bootstrap.md](docs/agents-bootstrap.md) — covers council clone, kit init, CI env vars, and verification.
+
+For non-Claude harnesses (Cursor, etc.), set `CLAUDE_SKILLS_DIR` before running the install loop.
+
 ## Minimal example
 
 ```python
