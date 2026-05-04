@@ -269,7 +269,7 @@ class Run:
         logger.info("run.start", run_id=self.run_id, agent=self.agent, topic=self.topic)
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(self, _exc_type, exc, _tb) -> None:
         duration = time.monotonic() - (self._started or time.monotonic())
         self._status = "failed" if exc else "completed"
         self._error = repr(exc) if exc else None
@@ -489,7 +489,7 @@ class Run:
         sha_path.write_text(f"{sha}\n")
 
         # Write metadata JSON
-        meta = {
+        meta: dict[str, Any] = {
             "kind": kind,
             "source_id": source_id,
             "content_type": content_type,
@@ -576,7 +576,7 @@ class Run:
         input_path.write_text(json.dumps(input_json, indent=2, default=str))
 
         # Write metadata JSON
-        meta = {
+        meta: dict[str, Any] = {
             "skill_name": skill_name,
             "sha256": skill_sha,
             "captured_at": _now_iso(),
@@ -676,7 +676,7 @@ class Run:
             InputRecord with kind="url" and caller-supplied content_type.
         """
         # Build metadata
-        meta = {"fetcher": fetcher}
+        meta: dict[str, Any] = {"fetcher": fetcher}
         if status is not None:
             meta["status"] = status
         if headers is not None:
@@ -724,7 +724,7 @@ class Run:
 
         # Build source_id and metadata
         source_id = f"{provider}:{endpoint}"
-        meta = {"provider": provider, "endpoint": endpoint}
+        meta: dict[str, Any] = {"provider": provider, "endpoint": endpoint}
         if params is not None:
             meta["params"] = params
         if status is not None:
@@ -767,6 +767,100 @@ class Run:
 
     def emit_raw(self, df: Any, name: str, duckdb_view: str | None = None) -> Path:
         return self._emit(df, name, layer="raw", duckdb_view=duckdb_view)
+
+    @staticmethod
+    def _coerce_to_table(payload: Any) -> Any:
+        """Coerce scalar/str/list/dict payloads to a pyarrow Table for _emit."""
+        # already table-like — let _emit handle it
+        if hasattr(payload, "write_parquet") or hasattr(payload, "to_parquet"):
+            return payload
+        import pyarrow as pa
+
+        if isinstance(payload, pa.Table):
+            return payload
+        if isinstance(payload, (int, float)):
+            return pa.table({"value": [payload]})
+        if isinstance(payload, str):
+            return pa.table({"text": [payload]})
+        if isinstance(payload, dict):
+            # single-row dict like {"value": 42, "unit": "KES"}
+            return pa.table({k: [v] for k, v in payload.items()})
+        if isinstance(payload, list):
+            if payload and isinstance(payload[0], dict):
+                # list-of-dicts → columnar
+                keys = list(payload[0].keys())
+                return pa.table({k: [row.get(k) for row in payload] for k in keys})
+            return pa.table({"value": payload})
+        # fallback — wrap in a table with repr
+        return pa.table({"value": [repr(payload)]})
+
+    def emit(
+        self,
+        payload: Any,
+        name: str | None = None,
+        kind: str | None = None,
+        **kwargs: Any,
+    ) -> Path:
+        """Back-compat shim for v1 ``Run.emit()``.
+
+        .. deprecated::
+            ``Run.emit()`` is deprecated; use ``emit_raw``, ``emit_metric``,
+            ``emit_critique``, or ``emit_viz`` directly.
+
+        Routes by ``kind`` if given; otherwise infers from payload type:
+        - ``pd.DataFrame`` or ``list[dict]`` → :meth:`emit_raw`
+        - ``int``/``float`` or single-metric dict ``{"value": ..., "unit": ...}`` → :meth:`emit_metric`
+        - ``str`` → :meth:`emit_critique`
+        - else → :meth:`emit_raw`
+
+        Scalar/str payloads are coerced to single-row pyarrow Tables before writing.
+        """
+        import warnings
+
+        warnings.warn(
+            "Run.emit() is deprecated; use emit_raw/emit_metric/emit_critique/emit_viz directly",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        _name = name or "payload"
+
+        # determine route
+        if kind is not None:
+            kind_lower = kind.lower()
+            if kind_lower == "viz":
+                return self.emit_viz(payload, _name)
+            table = self._coerce_to_table(payload)
+            if kind_lower == "metric":
+                return self.emit_metric(table, _name, **kwargs)
+            elif kind_lower == "critique":
+                return self.emit_critique(table, _name, **kwargs)
+            else:
+                return self.emit_raw(table, _name, **kwargs)
+
+        # infer from payload type
+        try:
+            import pandas as pd
+            _has_pandas = True
+        except ImportError:
+            _has_pandas = False
+
+        if _has_pandas and isinstance(payload, pd.DataFrame):
+            return self.emit_raw(payload, _name, **kwargs)
+        if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            return self.emit_raw(self._coerce_to_table(payload), _name, **kwargs)
+        if isinstance(payload, (int, float)):
+            return self.emit_metric(self._coerce_to_table(payload), _name, **kwargs)
+        if (
+            isinstance(payload, dict)
+            and "value" in payload
+            and set(payload.keys()) <= {"value", "unit", "name"}
+        ):
+            return self.emit_metric(self._coerce_to_table(payload), _name, **kwargs)
+        if isinstance(payload, str):
+            return self.emit_critique(self._coerce_to_table(payload), _name, **kwargs)
+
+        return self.emit_raw(self._coerce_to_table(payload), _name, **kwargs)
 
     def _emit(
         self,
@@ -817,8 +911,8 @@ class Run:
 
     def claim(
         self,
-        claim_id: str,
-        statement: str,
+        claim_id: str | None = None,
+        statement: str = "",
         value: Any = None,
         unit: str | None = None,
         tier: str = "derived",
@@ -833,8 +927,30 @@ class Run:
         supports: list[str] | None = None,
         refutes: list[str] | None = None,
         supersedes: str | None = None,
+        **kwargs: Any,
     ) -> Claim:
-        """Emit a structured claim. claim_id (not `id`) per A5 hygiene."""
+        """Emit a structured claim. Use claim_id= (not id=) per A5 hygiene.
+
+        .. deprecated::
+            Passing ``id=`` is deprecated; use ``claim_id=`` instead.
+            Passing both ``id=`` and ``claim_id=`` raises TypeError.
+        """
+        import warnings
+
+        legacy_id = kwargs.pop("id", None)
+        if kwargs:
+            raise TypeError(f"Run.claim() got unexpected keyword arguments: {list(kwargs)}")
+        if legacy_id is not None and claim_id is not None:
+            raise TypeError("Run.claim: pass claim_id=, not both id= and claim_id=")
+        if legacy_id is not None:
+            warnings.warn(
+                "Run.claim(id=...) is deprecated; use claim_id=... instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            claim_id = legacy_id
+        if claim_id is None:
+            raise TypeError("Run.claim() missing required argument: 'claim_id'")
         from insight_kit.provenance.claim import ClaimValue
 
         # Layer-A guards — fire before any state mutation
