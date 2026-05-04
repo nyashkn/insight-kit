@@ -40,6 +40,18 @@ insight-kit ships an agent council with role-bound skills. To install:
 
 For non-Claude harnesses (Cursor, etc.), set `CLAUDE_SKILLS_DIR` before running the install loop.
 
+## Plugin install (Claude Code)
+
+For Claude Code users, install insight-kit as a plugin to get namespaced skills (`insight-kit:preflight`, `insight-kit:claim-authoring`, etc.) and 7 slash commands:
+
+```bash
+/plugin install /path/to/insight-kit
+```
+
+Slash commands: `/insight-kit:bootstrap`, `/insight-kit:run`, `/insight-kit:claim`, `/insight-kit:preflight`, `/insight-kit:promote`, `/insight-kit:roles`, `/insight-kit:goal`
+
+The plugin is additive: existing symlink-based setup (.agents/SETUP.md) still works for non-Claude harnesses.
+
 ## Minimal example
 
 ```python

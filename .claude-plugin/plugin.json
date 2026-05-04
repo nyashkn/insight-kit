@@ -1,0 +1,8 @@
+{
+  "name": "insight-kit",
+  "version": "0.1.0a3",
+  "description": "Provenance-tracked insight authoring with Evidence viz, role-bound skills, and claim registry",
+  "author": {
+    "name": "nyashkn"
+  }
+}
