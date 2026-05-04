@@ -841,11 +841,10 @@ class Run:
         # infer from payload type
         try:
             import pandas as pd
-            _has_pandas = True
         except ImportError:
-            _has_pandas = False
+            pd = None  # type: ignore[assignment]
 
-        if _has_pandas and isinstance(payload, pd.DataFrame):
+        if pd is not None and isinstance(payload, pd.DataFrame):
             return self.emit_raw(payload, _name, **kwargs)
         if isinstance(payload, list) and payload and isinstance(payload[0], dict):
             return self.emit_raw(self._coerce_to_table(payload), _name, **kwargs)
