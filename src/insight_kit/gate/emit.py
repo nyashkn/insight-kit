@@ -141,8 +141,15 @@ def _record_emit(
     # --- Steps 3-5: Fingerprint ---
     record_dict = record.model_dump(mode="json")
 
-    # data_fingerprint: use provided input_data or fingerprint the payload dict
-    dfp = _data_fingerprint(input_data if input_data is not None else record_dict)
+    # V22 — data_fingerprint_source honesty: distinguish real input provenance from
+    # self-derived fallback. "payload" = fallback over record's own fields; NOT input
+    # provenance. T7 will reject published-tier records with source == "payload".
+    if input_data is not None:
+        dfp = _data_fingerprint(input_data)
+        record_dict["data_fingerprint_source"] = "registered_input"
+    else:
+        dfp = _data_fingerprint(record_dict)
+        record_dict["data_fingerprint_source"] = "payload"
     record_dict["data_fingerprint"] = dfp
 
     # record_fingerprint: sha256 of the canonical record dict (with data_fingerprint embedded)
@@ -154,7 +161,24 @@ def _record_emit(
 
     # --- Steps 6-8: Storage ---
     resolved_dir = resolve_run_dir(run_dir)
-    write_record(resolved_dir, record_id, record_dict)
+    # V2 — content-address collision: translate FileExistsError into a structured
+    # ValidationError and increment rejectionCount (duplicate record is a schema reject).
+    try:
+        write_record(resolved_dir, record_id, record_dict)
+    except FileExistsError as exc:
+        run_state.rejectionCount += 1
+        raise LayerAValidationError(
+            rule_id="record-duplicate",
+            message=(
+                f"A record with record_id={record_id!r} already exists on disk "
+                "(content-address collision — identical payload was already emitted). "
+                "Records are immutable post-emit (V3)."
+            ),
+            suggestion=(
+                "If this is a correction, create a new record with a 'supersedes' edge "
+                "pointing to the prior record_id instead of re-emitting the same content."
+            ),
+        ) from exc
     append_index_row(resolved_dir, record_dict, record_id)
     append_claims_row(resolved_dir, record_dict, record_id)
 
@@ -280,6 +304,8 @@ def ik_research_emit(
     """Typed research emit wrapper.
 
     timestamp: ISO-8601 string; defaults to current UTC time if not provided.
+              Auto-timestamp makes the record non-deterministic by design —
+              pass an explicit timestamp for a reproducible fingerprint.
     """
     payload: dict[str, Any] = {
         "record_type": "research",
@@ -313,6 +339,8 @@ def ik_skill_use_emit(
     """Typed skill-use emit wrapper.
 
     timestamp: ISO-8601 string; defaults to current UTC time if not provided.
+              Auto-timestamp makes the record non-deterministic by design —
+              pass an explicit timestamp for a reproducible fingerprint.
     """
     payload: dict[str, Any] = {
         "record_type": "skill_use",

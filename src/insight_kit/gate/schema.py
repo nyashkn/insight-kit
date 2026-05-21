@@ -3,7 +3,7 @@
 record_type discriminant selects one of:
   ClaimRecord | InterventionRecord | ResearchRecord | SkillUseRecord
 
-Cites: V2, V8, C5.
+Cites: V2, V8, C5, V22.
 """
 from __future__ import annotations
 
@@ -15,6 +15,21 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 # Shared building blocks
 # ---------------------------------------------------------------------------
+
+
+class DataFingerprintSource(StrEnum):
+    """V22 — provenance honesty for data_fingerprint.
+
+    registered_input: fingerprint was derived from a real upstream input supplied
+                      via input_data= at emit time.  Satisfies V6/V13.
+    payload:          fallback — fingerprint was derived from the record's own
+                      fields when no registered upstream input was supplied.
+                      NOT input provenance; a published-tier claim/intervention
+                      with this source cannot satisfy V6/V13 (T7 enforces rejection).
+    """
+
+    registered_input = "registered_input"
+    payload = "payload"
 
 
 class ClaimTier(StrEnum):
@@ -51,6 +66,7 @@ class ClaimRecord(BaseModel):
     narrative_ref: optional path/id pointing to narrative.md for this claim.
     cites: list of research/skill_use record ids that informed this claim (I.cites).
     supersedes: id of the prior record this corrects (T6 seam, not yet enforced here).
+    data_fingerprint_source: V22 provenance honesty — set by emit, not caller.
     """
 
     record_type: Literal["claim"] = "claim"
@@ -64,6 +80,8 @@ class ClaimRecord(BaseModel):
     narrative_ref: str | None = None
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # V22 — injected by _record_emit; callers must not set this manually.
+    data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 
     model_config = {"extra": "forbid"}
 
@@ -100,6 +118,7 @@ class InterventionRecord(BaseModel):
 
     intent: what the agent decided to do.
     realized: the actual external result (nullable on draft — V19).
+    data_fingerprint_source: V22 provenance honesty — set by emit, not caller.
     """
 
     record_type: Literal["intervention"] = "intervention"
@@ -111,6 +130,8 @@ class InterventionRecord(BaseModel):
     audience: str | None = None
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # V22 — injected by _record_emit; callers must not set this manually.
+    data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 
     model_config = {"extra": "forbid"}
 
@@ -128,6 +149,7 @@ class ResearchRecord(BaseModel):
     query: the research question or query string.
     source: data source identifier (URL, tool name, dataset id, etc.).
     timestamp: ISO-8601 string of when research was conducted.
+    data_fingerprint_source: V22 provenance honesty — set by emit, not caller.
     """
 
     record_type: Literal["research"] = "research"
@@ -139,6 +161,8 @@ class ResearchRecord(BaseModel):
     timestamp: str = Field(..., description="ISO-8601 timestamp of research.")
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # V22 — injected by _record_emit; callers must not set this manually.
+    data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 
     model_config = {"extra": "forbid"}
 
@@ -156,6 +180,7 @@ class SkillUseRecord(BaseModel):
     tool: name of the tool or skill used.
     source: data source or endpoint the tool queried.
     timestamp: ISO-8601 string of when the skill was invoked.
+    data_fingerprint_source: V22 provenance honesty — set by emit, not caller.
     """
 
     record_type: Literal["skill_use"] = "skill_use"
@@ -167,6 +192,8 @@ class SkillUseRecord(BaseModel):
     timestamp: str = Field(..., description="ISO-8601 timestamp of skill invocation.")
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # V22 — injected by _record_emit; callers must not set this manually.
+    data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 
     model_config = {"extra": "forbid"}
 
