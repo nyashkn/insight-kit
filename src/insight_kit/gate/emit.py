@@ -65,7 +65,7 @@ _RECORD_ADAPTER: TypeAdapter[Any] = TypeAdapter(RecordSchema)
 def _run_layer_a_guards(
     record: Any,
     run_state: RunState,
-    run_dir: "Path | None" = None,
+    run_dir: Path | None = None,
 ) -> None:
     """Run applicable Layer-A guards from insight_kit.validation.
 
@@ -123,7 +123,7 @@ _PARQUET_EXTENSIONS: tuple[bytes, ...] = (b".pq", b".parquet")
 _PARQUET_STR_EXTENSIONS: tuple[str, ...] = (".pq", ".parquet")
 
 
-def _check_raw_parquet_path(input_data: "bytes | dict[str, Any] | None") -> None:
+def _check_raw_parquet_path(input_data: bytes | dict[str, Any] | None) -> None:
     """T9/V13 — Reject raw agent-supplied parquet file paths as inputs.
 
     Raw file paths are detectable as bytes that look like a file system path

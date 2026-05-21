@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import _record_emit, ik_claim_emit
+from insight_kit.gate.emit import ik_claim_emit
 from insight_kit.gate.runstate import RunState
 from insight_kit.gate.store import index_path
 from insight_kit.validation import ValidationError as LayerAValidationError
@@ -25,7 +25,6 @@ from insight_kit.validation import (
     check_claim_id_format,
     check_claim_id_unique_in_run,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

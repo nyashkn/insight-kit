@@ -18,7 +18,6 @@ from insight_kit.gate.emit import ik_claim_emit, ik_intervention_emit
 from insight_kit.gate.runstate import RunState
 from insight_kit.gate.store import record_path
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

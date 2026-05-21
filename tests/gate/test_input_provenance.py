@@ -19,11 +19,10 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_claim_emit, ik_research_emit
+from insight_kit.gate.emit import ik_claim_emit
 from insight_kit.gate.runstate import RunState
 from insight_kit.gate.store import record_path
 from insight_kit.validation import ValidationError as LayerAValidationError
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

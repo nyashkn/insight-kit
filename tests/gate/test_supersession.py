@@ -15,7 +15,6 @@ from insight_kit.gate.runstate import RunState
 from insight_kit.gate.store import record_path
 from insight_kit.validation import ValidationError as LayerAValidationError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
