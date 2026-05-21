@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Evidence today vs Evidence SDK — what changes</title>
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+  --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;
+  --olive:#788C5D;--sage:#A8B89A;--rose:#C97B7B;
+  --g100:#F0EEE6;--g200:#E6E3DA;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.55}
+.wrap{max-width:1600px;margin:0 auto;padding:0 32px 140px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--g500)}
+h1.display{font-family:var(--serif);font-weight:500;font-size:clamp(36px,5vw,54px);line-height:1.06;letter-spacing:-.018em;margin:.3em 0 .25em}
+h1.display em{font-style:italic;color:var(--clay)}
+h2{font-family:var(--serif);font-weight:500;font-size:26px;letter-spacing:-.012em;margin:48px 0 14px;border-top:1px solid var(--g200);padding-top:26px}
+h2 .num{font-family:var(--mono);color:var(--g500);font-size:12.5px;margin-right:12px;letter-spacing:.08em;vertical-align:5px}
+h3{font-family:var(--sans);font-weight:600;font-size:17px;margin:24px 0 8px}
+p{max-width:74ch}
+code{font-family:var(--mono);font-size:.92em;background:var(--g100);padding:1px 5px;border-radius:4px;color:var(--g700)}
+a{color:var(--clay);text-decoration:none;border-bottom:1px solid rgba(217,119,87,.35)}
+a:hover{color:var(--clay-d)}
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--g200);z-index:30}
+.topbar-inner{max-width:1600px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.brand span{color:var(--clay)}
+nav.crumbs{display:flex;gap:18px;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+nav.crumbs a{color:var(--g500);border:none}
+nav.crumbs a.active{color:var(--slate)}
+nav.crumbs a:hover{color:var(--clay)}
+
+.hero{padding:54px 0 22px;border-bottom:1px solid var(--g200)}
+.tldr{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.pill{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;padding:6px 12px;border:1px solid var(--g300);border-radius:999px;background:var(--paper);color:var(--g700)}
+.pill.clay{background:var(--clay);border-color:var(--clay);color:#fff}
+.pill.olive{background:var(--olive);border-color:var(--olive);color:#fff}
+.arrow{color:var(--g500);font-family:var(--mono)}
+
+/* split */
+.split-header{position:sticky;top:54px;background:rgba(250,249,245,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--g200);z-index:20;padding:14px 0 12px;margin:24px 0 0}
+.split-header-inner{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.shead .nm{font-family:var(--serif);font-size:22px;letter-spacing:-.008em}
+.shead .nm em{font-style:italic;color:var(--clay)}
+.shead .pip{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500)}
+.col-current .nm em{color:var(--olive)}
+.col-sdk .nm em{color:var(--clay)}
+
+.row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:18px 0;align-items:stretch}
+.axis-band{display:grid;grid-template-columns:160px 1fr 1fr;gap:0;border-top:1px solid var(--g200);padding:14px 0 6px}
+.axis-band:first-of-type{border-top:none}
+.axis-lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);padding-top:6px}
+.axis-lbl .ax{display:block;color:var(--slate);font-size:13.5px;letter-spacing:-.005em;text-transform:none;font-family:var(--serif);font-weight:500;margin-top:2px}
+.cell{padding:6px 20px;font-size:14.5px;color:var(--g700);max-width:none}
+.cell:first-of-type{border-left:none}
+.cell h4{font-family:var(--sans);font-weight:600;font-size:14px;color:var(--slate);margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.cell h4 .badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--g100);color:var(--g500)}
+.cell.cur h4 .badge{background:#E7EEDF;color:#3e553a}
+.cell.sdk h4 .badge{background:#FBEBE2;color:var(--clay-d)}
+.cell .pts{margin:6px 0;padding-left:18px}
+.cell .pts li{margin:3px 0}
+.codepair{display:block;font-family:var(--mono);font-size:11.5px;line-height:1.55;background:var(--paper);border:1px solid var(--g200);border-radius:7px;padding:10px 12px;color:var(--g700);overflow-x:auto;white-space:pre;margin:8px 0 4px}
+.cell.sdk .codepair{border-color:#F0D2C0;background:#FFFAF6}
+.cell.cur .codepair{border-color:#C9D6BB;background:#F6FAF1}
+.kw{color:var(--clay)}.tk{color:var(--slate);font-weight:600}.cm{color:var(--g500);font-style:italic}.dec{color:var(--olive)}
+
+.tradeoffs{margin:36px 0}
+.t-grid{display:grid;grid-template-columns:1fr;gap:0;background:var(--paper);border:1px solid var(--g200);border-radius:12px;overflow:hidden}
+@media(min-width:760px){.t-grid{grid-template-columns:200px 1fr 1fr}}
+.t-grid > div{padding:12px 16px;border-bottom:1px solid var(--g200);font-size:14px}
+.t-grid .hd{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);background:var(--g100);font-weight:500}
+.t-grid .ax{font-family:var(--mono);font-size:12.5px;color:var(--slate);font-weight:600}
+.t-grid .pro{color:#2f6f49}
+.t-grid .con{color:var(--clay-d)}
+.t-grid > div:last-child,.t-grid > div:nth-last-child(2),.t-grid > div:nth-last-child(3){border-bottom:none}
+
+.callout{border:1px solid var(--g200);background:var(--paper);border-radius:10px;padding:16px 18px;margin:18px 0}
+.callout.clay{border-left:4px solid var(--clay)}
+.callout.olive{border-left:4px solid var(--olive)}
+.callout .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);margin-bottom:4px}
+footer{margin-top:80px;font-family:var(--mono);font-size:11.5px;color:var(--g500);letter-spacing:.06em}
+
+/* page layout w/ glossary rail */
+.page-grid{display:grid;grid-template-columns:1fr;gap:24px}
+@media(min-width:1280px){.page-grid{grid-template-columns:minmax(0,1fr) 280px}}
+
+/* inline g-link */
+a.g-link{color:inherit;text-decoration:none;border-bottom:1px dotted var(--g500);cursor:help;transition:color 120ms,border-bottom-color 120ms}
+a.g-link:hover,a.g-link:focus{color:var(--clay);border-bottom-color:var(--clay);outline:none}
+
+/* glossary rail */
+.glossary-rail{font-family:var(--sans)}
+@media(max-width:1279px){
+  .glossary-rail{display:none}
+  .glossary-rail.is-open{display:block;margin-top:24px;border-top:1px solid var(--g200);padding-top:18px}
+}
+@media(min-width:1280px){
+  .glossary-rail{position:sticky;top:120px;align-self:start;max-height:calc(100vh - 144px);overflow-y:auto;padding-right:6px}
+}
+.glossary-rail h3{font-family:var(--serif);font-size:18px;font-weight:500;margin:0 0 4px;letter-spacing:-.01em}
+.glossary-rail .g-sub{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--g500);margin-bottom:14px}
+.glossary-rail dl{margin:0;padding:0}
+.glossary-rail dt{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--slate);margin-top:14px;letter-spacing:.01em}
+.glossary-rail dt:first-of-type{margin-top:0}
+.glossary-rail dd{margin:3px 0 0;padding:0;font-size:12.5px;color:var(--g700);line-height:1.5}
+.glossary-rail dd code{font-family:var(--mono);font-size:11.5px;color:var(--slate);background:var(--g100);padding:1px 4px;border-radius:3px}
+.glossary-rail dt:target{background:#FBEBE2;padding:4px 8px;margin-left:-8px;border-left:2px solid var(--clay);border-radius:0 4px 4px 0;transition:background 200ms}
+.glossary-toggle-wrap{display:block;margin-top:28px}
+@media(min-width:1280px){.glossary-toggle-wrap{display:none}}
+.glossary-toggle{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--g300);background:var(--paper);color:var(--g700);border-radius:6px;cursor:pointer}
+.glossary-toggle:hover{color:var(--clay);border-color:var(--clay)}
+
+@media(max-width:900px){
+  .split-header-inner,.row{grid-template-columns:1fr;gap:14px}
+  .axis-band{grid-template-columns:1fr}
+  .axis-lbl{padding:8px 0 0}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit <span>×</span> hamilton</span>
+    <nav class="crumbs">
+      <a href="index.html">01 · Synthesis</a>
+      <a href="current-state.html">02 · Current state</a>
+      <a href="cache-walkthrough.html">03 · Cache walkthrough</a>
+      <a href="hamilton.html">04 · Hamilton deep dive</a>
+      <a href="evidence-sdk.html" class="active">A · Evidence SDK</a>
+      <a href="pandera-fit.html">B · Pandera</a>
+      <a href="dataframe-stack-fit.html">C · DF stack</a>
+      <a href="provenance-loop.html">D · Provenance loop</a>
+      <a href="feature-platform-and-claim-bundle.html">E · Feature platform</a>
+      <a href="agent-team-orchestration.html">F · Orchestration</a>
+      <a href="glossary.html">05 · Glossary</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<div class="page-grid">
+<main>
+
+<section class="hero">
+  <div class="eyebrow">side-track · evidence.dev · 2026-05-14</div>
+  <h1 class="display">Evidence today <em>vs</em> Evidence SDK</h1>
+  <p style="font-size:17px;color:var(--g700);max-width:80ch">
+    <code>reports/</code> today = CLI-driven, markdown + SQL, built-in components, config files. The SDK at
+    <code>packages/lib/sdk/</code> turns Evidence into a <strong>library</strong> — <a class="g-link" href="#g-datasource-plugin">datasource connectors</a>, <a class="g-link" href="#g-page-builder">page
+    builders</a>, <a class="g-link" href="#g-runquery">query runners</a>, <a class="g-link" href="#g-ssrhook">SSR hooks</a>, <a class="g-link" href="#g-component-plugin">plugin contracts</a> — that you call from your own TypeScript. Same product,
+    very different blast radius. Two-panel below: each row is one axis; left = today, right = SDK.
+  </p>
+  <div class="tldr">
+    <span class="pill">authoring</span><span class="arrow">·</span>
+    <span class="pill">data sources</span><span class="arrow">·</span>
+    <span class="pill">page generation</span><span class="arrow">·</span>
+    <span class="pill">components</span><span class="arrow">·</span>
+    <span class="pill">query runtime</span><span class="arrow">·</span>
+    <span class="pill">build pipeline</span><span class="arrow">·</span>
+    <span class="pill">SSR / routing</span><span class="arrow">·</span>
+    <span class="pill">theming</span>
+  </div>
+</section>
+
+<div class="split-header">
+  <div class="split-header-inner">
+    <div class="col-current shead">
+      <div class="nm">Today — <em>markdown-first</em></div>
+      <div class="pip">CLI · config · MD/SQL</div>
+    </div>
+    <div class="col-sdk shead">
+      <div class="nm">With SDK — <em>programmatic</em></div>
+      <div class="pip">library · TS · plugins</div>
+    </div>
+  </div>
+</div>
+
+<!-- AGENT PIPELINE SWIMLANE — runs feeding the Evidence page -->
+<div style="margin:24px 0 28px">
+  <h3 style="font-family:var(--serif);font-weight:500;font-size:20px;color:var(--slate);margin-bottom:6px">How a page actually gets made — agent run swimlane</h3>
+  <p style="font-size:13.5px;color:var(--g700);margin-bottom:12px;max-width:920px">
+    The Evidence <code>.md</code> page is the LAST artifact in a chain of role-separated runs (see <code><a href="../../.agents/agents/analyst/AGENT.md">.agents/analyst</a></code> · <code><a href="../../.agents/agents/critic/AGENT.md">critic</a></code> · <code><a href="../../.agents/agents/renderer/AGENT.md">renderer</a></code>). Each run produces a tier of claims and writes a working artifact the next role consumes. Swimlane below mirrors the production sequence — claim IDs from <code>2026-04-26_*_analyst-funnel_g2-levers</code> + sibling runs.
+  </p>
+  <div style="background:var(--paper);border:1px solid var(--g300);border-radius:8px;padding:18px;overflow-x:auto">
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:14px;font-family:var(--mono);font-size:10.5px;color:var(--g500);text-transform:uppercase;letter-spacing:0.06em">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#788C5D;margin-right:6px"></span>data-engineer (ETL)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#D97757;margin-right:6px"></span>analyst (D-tier)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#C97B7B;margin-right:6px"></span>critic (C-tier)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#141413;margin-right:6px"></span>renderer (I + V)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#A8B89A;border-radius:50%;margin-right:6px"></span>generator-assisted</span>
+    </div>
+    <svg viewBox="0 0 1180 460" style="display:block;min-width:1120px;height:auto;font-family:var(--sans)" role="img" aria-label="Agent run swimlane">
+      <defs>
+        <marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C97B7B"/></marker>
+      </defs>
+      <!-- phase bands -->
+      <rect x="0"   y="40" width="220" height="400" fill="#F0EEE6"/>
+      <rect x="430" y="40" width="180" height="400" fill="#F0EEE6"/>
+      <rect x="800" y="40" width="180" height="400" fill="#F0EEE6"/>
+      <text x="10"   y="22" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;fill:#D97757;font-weight:700">ETL</text>
+      <text x="10"   y="32" style="font-family:var(--mono);font-size:8px;fill:#87867F">data → duckdb views</text>
+      <text x="230"  y="22" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;fill:#D97757;font-weight:700">DERIVE</text>
+      <text x="230"  y="32" style="font-family:var(--mono);font-size:8px;fill:#87867F">analyst → D-tier</text>
+      <text x="440"  y="22" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;fill:#D97757;font-weight:700">CHALLENGE</text>
+      <text x="440"  y="32" style="font-family:var(--mono);font-size:8px;fill:#87867F">critic → C-tier</text>
+      <text x="620"  y="22" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;fill:#D97757;font-weight:700">SYNTHESIZE</text>
+      <text x="620"  y="32" style="font-family:var(--mono);font-size:8px;fill:#87867F">analyst → output/synthesis</text>
+      <text x="810"  y="22" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;fill:#D97757;font-weight:700">RENDER</text>
+      <text x="810"  y="32" style="font-family:var(--mono);font-size:8px;fill:#87867F">renderer → I + V · page</text>
+      <text x="1000" y="22" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;fill:#D97757;font-weight:700">SERVE</text>
+      <text x="1000" y="32" style="font-family:var(--mono);font-size:8px;fill:#87867F">evidence build</text>
+
+      <!-- phase divider lines -->
+      <line x1="220"  y1="40" x2="220"  y2="440" stroke="#D1CFC5" stroke-width="1" stroke-dasharray="2 3"/>
+      <line x1="430"  y1="40" x2="430"  y2="440" stroke="#D1CFC5" stroke-width="1" stroke-dasharray="2 3"/>
+      <line x1="610"  y1="40" x2="610"  y2="440" stroke="#D1CFC5" stroke-width="1" stroke-dasharray="2 3"/>
+      <line x1="800"  y1="40" x2="800"  y2="440" stroke="#D1CFC5" stroke-width="1" stroke-dasharray="2 3"/>
+      <line x1="980"  y1="40" x2="980"  y2="440" stroke="#D1CFC5" stroke-width="1" stroke-dasharray="2 3"/>
+
+      <!-- LANES (4 actor lanes + 1 evidence build at bottom) -->
+      <text x="6" y="90"  style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">data-eng</text>
+      <text x="6" y="180" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">analyst</text>
+      <text x="6" y="270" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">critic</text>
+      <text x="6" y="360" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">renderer</text>
+      <text x="6" y="425" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">evidence</text>
+      <line x1="60" y1="125" x2="1180" y2="125" stroke="#E6E3DA" stroke-width="1"/>
+      <line x1="60" y1="215" x2="1180" y2="215" stroke="#E6E3DA" stroke-width="1"/>
+      <line x1="60" y1="305" x2="1180" y2="305" stroke="#E6E3DA" stroke-width="1"/>
+      <line x1="60" y1="395" x2="1180" y2="395" stroke="#E6E3DA" stroke-width="1"/>
+
+      <!-- ETL node -->
+      <g transform="translate(70,65)">
+        <rect width="145" height="56" rx="3" fill="#FFFFFF" stroke="#788C5D" stroke-width="1.5"/>
+        <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">data-engineer run</text>
+        <text x="9" y="32" style="font-size:10px;fill:#3D3D3A;font-family:var(--mono)">ETL_R → ETL_M</text>
+        <text x="9" y="46" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">dockblocks.claims_manifest</text>
+      </g>
+
+      <!-- analyst node -->
+      <g transform="translate(230,155)">
+        <rect width="180" height="56" rx="3" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+        <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">analyst-funnel_g2-levers</text>
+        <text x="9" y="32" style="font-size:10px;fill:#3D3D3A;font-family:var(--mono)">emits DOCK-D-003..D-005</text>
+        <text x="9" y="46" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">caveats · input_claims</text>
+      </g>
+
+      <!-- critic node -->
+      <g transform="translate(440,245)">
+        <rect width="160" height="56" rx="3" fill="#FFFFFF" stroke="#C97B7B" stroke-width="1.5"/>
+        <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">critic-data-quality</text>
+        <text x="9" y="32" style="font-size:10px;fill:#3D3D3A;font-family:var(--mono)">emits DOCK-C-007..C-008</text>
+        <text x="9" y="46" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">refutes · challenge_sticks</text>
+      </g>
+
+      <!-- analyst revision (synthesis) -->
+      <g transform="translate(620,155)">
+        <rect width="170" height="56" rx="3" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">analyst (revised pass)</text>
+        <text x="9" y="32" style="font-size:10px;fill:#3D3D3A;font-family:var(--mono)">output/synthesis/g2_levers.md</text>
+        <text x="9" y="46" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">prose · supersedes D-003</text>
+      </g>
+
+      <!-- renderer node -->
+      <g transform="translate(810,335)">
+        <rect width="160" height="56" rx="3" fill="#FFFFFF" stroke="#141413" stroke-width="1.5"/>
+        <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">renderer run</text>
+        <text x="9" y="32" style="font-size:10px;fill:#3D3D3A;font-family:var(--mono)">emits DOCK-I-001 · V-001</text>
+        <text x="9" y="46" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">layout_type=narrative</text>
+      </g>
+
+      <!-- generator (SDK) — receipts/provenance, dotted to show optional -->
+      <g transform="translate(810,245)">
+        <rect width="160" height="44" rx="3" fill="#FFFFFF" stroke="#A8B89A" stroke-width="1.5" stroke-dasharray="4 2"/>
+        <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">build-dev generator</text>
+        <text x="9" y="32" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">receipts · prov-rail · index</text>
+      </g>
+
+      <!-- evidence build -->
+      <g transform="translate(1000,400)">
+        <rect width="170" height="32" rx="3" fill="#FFFFFF" stroke="#141413" stroke-width="1"/>
+        <text x="9" y="14" style="font-size:11px;font-weight:600;fill:#141413">bun run sources + dev</text>
+        <text x="9" y="26" style="font-size:9.5px;fill:#87867F;font-family:var(--mono)">.md → html</text>
+      </g>
+
+      <!-- edges: ETL → analyst -->
+      <path d="M145 121 L145 155" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#ar1)"/>
+      <text x="150" y="140" style="font-family:var(--mono);font-size:8.5px;fill:#87867F">ETL_M views</text>
+
+      <!-- analyst → critic -->
+      <path d="M320 211 L320 245 L440 245" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#ar1)"/>
+      <text x="325" y="240" style="font-family:var(--mono);font-size:8.5px;fill:#87867F">D claims</text>
+
+      <!-- critic refutes back to analyst -->
+      <path d="M520 245 L520 215 L520 211" stroke="#C97B7B" stroke-width="1" fill="none" stroke-dasharray="4 3" marker-end="url(#ar2)"/>
+      <text x="525" y="232" style="font-family:var(--mono);font-size:8.5px;fill:#C97B7B;text-transform:uppercase;letter-spacing:0.04em">refutes → revise</text>
+
+      <!-- analyst-revised → renderer (synthesis prose) -->
+      <path d="M705 211 L705 335 L810 335" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#ar1)"/>
+      <text x="710" y="305" style="font-family:var(--mono);font-size:8.5px;fill:#87867F">synthesis.md</text>
+
+      <!-- critic → renderer (C claims into provenance) -->
+      <path d="M600 273 L810 335" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#ar1)"/>
+      <text x="615" y="295" style="font-family:var(--mono);font-size:8.5px;fill:#87867F">C claims (rail)</text>
+
+      <!-- renderer + generator → evidence build -->
+      <path d="M970 363 L1000 416" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#ar1)"/>
+      <path d="M890 289 L890 335" stroke="#A8B89A" stroke-width="1" fill="none" stroke-dasharray="3 2" marker-end="url(#ar1)"/>
+      <text x="895" y="320" style="font-family:var(--mono);font-size:8.5px;fill:#788C5D;text-transform:uppercase;letter-spacing:0.04em">SDK seam</text>
+    </svg>
+  </div>
+  <p style="font-size:12.5px;color:var(--g500);margin-top:10px;max-width:920px">
+    <strong>Read this:</strong> data-engineer materializes views → analyst derives D-claims + writes <code>output/synthesis/&lt;slug&gt;.md</code> → critic challenges (may force a revised analyst pass via <code>refutes</code>) → renderer reads BOTH the synthesis prose AND the surviving D/C claim graph to author <code>reports/pages/&lt;slug&gt;.md</code> + emit I + V claims → Evidence compiles. The <strong>SDK seam</strong> is the green dashed node: a <code>build-dev</code> generator slots <em>alongside</em> renderer to emit per-claim receipts + provenance rails, not in place of it.
+  </p>
+</div>
+
+<!-- AXIS: AUTHORING -->
+<div class="axis-band">
+  <div class="axis-lbl">01<span class="ax">Authoring surface</span></div>
+
+  <div class="cell cur">
+    <h4>Renderer authors by hand <span class="badge">today</span></h4>
+    <p style="font-size:13px;color:var(--g700);margin:0 0 10px;max-width:none">
+      Renderer reads the analyst's synthesis narrative, picks a <code>layout_type</code>, maps claims to components, drops in chart specs, types the prose body. Every page = one human pass. Per-claim receipt pages, provenance rails, lever-receipt sidecars — all hand-written.
+    </p>
+    <ul class="pts">
+      <li><strong>Synthesis narrative is the spine.</strong> <code>output/synthesis/g2_levers.md</code> from the analyst becomes the prose body — renderer edits prose, doesn't generate it.</li>
+      <li><strong>Layout choice is a judgment call.</strong> 6 layout types (receipt · narrative · investigation · metric · browse · audit). Renderer picks based on which D/C/X claims are focal.</li>
+      <li><strong>Claim-to-component mapping is hand-typed.</strong> <code>&lt;ClaimBlock claim_id="DOCK-D-004"/&gt;</code>, <code>&lt;ClaimDelta before="…" after="…"/&gt;</code>, <code>&lt;ProvenanceRail/&gt;</code>. One tag per claim.</li>
+      <li><strong>V-tier viz specs duplicated.</strong> Every chart re-justified — V-001 says "LineChart because temporal; bar would lose seasonality". Sibling pages repeat the framing.</li>
+      <li><strong>Cost:</strong> 10 lever pages → 10 hand-passes through claim mapping + provenance rail + receipt block. Drift on layout, component props, copy.</li>
+    </ul>
+<div class="codepair"><span class="cm"># reports/pages/levers/g1_spend_reallocation.md</span>
+<span class="cm"># ← renderer writes this whole file by hand,</span>
+<span class="cm">#   pulling prose from analyst's synthesis/g1_levers.md</span>
+
+---
+title: <span class="kw">"G1 — Spend Reallocation"</span>
+layout_type: <span class="kw">narrative</span>   <span class="cm"># renderer judgment</span>
+---
+
+```sql kpi
+select cpa_baseline, cpa_post from claims_manifest
+where claim_id = <span class="kw">'NM-G4-DELTA-001'</span>
+```
+
+&lt;BigValue data={kpi} value=cpa_post/&gt;
+
+## Why this lever
+<span class="cm"># ← prose lifted/edited from analyst synthesis</span>
+
+&lt;ClaimBlock claim_id=<span class="kw">"NM-D-004"</span>/&gt;
+&lt;ClaimDelta before=<span class="kw">"DOCK-D-003"</span> after=<span class="kw">"NM-D-004"</span>/&gt;
+&lt;ProvenanceRail focal=<span class="kw">"NM-D-004"</span>/&gt;</div>
+  </div>
+
+  <div class="cell sdk">
+    <h4>Generators take the boilerplate <span class="badge">sdk</span></h4>
+    <p style="font-size:13px;color:var(--g700);margin:0 0 10px;max-width:none">
+      Renderer still writes the narrative spine + picks layout. Generator takes the per-claim repetitive parts: receipt pages (one per I-claim), provenance rails (one per focal D-claim), V-tier viz JSX from V-claim specs, indexes. Hybrid: human authors the page; build emits the sidecars.
+    </p>
+    <ul class="pts">
+      <li><strong>Receipt pages auto-emitted.</strong> Every I-claim gets a <code>levers/&lt;claim_id&gt;.md</code> receipt page from <code>leverTemplate(claim)</code>. 10 I-claims = 10 receipts, no hand-typing.</li>
+      <li><strong>Provenance rail = generated component.</strong> Renderer drops <code>&lt;ProvenanceRail focal="…"/&gt;</code> ; the generator walks the claim graph + emits the supporting/refuting/superseding chain at build time.</li>
+      <li><strong>V-claim → chart spec deterministic.</strong> V-001 emits <code>output/viz/g1_cpa_delta.json</code> ; generator wraps it in the right Evidence chart component. Justification text stays human (the V-claim statement).</li>
+      <li><strong>Narrative pages stay human-authored.</strong> Generator does NOT write the synthesis prose, does NOT pick the layout type, does NOT choose which claim is focal. Those remain renderer judgment calls.</li>
+      <li><strong>Split:</strong> <code>reports/pages/levers/g1_spend_reallocation.md</code> (narrative page) — still hand-typed by renderer. <code>reports/pages/receipts/&lt;claim_id&gt;.md</code> (per-claim receipt) — generated.</li>
+    </ul>
+<div class="codepair"><span class="cm">// reports/build-dev/generators/receipts.ts</span>
+<span class="cm">// emits ONE receipt page per I-tier claim — boilerplate only</span>
+<span class="kw">import</span> { <span class="tk">PageBuilder</span> } <span class="kw">from</span> <span class="kw">'@evidence-dev/sdk/build-dev'</span>;
+<span class="kw">import</span> { getClaims, getProvenance } <span class="kw">from</span> <span class="kw">'../lib/claims'</span>;
+<span class="kw">import</span> { receiptTemplate } <span class="kw">from</span> <span class="kw">'../templates/receipt'</span>;
+
+<span class="kw">for</span> (<span class="kw">const</span> c <span class="kw">of</span> <span class="kw">await</span> getClaims({tier: <span class="kw">'I'</span>})) {
+  <span class="kw">const</span> prov = <span class="kw">await</span> getProvenance(c.claim_id);
+  <span class="cm">// receiptTemplate fills frontmatter + ClaimBlock +</span>
+  <span class="cm">// ProvenanceRail + supersedes ladder — deterministic.</span>
+  PageBuilder.emit(
+    `receipts/${c.claim_id}.md`,
+    receiptTemplate(c, prov),
+  );
+}
+
+<span class="cm">// reports/pages/levers/g1_spend_reallocation.md</span>
+<span class="cm">// ← still hand-authored: narrative + layout choice + focal claim</span>
+<span class="cm">//   but it now LINKS to the generated /receipts/NM-G4-DELTA-001</span></div>
+  </div>
+</div>
+
+<!-- split-of-labor table -->
+<div class="callout" style="margin:10px 0 24px;max-width:none">
+  <div class="lbl">Where the line falls between renderer and generator</div>
+  <table style="margin:8px 0 0;font-size:12.5px;background:transparent;border:none;width:100%">
+    <thead><tr>
+      <th style="background:transparent;border-bottom:1px solid var(--g300);font-size:10px;padding:6px 8px">Sub-task inside renderer role</th>
+      <th style="background:transparent;border-bottom:1px solid var(--g300);font-size:10px;padding:6px 8px">Today</th>
+      <th style="background:transparent;border-bottom:1px solid var(--g300);font-size:10px;padding:6px 8px">With SDK</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Synthesis narrative prose (the "why")</td><td>human (analyst → renderer edits)</td><td>human · unchanged</td></tr>
+      <tr><td><code>layout_type</code> choice per page</td><td>human (renderer judgment)</td><td>human · unchanged</td></tr>
+      <tr><td>Focal claim selection</td><td>human</td><td>human · unchanged</td></tr>
+      <tr><td>Claim → <code>ClaimBlock</code>/<code>ClaimInline</code> tag mapping</td><td>hand-typed</td><td><strong>generator</strong> (template loops)</td></tr>
+      <tr><td>Provenance rail content (supports/refutes/supersedes chain)</td><td>hand-typed or rebuilt by <code>build:provenance</code></td><td><strong>generator</strong> walks claim graph deterministically</td></tr>
+      <tr><td>Per-I-claim receipt page</td><td>hand-typed per lever</td><td><strong>generator</strong> emits one per I-claim</td></tr>
+      <tr><td>V-claim → chart component wiring</td><td>hand-typed JSX + spec path</td><td><strong>generator</strong> binds V-spec JSON to chart component</td></tr>
+      <tr><td>Index pages (claim browse, audit listing)</td><td>hand-typed</td><td><strong>generator</strong> emits from manifest</td></tr>
+    </tbody>
+  </table>
+  <p style="margin:8px 0 0;font-size:12.5px">
+    Net: SDK doesn't replace the renderer role — it shrinks the renderer's hand-typed surface to <em>narrative spine + layout + focal-claim picks</em>. The repetitive claim-mapping + provenance rail + receipt-per-claim work moves to <code>build-dev</code> generators reading <code>claims.jsonl</code>.
+  </p>
+</div>
+
+<!-- AXIS: DATA SOURCES -->
+<div class="axis-band">
+  <div class="axis-lbl">02<span class="ax">Data sources</span></div>
+  <div class="cell cur">
+    <h4>Built-in connectors <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>14 built-ins (duckdb, postgres, csv, bigquery, …) declared in <code>sources/*/connection.yaml</code>.</li>
+      <li>insight-kit runs reach Evidence via DuckDB views built by <code>build_duckdb_views.py</code>.</li>
+      <li>Refresh = re-build the warehouse file; no source-level cache awareness.</li>
+    </ul>
+<div class="codepair"><span class="cm"># sources/nairomarket/connection.yaml</span>
+type: duckdb
+options:
+  filename: <span class="kw">'../../data/parquet/nairomarket.duckdb'</span></div>
+  </div>
+  <div class="cell sdk">
+    <h4>Custom datasource plugin <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li>Implement <a class="g-link" href="#g-datasource-plugin"><code>DatasourcePlugin</code></a>: <code>introspect()</code>, <code>runQuery()</code>, refresh hooks.</li>
+      <li><code>insight-kit-source</code> reads <code>.insight-kit/runs/**</code> directly. No intermediate DuckDB rebuild.</li>
+      <li>Typed columns; live refresh on new run; per-claim caching.</li>
+    </ul>
+<div class="codepair"><span class="cm">// plugins/insight-kit-source/index.ts</span>
+<span class="kw">export const</span> plugin: <span class="tk">DatasourcePlugin</span> = {
+  type: <span class="kw">'insight-kit'</span>,
+  introspect: <span class="kw">async</span> () =&gt; readManifests(<span class="kw">'.insight-kit/runs'</span>),
+  runQuery: <span class="kw">async</span> (sql, ctx) =&gt; ikQueryEngine(sql, ctx),
+};</div>
+  </div>
+</div>
+
+<!-- AXIS: PAGE GENERATION -->
+<div class="axis-band">
+  <div class="axis-lbl">03<span class="ax">Page generation</span></div>
+  <div class="cell cur">
+    <h4>None — manual <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>No build-time page emission.</li>
+      <li>Templating = manual copy/paste between sibling levers.</li>
+      <li><code>viz/evidence/generators/*.ts</code> exist but only emit JSON sidecars, not pages.</li>
+    </ul>
+  </div>
+  <div class="cell sdk">
+    <h4><code>build-dev</code> page builder <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li>Hook into dev/build pipeline; emit <code>.md</code> at build start, before source-refresh.</li>
+      <li>Per-intervention page renders from <code>initiatives_log.jsonl</code> automatically.</li>
+      <li>10 founder actions → 10 pages, zero hand-editing.</li>
+      <li>Hot-reload on generator edit.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- AXIS: COMPONENTS -->
+<div class="axis-band">
+  <div class="axis-lbl">04<span class="ax">Components</span></div>
+  <div class="cell cur">
+    <h4>Built-in + local Svelte pkg <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>Core components (BigValue, LineChart, Grid, Callout).</li>
+      <li><a class="g-link" href="#g-viz-evidence"><code>@insight-kit/viz-evidence</code></a> already wired via the implicit plugin loader.</li>
+      <li>No typed component props; JSDoc <code>Claim</code> types only.</li>
+    </ul>
+  </div>
+  <div class="cell sdk">
+    <h4>Typed component package <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li>Register components w/ TS prop types via <a class="g-link" href="#g-component-plugin"><code>ComponentPlugin</code></a> contract.</li>
+      <li><code>&lt;ClaimBadge claim={…} /&gt;</code> auto-completes; mistypes fail at build.</li>
+      <li>Component lifecycle hooks (mount, query-result, refresh).</li>
+    </ul>
+<div class="codepair"><span class="cm">// plugins/ik-components/index.ts</span>
+<span class="kw">export const</span> plugin: <span class="tk">ComponentPlugin</span> = {
+  components: { ClaimBadge, InitiativeCard, DeltaArrow },
+  schemas: { ClaimBadge: { claim: <span class="kw">'Claim'</span>, size: <span class="kw">'enum:sm|md|lg'</span> } },
+};</div>
+  </div>
+</div>
+
+<!-- AXIS: QUERY RUNTIME -->
+<div class="axis-band">
+  <div class="axis-lbl">05<span class="ax">Query runtime</span></div>
+  <div class="cell cur">
+    <h4>DuckDB-WASM via fences <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>All queries inside <code>```sql name</code> fences in pages.</li>
+      <li>Templated only via <a class="g-link" href="#g-mustache">Mustache</a> <code>{var[0].col}</code>.</li>
+      <li>Can't run a query from a custom component or from JS.</li>
+    </ul>
+  </div>
+  <div class="cell sdk">
+    <h4>Programmatic <code>runQuery()</code> <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li><a class="g-link" href="#g-runquery"><code>$evidence/queries</code> + <code>runQuery()</code></a> callable from <a class="g-link" href="#g-sveltekit">Svelte</a> / TS.</li>
+      <li><a class="g-link" href="#g-queryssr"><code>QuerySSR.svelte</code></a> resolves queries server-side before hydration.</li>
+      <li>Auto-stamp <code>run_id</code> / <code>started_at</code> per execution via a custom runner.</li>
+    </ul>
+<div class="codepair"><span class="cm">// custom Svelte component</span>
+<span class="kw">import</span> { runQuery } <span class="kw">from</span> <span class="kw">'$evidence/queries'</span>;
+<span class="kw">const</span> rows = <span class="kw">await</span> runQuery(`
+  <span class="kw">select</span> * <span class="kw">from</span> claims <span class="kw">where</span> initiative_id = ${id}
+`);</div>
+  </div>
+</div>
+
+<!-- AXIS: BUILD PIPELINE -->
+<div class="axis-band">
+  <div class="axis-lbl">06<span class="ax">Build pipeline</span></div>
+  <div class="cell cur">
+    <h4>CLI only (<code>evidence build</code>) <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>Out-of-band Node + Python generators run <em>before</em> the CLI.</li>
+      <li><code>build_provenance.ts</code>, <code>build_indexes.ts</code>, <code>build_evidence_views.py</code> all external scripts.</li>
+      <li>Failure of any external script = silently stale Evidence build.</li>
+    </ul>
+  </div>
+  <div class="cell sdk">
+    <h4>Build is a library <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li><a class="g-link" href="#g-build-dev"><code>build-dev</code></a> exposes phases: <code>preBuild</code>, <code>generate</code>, <code>sources</code>, <code>compile</code>, <code>postBuild</code>.</li>
+      <li>Register your generator as a phase. CLI calls it.</li>
+      <li>Single command, single failure surface, deterministic ordering.</li>
+      <li>Python materializers stay external — Node-only world.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- AXIS: SSR / ROUTING -->
+<div class="axis-band">
+  <div class="axis-lbl">07<span class="ax">SSR / routing</span></div>
+  <div class="cell cur">
+    <h4>SvelteKit defaults, no hooks <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>A couple of <code>+layout.svelte</code> under <code>pages/provenance/</code> already reach into <a class="g-link" href="#g-sveltekit">SvelteKit</a> — closest the project gets to SDK territory.</li>
+      <li>No request-scoped logic. Claim badges hydrate client-side via <a class="g-link" href="#g-claims-manifest"><code>claimsManifest.js</code></a>.</li>
+    </ul>
+  </div>
+  <div class="cell sdk">
+    <h4><code>hooks.server.js</code> + SSR claims <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li><a class="g-link" href="#g-ssrhook">Inject <code>claim_id → Claim</code> index server-side</a>; no JS round-trip.</li>
+      <li>Auth, multi-tenant, claim-aware redirects (superseded claim → successor page).</li>
+      <li>Request-scoped query rewrites (e.g. tenant-filtered <code>claims</code>).</li>
+    </ul>
+<div class="codepair"><span class="cm">// src/hooks.server.ts</span>
+<span class="kw">import</span> { evidenceHook } <span class="kw">from</span> <span class="kw">'@evidence-dev/sdk/ssr'</span>;
+<span class="kw">export const</span> handle = sequence(
+  evidenceHook,
+  <span class="kw">async</span> ({ event, resolve }) =&gt; {
+    event.locals.claims = <span class="kw">await</span> loadClaims();
+    <span class="kw">return</span> resolve(event);
+  }
+);</div>
+  </div>
+</div>
+
+<!-- AXIS: THEMING -->
+<div class="axis-band">
+  <div class="axis-lbl">08<span class="ax">Theming</span></div>
+  <div class="cell cur">
+    <h4><code>evidence.config.yaml</code> <span class="badge">today</span></h4>
+    <ul class="pts">
+      <li>Palettes, colors, light/dark switcher in one YAML.</li>
+      <li>Per-claim or per-tier styling = manual class attributes in markdown.</li>
+    </ul>
+  </div>
+  <div class="cell sdk">
+    <h4>Programmatic theme <span class="badge">sdk</span></h4>
+    <ul class="pts">
+      <li>Mutate theme from generators (tier → palette mapping).</li>
+      <li>Claim-tier theming applied uniformly across all generated pages.</li>
+      <li>Typed theme schema; misspelled tokens fail at build.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="trade"><span class="num">§T</span>Trade-offs at a glance</h2>
+
+<div class="t-grid">
+  <div class="hd">Axis</div><div class="hd">Pro of SDK</div><div class="hd">Con / cost</div>
+
+  <div class="ax">Authoring</div>
+  <div class="pro">N pages auto-emitted; no drift between siblings.</div>
+  <div class="con">Non-engineers can't edit a single page directly anymore — must touch the generator.</div>
+
+  <div class="ax">Data sources</div>
+  <div class="pro">insight-kit becomes a native connector; no DuckDB rebuild step; live refresh.</div>
+  <div class="con">Plugin must keep up w/ SDK API churn (README warns of version skew).</div>
+
+  <div class="ax">Page generation</div>
+  <div class="pro">Build-time emission tied to claims; founder dashboard renders itself.</div>
+  <div class="con">Generator bugs = no pages. Markdown safety net gone.</div>
+
+  <div class="ax">Components</div>
+  <div class="pro">Typed props, build-time prop validation.</div>
+  <div class="con">Component pkg becomes a TS project — new tsconfig + build cycle.</div>
+
+  <div class="ax">Query runtime</div>
+  <div class="pro">Queries callable from JS/Svelte; SSR resolution; run-stamping.</div>
+  <div class="con">Two query paths (fenced SQL + programmatic) — convention discipline required.</div>
+
+  <div class="ax">Build pipeline</div>
+  <div class="pro">Single failure surface; Python material'ers stay; Node phases unified.</div>
+  <div class="con">Locks Node/Bun version range; Python is still out-of-band.</div>
+
+  <div class="ax">SSR / routing</div>
+  <div class="pro">Claim-aware redirects, auth, multi-tenant possible.</div>
+  <div class="con">SvelteKit knowledge required to maintain; debug surface widens.</div>
+
+  <div class="ax">Theming</div>
+  <div class="pro">Tier-driven styling deterministic, typed.</div>
+  <div class="con">YAML simplicity lost; small wins for medium effort.</div>
+</div>
+
+<h2><span class="num">§I</span>Where it intersects insight-kit</h2>
+
+<div class="callout clay">
+<div class="lbl">High-leverage already half-built</div>
+<code>viz/evidence/generators/build_provenance.ts</code> + <code>build_indexes.ts</code> are exactly what <code>build-dev</code> formalises. <code>@insight-kit/viz-evidence</code> already uses the implicit plugin loader.
+SDK adoption ≈ promoting existing scripts from out-of-band into registered build phases. ~70% of the seam is there.
+</div>
+
+<div class="callout olive">
+<div class="lbl">The unlock that matters for the intervention loop</div>
+A custom <strong>insight-kit datasource plugin</strong> + <strong>build-dev page generator</strong> means: every record in
+<code>initiatives_log.jsonl</code> renders its own page, with frozen baseline + post-metric + delta + critic-verdict + critic-angle table,
+zero hand-editing. The founder dashboard <em>is</em> a Hamilton output. Add new initiative → next build → new page.
+</div>
+
+<h2><span class="num">§D</span>Decision shape</h2>
+<p>
+Adopt SDK <strong>only</strong> if the intervention-loop pilot ships and the next pain is "we are hand-curating
+one page per initiative". Until then, the current markdown surface is fine — markdown is a feature, not a
+liability, while scope is &lt;15 levers. SDK pays off when the count of claim-driven pages exceeds the
+count of humans willing to keep them in sync.
+</p>
+
+<footer>
+  Evidence.dev SDK side-track · 2026-05-14 ·
+  <a href="index.html" style="color:var(--clay)">back to synthesis</a> ·
+  <a href="current-state.html" style="color:var(--clay)">current state</a> ·
+  <a href="hamilton.html" style="color:var(--clay)">hamilton</a>
+</footer>
+
+<div class="glossary-toggle-wrap">
+  <button class="glossary-toggle" data-glossary-toggle type="button">Show glossary ↓</button>
+</div>
+
+</main>
+
+<aside class="glossary-rail" id="glossary">
+  <h3>Glossary · this page</h3>
+  <div class="g-sub">Click any dotted term above to jump here.</div>
+  <dl>
+    <dt id="g-datasource-plugin">DatasourcePlugin</dt>
+    <dd>SDK contract for custom connectors. Implements <code>introspect()</code> (list tables/cols), <code>runQuery(sql, ctx)</code> (execute), refresh hooks. Lets an insight-kit run directory become a first-class Evidence source w/o intermediate DuckDB rebuild.</dd>
+
+    <dt id="g-component-plugin">ComponentPlugin</dt>
+    <dd>SDK contract for registering Svelte components w/ typed prop schemas. <code>schemas</code> entry declares each prop type; mistyped usage fails at build.</dd>
+
+    <dt id="g-build-dev">build-dev</dt>
+    <dd>SDK package exposing Evidence's dev/build pipeline as a library. Phases: <code>preBuild</code>, <code>generate</code>, <code>sources</code>, <code>compile</code>, <code>postBuild</code>. Register your generator as a phase instead of running it as an out-of-band script.</dd>
+
+    <dt id="g-page-builder">PageBuilder</dt>
+    <dd>Build-dev API for emitting <code>.md</code> pages at build time. <code>PageBuilder.emit(path, body)</code> writes a page; useful for one-per-claim or one-per-initiative outputs.</dd>
+
+    <dt id="g-runquery">runQuery() / $evidence/queries</dt>
+    <dd>SDK module letting Svelte components / TS modules execute Evidence queries directly (not just inside <code>```sql</code> fences). Returns typed result rows. Enables claim-aware logic in custom components.</dd>
+
+    <dt id="g-queryssr">QuerySSR.svelte</dt>
+    <dd>SDK component that resolves a query server-side and hands result to children pre-hydration. Cuts client-side query roundtrip; useful for above-the-fold KPIs.</dd>
+
+    <dt id="g-ssrhook">ssrHook / hooks.server.js</dt>
+    <dd>SvelteKit's request-handling extension point. SDK exposes <code>evidenceHook</code>; you compose it w/ your own to inject per-request locals (auth, tenant filter, claim index).</dd>
+
+    <dt id="g-sveltekit">SvelteKit</dt>
+    <dd>The meta-framework Evidence is built on. <code>+page.svelte</code>, <code>+layout.svelte</code>, <code>hooks.server.js</code> are SvelteKit files. SDK adoption pulls you closer to raw SvelteKit knowledge.</dd>
+
+    <dt id="g-sql-fence">SQL fence</dt>
+    <dd>Markdown code block <code>```sql name</code> ... <code>```</code> in an Evidence page. Defines a named query whose result is bound to <code>{name}</code> in the page scope. Today's primary authoring surface.</dd>
+
+    <dt id="g-mustache">Mustache interpolation</dt>
+    <dd>Evidence's <code>{var[0].col}</code> syntax for inlining query result fields into prose or component props. Limited to literal substitution; no logic.</dd>
+
+    <dt id="g-generator">Generator</dt>
+    <dd>A build-time script (TS or Python) that emits artefacts before Evidence compiles. Today: <code>build_provenance.ts</code>, <code>build_indexes.ts</code>, <code>build_evidence_views.py</code> — all out-of-band. SDK promotes them to registered build phases.</dd>
+
+    <dt id="g-viz-evidence">@insight-kit/viz-evidence</dt>
+    <dd>Local npm workspace dep at <code>../../insight-kit/viz/evidence</code>. Exposes Svelte components + a <code>generators/</code> dir. Already uses Evidence's implicit plugin loader; 70% of the SDK seam is here.</dd>
+
+    <dt id="g-claims-manifest">claimsManifest.js</dt>
+    <dd>JS helper at <code>reports/components/claimsManifest.js</code>. Provides <code>indexClaims()</code> + <code>getClaim()</code> to look up a claim by ID inside a page. Client-side only today; SSR via <code>ssrHook</code> removes the round-trip.</dd>
+
+    <dt id="g-introspect">introspect()</dt>
+    <dd>Method on a <code>DatasourcePlugin</code> that returns the source's schema (tables, columns, types). Evidence uses it to autocomplete SQL + validate fences at build time.</dd>
+
+    <dt id="g-fingerprint">Fingerprint</dt>
+    <dd>Hash of (code + inputs + config) used as a cache key. Hamilton's caching adapter uses this for node-level recompute decisions. <em>Cross-page term — see cache-walkthrough.html.</em></dd>
+  </dl>
+</aside>
+
+</div>
+</div>
+
+<script>
+(function(){
+  const btn = document.querySelector('[data-glossary-toggle]');
+  const rail = document.getElementById('glossary');
+  if(!btn || !rail) return;
+  btn.addEventListener('click', () => {
+    const open = rail.classList.toggle('is-open');
+    btn.textContent = open ? 'Hide glossary ↑' : 'Show glossary ↓';
+    if(open) rail.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  // jump-link enhancement: if user clicks a g-link on mobile, force-open rail
+  document.querySelectorAll('a.g-link').forEach(a => {
+    a.addEventListener('click', () => {
+      if(window.innerWidth < 1280){
+        rail.classList.add('is-open');
+        btn.textContent = 'Hide glossary ↑';
+      }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

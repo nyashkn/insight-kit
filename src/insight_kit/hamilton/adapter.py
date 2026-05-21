@@ -6,6 +6,7 @@ import hashlib
 from typing import Any
 
 import structlog
+from hamilton.lifecycle import NodeExecutionHook
 
 from insight_kit.provenance.run import Run, _slug
 
@@ -64,7 +65,7 @@ def _hash_source(source_code: str) -> str:
 # ---------- InsightKitHook ----------
 
 
-class InsightKitHook:
+class InsightKitHook(NodeExecutionHook):
     """Hamilton NodeExecutionHook adapter binding @node lifecycle to Run provenance."""
 
     def __init__(self, run: Run) -> None:

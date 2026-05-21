@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pandera fit · insight-kit × Hamilton</title>
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;--sage:#A8B89A;--rose:#C97B7B;
+  --g100:#F0EEE6;--g200:#E6E3DA;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --serif:ui-serif,Georgia,'Times New Roman',serif;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Monaco,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--ivory);color:var(--g700);line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--clay);text-decoration:none}
+a:hover{color:var(--clay-d)}
+code{font-family:var(--mono);font-size:0.92em;background:var(--g100);padding:1px 5px;border-radius:3px;color:var(--g700)}
+
+/* topbar */
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.95);backdrop-filter:blur(6px);border-bottom:1px solid var(--g200);z-index:50}
+.topbar-inner{max-width:1600px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.topbar .brand{font-family:var(--serif);font-size:17px;color:var(--slate);font-weight:500}
+.topbar nav{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;letter-spacing:0.04em;text-transform:uppercase}
+.topbar nav a{color:var(--g500)}
+.topbar nav a.active{color:var(--slate);border-bottom:2px solid var(--clay);padding-bottom:2px}
+
+/* layout w/ glossary rail */
+.wrap{max-width:1600px;margin:0 auto;padding:0 32px 140px}
+.page-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:32px}
+@media(min-width:1280px){.page-grid{grid-template-columns:minmax(0,1fr) 280px}}
+
+/* hero */
+.hero{padding:56px 0 28px;max-width:920px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--g500);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:500;font-size:44px;line-height:1.12;color:var(--slate);letter-spacing:-0.01em;margin-bottom:18px}
+.lede{font-size:17px;color:var(--g700);max-width:780px;margin-bottom:24px}
+.tldr{display:flex;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--g700);margin-top:18px}
+.tldr .p{background:var(--paper);border:1px solid var(--g300);padding:5px 11px;border-radius:14px}
+.tldr .p.acc{background:var(--oat);border-color:var(--clay)}
+.tldr .arrow{color:var(--g500);align-self:center}
+
+/* sections */
+section{margin:48px 0;scroll-margin-top:80px}
+h2{font-family:var(--serif);font-weight:500;font-size:30px;color:var(--slate);margin-bottom:14px;letter-spacing:-0.005em}
+h3{font-family:var(--serif);font-weight:500;font-size:20px;color:var(--slate);margin:22px 0 10px}
+p{margin-bottom:12px;max-width:780px;font-size:14.5px}
+.lead{font-size:15.5px;color:var(--g700);margin-bottom:18px;max-width:780px}
+
+/* approach grid */
+.approaches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin:18px 0}
+@media(max-width:1100px){.approaches{grid-template-columns:1fr}}
+.approach{background:var(--paper);border:1.5px solid var(--g300);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.approach.owned{border-color:var(--clay)}
+.approach-head .num{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--g500);margin-bottom:4px}
+.approach-head h3{font-family:var(--serif);font-size:20px;color:var(--slate);margin:0 0 4px}
+.approach-head .sub{font-size:12.5px;color:var(--g500);font-family:var(--mono)}
+.approach .owns{font-size:13.5px;color:var(--g700);margin-top:2px}
+.approach .doesnt{font-size:12.5px;color:var(--rose);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em;margin-top:4px}
+
+/* code block */
+.code{background:var(--slate);border-radius:8px;padding:14px 16px;overflow-x:auto}
+.code pre{font-family:var(--mono);font-size:12px;line-height:1.55;color:#E6E3DA;white-space:pre}
+.kw{color:#D97757}
+.fn{color:#A8B89A}
+.cm{color:#87867F;font-style:italic}
+.st{color:#E3DACC}
+.dec{color:#C97B7B}
+.num{color:#788C5D}
+
+/* snippet rows */
+.snippet-row{display:grid;grid-template-columns:1fr 1.2fr;gap:22px;margin:16px 0;align-items:start}
+@media(max-width:900px){.snippet-row{grid-template-columns:1fr}}
+.snippet-row .desc{font-size:14px}
+.snippet-row .desc h4{font-family:var(--serif);font-size:17px;color:var(--slate);margin-bottom:6px}
+
+/* layer stack viz */
+.flow-wrap{background:var(--paper);border:1px solid var(--g300);border-radius:8px;padding:18px;overflow-x:auto;margin:18px 0}
+.flow-legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-family:var(--mono);font-size:10.5px;color:var(--g500);text-transform:uppercase;letter-spacing:0.06em}
+.flow-legend .lg{display:inline-flex;align-items:center;gap:6px}
+.flow-legend .swatch{display:inline-block;width:10px;height:10px;border-radius:2px}
+svg.flow{display:block;min-width:1120px;height:auto;font-family:var(--sans)}
+svg.flow .lane-label{font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:var(--g500)}
+svg.flow .phase-label{font-family:var(--mono);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;fill:var(--clay);font-weight:700}
+svg.flow .phase-foot{font-family:var(--mono);font-size:8px;fill:var(--g500)}
+svg.flow .node text.title{font-size:11px;font-weight:600;fill:var(--slate)}
+svg.flow .node text.sub{font-size:9.5px;fill:var(--g700);font-family:var(--mono)}
+svg.flow .node rect.box{fill:var(--paper);stroke:var(--g300);stroke-width:1}
+svg.flow .node.pandera rect.box{stroke:var(--clay);stroke-width:1.5}
+svg.flow .node.hamilton rect.box{stroke:var(--slate)}
+svg.flow .node.layerA rect.box{stroke:var(--olive);stroke-dasharray:3 2}
+svg.flow .node.evidence rect.box{stroke:var(--sage);stroke-dasharray:3 2}
+svg.flow .edge{stroke:var(--g500);stroke-width:1;fill:none}
+svg.flow .edge.fail{stroke:var(--rose);stroke-dasharray:4 3}
+svg.flow .edge-label{font-family:var(--mono);font-size:8.5px;fill:var(--rose);text-transform:uppercase;letter-spacing:0.04em}
+svg.flow .phase-band{fill:var(--g100)}
+svg.flow .phase-band-line{stroke:var(--g300);stroke-width:1;stroke-dasharray:2 3}
+
+/* council */
+.council{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0}
+@media(max-width:900px){.council{grid-template-columns:1fr}}
+.persona{background:var(--paper);border-left:3px solid var(--clay);padding:14px 16px;border-radius:0 6px 6px 0}
+.persona .name{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--clay);margin-bottom:6px}
+.persona .name .role{color:var(--g500);font-weight:400}
+.persona p{font-size:13.5px;margin:0;max-width:none}
+.persona.synth{border-color:var(--olive);background:var(--g100)}
+.persona.synth .name{color:var(--olive)}
+
+/* verdict box */
+.verdict{background:var(--oat);border:1.5px solid var(--clay);border-radius:12px;padding:24px 28px;margin:36px 0;max-width:900px}
+.verdict .label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--clay-d);margin-bottom:8px}
+.verdict h3{font-family:var(--serif);font-size:22px;color:var(--slate);margin-bottom:10px}
+.verdict ol{padding-left:22px;font-size:14.5px;color:var(--g700)}
+.verdict ol li{margin:6px 0}
+
+/* tables */
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--paper);border:1px solid var(--g200);border-radius:6px;overflow:hidden}
+th{background:var(--g100);text-align:left;padding:10px 12px;font-family:var(--mono);font-size:11px;letter-spacing:0.05em;text-transform:uppercase;color:var(--g700);border-bottom:1px solid var(--g300);font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid var(--g200);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td code{font-size:11.5px}
+
+/* callout */
+.callout{background:var(--g100);border-left:3px solid var(--olive);padding:14px 18px;margin:18px 0;font-size:14px;border-radius:0 6px 6px 0;max-width:900px}
+.callout .lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--olive);margin-bottom:6px}
+
+/* glossary rail */
+a.g-link{color:var(--g700);border-bottom:1px dotted var(--clay);cursor:help;text-decoration:none}
+a.g-link:hover{color:var(--clay-d);background:var(--g100)}
+.glossary-rail{display:none}
+@media(min-width:1280px){
+  .glossary-rail{display:block;position:sticky;top:78px;align-self:start;max-height:calc(100vh - 100px);overflow-y:auto;padding:24px 4px 24px 18px;border-left:1px solid var(--g200);font-size:13px}
+}
+.glossary-rail.is-open{display:block;position:relative;top:0;border-left:none;background:var(--paper);border:1px solid var(--g300);border-radius:8px;padding:18px;margin:18px 0;max-height:none}
+.glossary-rail h4{font-family:var(--serif);font-size:15px;color:var(--slate);margin-bottom:12px}
+.glossary-rail dl{margin:0}
+.glossary-rail dt{font-family:var(--mono);font-size:11.5px;color:var(--clay);margin-top:12px;font-weight:600}
+.glossary-rail dt:first-child{margin-top:0}
+.glossary-rail dd{margin:3px 0 0;font-size:12.5px;color:var(--g700);line-height:1.5}
+.glossary-rail dt:target{background:var(--oat);padding:2px 5px;border-radius:3px;margin-left:-5px}
+
+.glossary-toggle-wrap{display:block;margin:24px 0;text-align:center}
+@media(min-width:1280px){.glossary-toggle-wrap{display:none}}
+.glossary-toggle{font-family:var(--mono);font-size:12px;background:var(--paper);border:1px solid var(--g300);padding:8px 16px;border-radius:6px;cursor:pointer;color:var(--g700)}
+.glossary-toggle:hover{background:var(--g100)}
+
+footer{margin-top:48px;padding-top:24px;border-top:1px solid var(--g200);font-size:12.5px;color:var(--g500);font-family:var(--mono)}
+footer a{color:var(--g500);text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit × Hamilton</span>
+    <nav>
+      <a href="index.html">01 · Synthesis</a>
+      <a href="current-state.html">02 · Current state</a>
+      <a href="cache-walkthrough.html">03 · Cache walkthrough</a>
+      <a href="hamilton.html">04 · Hamilton deep dive</a>
+      <a href="evidence-sdk.html">A · Evidence SDK</a>
+      <a href="pandera-fit.html" class="active">B · Pandera fit</a>
+      <a href="dataframe-stack-fit.html">C · DF stack</a>
+      <a href="provenance-loop.html">D · Provenance loop</a>
+      <a href="feature-platform-and-claim-bundle.html">E · Feature platform</a>
+      <a href="agent-team-orchestration.html">F · Orchestration</a>
+      <a href="glossary.html">05 · Glossary</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="page-grid">
+<main>
+
+<section class="hero">
+  <div class="eyebrow">decision brief · 2026-05-14</div>
+  <h1>Where does Pandera plug in?</h1>
+  <p class="lede">Hamilton has <code><a class="g-link" href="#g-check-output">@check_output</a></code>. insight-kit has <a class="g-link" href="#g-layer-a">Layer A</a>/B/C. Neither validates DataFrame <em>contents</em> — types, null rates, value ranges, distribution drift. <a class="g-link" href="#g-pandera">Pandera</a> sits at the seam between raw frames and Claim-emitting nodes. Layer-0, not a replacement for anything above it.</p>
+  <div class="tldr">
+    <span class="p">Raw frame</span><span class="arrow">→</span>
+    <span class="p acc">Pandera schema (Layer-0)</span><span class="arrow">→</span>
+    <span class="p">Hamilton node</span><span class="arrow">→</span>
+    <span class="p">@check_output (return-type)</span><span class="arrow">→</span>
+    <span class="p">Layer A (Claim shape)</span><span class="arrow">→</span>
+    <span class="p">Layer B/C (cross-run · DAG)</span>
+  </div>
+</section>
+
+<section id="sec1">
+<h2>1 · Pandera in 5 snippets</h2>
+<p class="lead">First-class Hamilton plugin already exists: <code>pip install sf-hamilton[pandera]</code>. Schema-as-object, decorator on functions, lazy-collect errors, statistical hypothesis checks, YAML/JSON round-trip.</p>
+
+<div class="snippet-row">
+  <div class="desc">
+    <h4>DataFrameModel (Pydantic-style)</h4>
+    <p>Class-based contract. Type annotations + <code>pa.Field</code> constraints. Validated when the node runs; failure raises with exact failing rows.</p>
+  </div>
+  <div class="code"><pre><span class="kw">import</span> pandera.pandas <span class="kw">as</span> pa
+<span class="kw">from</span> pandera.typing <span class="kw">import</span> DataFrame, Series
+
+<span class="kw">class</span> <span class="fn">ShopifyOrders</span>(pa.DataFrameModel):
+    order_id:    Series[<span class="kw">str</span>]    = pa.Field(unique=<span class="kw">True</span>)
+    order_value: Series[<span class="kw">float</span>]  = pa.Field(ge=<span class="num">0</span>)
+    placed_at:   Series[<span class="st">"datetime64[ns]"</span>]
+    customer_id: Series[<span class="kw">str</span>]    = pa.Field(nullable=<span class="kw">False</span>)</pre></div>
+</div>
+
+<div class="snippet-row">
+  <div class="desc">
+    <h4>Hamilton plugin — node decorator</h4>
+    <p>From <code>hamilton.plugins.h_pandera</code>. Validation runs at node boundary; <code><a class="g-link" href="#g-fingerprint">fingerprint</a></code> still drives cache, so passing schemas don't re-validate on cache hit.</p>
+  </div>
+  <div class="code"><pre><span class="kw">from</span> hamilton.function_modifiers <span class="kw">import</span> check_output
+<span class="kw">import</span> pandera.pandas <span class="kw">as</span> pa
+
+age_schema = pa.SeriesSchema(<span class="kw">float</span>, checks=[
+    pa.Check.in_range(-<span class="num">120</span>, <span class="num">120</span>)
+])
+
+<span class="dec">@check_output</span>(schema=age_schema)
+<span class="kw">def</span> <span class="fn">age_zero_mean</span>(age: pd.Series) -> pd.Series:
+    <span class="kw">return</span> age - age.mean()</pre></div>
+</div>
+
+<div class="snippet-row">
+  <div class="desc">
+    <h4>Lazy validation — collect all errors</h4>
+    <p>Default: first failure raises. <code>lazy=True</code>: every row+column failure aggregated into <code>SchemaErrors</code>. Analyst sees full picture, not one symptom at a time.</p>
+  </div>
+  <div class="code"><pre><span class="kw">try</span>:
+    ShopifyOrders.validate(df, lazy=<span class="kw">True</span>)
+<span class="kw">except</span> pa.errors.SchemaErrors <span class="kw">as</span> exc:
+    <span class="cm"># exc.failure_cases — DataFrame: schema_context|column|check|index|failure_case</span>
+    log.warning(exc.failure_cases.head())
+    log.warning(exc.schema_errors)</pre></div>
+</div>
+
+<div class="snippet-row">
+  <div class="desc">
+    <h4>Hypothesis test — distribution drift</h4>
+    <p>The unique angle. Catches <em>"order_value 99th percentile jumped 3× from yesterday"</em>. Hamilton's <code>@check_output</code> won't see this — it only checks return type.</p>
+  </div>
+  <div class="code"><pre>schema = pa.DataFrameSchema({
+    <span class="st">"order_value"</span>: pa.Column(<span class="kw">float</span>,
+        pa.Hypothesis.two_sample_ttest(
+            sample1=<span class="st">"control"</span>, sample2=<span class="st">"variant"</span>,
+            groupby=<span class="st">"cohort"</span>,
+            relationship=<span class="st">"greater_than"</span>,
+            alpha=<span class="num">0.05</span>,
+        ))
+})</pre></div>
+</div>
+
+<div class="snippet-row">
+  <div class="desc">
+    <h4>Infer + serialize</h4>
+    <p>Bootstrap a schema from a sample, then version it in git as YAML. Analyst edits schema in PR review, not code.</p>
+  </div>
+  <div class="code"><pre>schema = pa.infer_schema(df)
+<span class="kw">open</span>(<span class="st">"schemas/shopify_orders.yaml"</span>, <span class="st">"w"</span>).write(schema.to_yaml())
+
+<span class="cm"># later, in a Hamilton module</span>
+schema = pa.DataFrameSchema.from_yaml(<span class="st">"schemas/shopify_orders.yaml"</span>)</pre></div>
+</div>
+</section>
+
+<section id="sec2">
+<h2>2 · Three validators, three concerns</h2>
+<p class="lead">Pick one owner per concern. Where they overlap (dtype, column existence) — Pandera owns it, the rest defer. This is the boundary discipline <a class="g-link" href="#g-rams">Rams</a> demands.</p>
+
+<div class="approaches">
+
+<div class="approach owned">
+  <div class="approach-head">
+    <span class="num">Layer-0 · NEW</span>
+    <h3>Pandera</h3>
+    <span class="sub">@check_output(schema=…) at node boundary</span>
+  </div>
+  <p class="owns"><strong>Owns:</strong> raw frame schema. Dtype, nullability, uniqueness, value ranges, statistical distributions, row-level failures, lazy error aggregation.</p>
+  <p class="doesnt">⌀ Claim payload · ⌀ cross-run · ⌀ DAG</p>
+  <div class="code"><pre><span class="dec">@check_output</span>(schema=ShopifyOrders)
+<span class="kw">def</span> <span class="fn">extract_shopify_orders</span>(
+    raw: pd.DataFrame,
+) -> pd.DataFrame:
+    <span class="kw">return</span> raw.pipe(clean).pipe(typed)</pre></div>
+</div>
+
+<div class="approach">
+  <div class="approach-head">
+    <span class="num">Layer-tag · EXISTING</span>
+    <h3>Hamilton <code>@check_output</code></h3>
+    <span class="sub">type-tag assertion on return value</span>
+  </div>
+  <p class="owns"><strong>Owns:</strong> "this node returns the type its annotation claims". Used for graph compile-time wiring + cache invalidation key.</p>
+  <p class="doesnt">⌀ row content · ⌀ nullability · ⌀ value range</p>
+  <div class="code"><pre><span class="kw">def</span> <span class="fn">cohort_filter</span>(
+    orders: pd.DataFrame,
+) -> pd.DataFrame:
+    <span class="cm"># return-type tag enforces shape</span>
+    <span class="kw">return</span> orders.query(<span class="st">"placed_at &gt;= cutoff"</span>)</pre></div>
+</div>
+
+<div class="approach">
+  <div class="approach-head">
+    <span class="num">Layer A · EXISTING</span>
+    <h3>insight-kit <a class="g-link" href="#g-claim">Claim</a> validator</h3>
+    <span class="sub">Pydantic rules on Claim payload</span>
+  </div>
+  <p class="owns"><strong>Owns:</strong> Claim envelope shape. <code>claim_id</code> regex, <code>tier</code> enum, <code>confidence</code> ∈[0,1], required fields per tier.</p>
+  <p class="doesnt">⌀ frame schema · ⌀ row content · ⌀ statistical drift</p>
+  <div class="code"><pre><span class="kw">class</span> <span class="fn">Claim</span>(BaseModel):
+    claim_id:   <span class="kw">str</span> = Field(regex=<span class="st">r"^[A-Z]{2,4}-..."</span>)
+    tier:       ClaimTier
+    confidence: <span class="kw">float</span> = Field(ge=<span class="num">0</span>, le=<span class="num">1</span>)
+    statement:  <span class="kw">str</span></pre></div>
+</div>
+
+</div>
+
+<table>
+<thead><tr><th>Concern</th><th>Owner</th><th>Fires when</th></tr></thead>
+<tbody>
+<tr><td>Column exists / dtype</td><td>Pandera</td><td>at node boundary, before body runs</td></tr>
+<tr><td>Null rate, value range</td><td>Pandera</td><td>per-row, lazy-collected</td></tr>
+<tr><td>Distribution drift</td><td>Pandera <code>Hypothesis</code></td><td>per-run vs baseline</td></tr>
+<tr><td>Return-type tag</td><td>Hamilton <code>@check_output</code></td><td>node return + cache key</td></tr>
+<tr><td>Claim envelope shape</td><td>Layer A</td><td>at <code>Run.emit()</code></td></tr>
+<tr><td>Cross-run uniqueness</td><td>Layer B</td><td>over <code>claims.jsonl</code></td></tr>
+<tr><td>DAG / lineage consistency</td><td>Layer C</td><td>post-run audit</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="sec3">
+<h2>3 · Where it sits — node-boundary swimlane</h2>
+<p class="lead"><a class="g-link" href="#g-pandera">Pandera</a> closes the feedback loop <em>at the cause</em>. Without it: bad frame → silent coerce → bad Claim → Evidence shows wrong number → analyst notices 3 days later. With it: bad frame → schema error in seconds, exact rows + checks listed.</p>
+
+<div class="flow-wrap">
+  <div class="flow-legend">
+    <span class="lg"><span class="swatch" style="background:var(--clay)"></span>Pandera (Layer-0)</span>
+    <span class="lg"><span class="swatch" style="background:var(--slate)"></span>Hamilton node</span>
+    <span class="lg"><span class="swatch" style="background:var(--olive)"></span>Layer A · Claim</span>
+    <span class="lg"><span class="swatch" style="background:var(--sage)"></span>Evidence.dev</span>
+    <span class="lg"><span class="swatch" style="background:var(--rose)"></span>Failure path · re-run</span>
+  </div>
+  <svg class="flow" viewBox="0 0 1180 360" role="img" aria-label="Pandera placement swimlane">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+      <marker id="arrowR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C97B7B"/></marker>
+    </defs>
+
+    <rect class="phase-band" x="0"   y="36" width="200" height="300"/>
+    <rect class="phase-band" x="400" y="36" width="180" height="300"/>
+    <rect class="phase-band" x="780" y="36" width="200" height="300"/>
+
+    <text class="phase-label" x="10"   y="22">RAW EXTRACT</text>
+    <text class="phase-foot"  x="10"   y="32">parquet · API</text>
+    <text class="phase-label" x="210"  y="22">SCHEMA CHECK</text>
+    <text class="phase-foot"  x="210"  y="32">Pandera</text>
+    <text class="phase-label" x="410"  y="22">TRANSFORM</text>
+    <text class="phase-foot"  x="410"  y="32">Hamilton node body</text>
+    <text class="phase-label" x="590"  y="22">EMIT</text>
+    <text class="phase-foot"  x="590"  y="32">Run.emit → Layer A</text>
+    <text class="phase-label" x="790"  y="22">PERSIST</text>
+    <text class="phase-foot"  x="790"  y="32">claims.jsonl · parquet</text>
+    <text class="phase-label" x="1000" y="22">RENDER</text>
+    <text class="phase-foot"  x="1000" y="32">Evidence.dev</text>
+
+    <line class="phase-band-line" x1="200" y1="36" x2="200" y2="336"/>
+    <line class="phase-band-line" x1="400" y1="36" x2="400" y2="336"/>
+    <line class="phase-band-line" x1="580" y1="36" x2="580" y2="336"/>
+    <line class="phase-band-line" x1="780" y1="36" x2="780" y2="336"/>
+    <line class="phase-band-line" x1="980" y1="36" x2="980" y2="336"/>
+
+    <text class="lane-label" x="6"  y="110">FRAME LANE</text>
+    <text class="lane-label" x="6"  y="250">CLAIM LANE</text>
+    <line x1="0" y1="190" x2="1180" y2="190" stroke="#E6E3DA" stroke-width="1"/>
+
+    <!-- frame lane -->
+    <g class="node hamilton" transform="translate(20,72)">
+      <rect class="box" width="170" height="62" rx="3"/>
+      <text class="title" x="9" y="20">Shopify · Meta raw</text>
+      <text class="title" x="9" y="34">@load_from.parquet</text>
+      <text class="sub" x="9" y="50">no schema yet</text>
+    </g>
+    <g class="node pandera" transform="translate(215,72)">
+      <rect class="box" width="170" height="62" rx="3"/>
+      <text class="title" x="9" y="20">Pandera validate</text>
+      <text class="title" x="9" y="34">@check_output(schema)</text>
+      <text class="sub" x="9" y="50">lazy=True · row-level</text>
+    </g>
+    <g class="node hamilton" transform="translate(410,72)">
+      <rect class="box" width="160" height="62" rx="3"/>
+      <text class="title" x="9" y="20">join_meta_ads</text>
+      <text class="title" x="9" y="34">cohort_filter</text>
+      <text class="sub" x="9" y="50">pure transform</text>
+    </g>
+
+    <!-- claim lane -->
+    <g class="node layerA" transform="translate(595,212)">
+      <rect class="box" width="170" height="62" rx="3"/>
+      <text class="title" x="9" y="20">Run.emit(Claim)</text>
+      <text class="title" x="9" y="34">Layer A validate</text>
+      <text class="sub" x="9" y="50">claim_id · tier · conf</text>
+    </g>
+    <g class="node layerA" transform="translate(795,212)">
+      <rect class="box" width="170" height="62" rx="3"/>
+      <text class="title" x="9" y="20">claims.jsonl</text>
+      <text class="title" x="9" y="34">manifest.json</text>
+      <text class="sub" x="9" y="50">Layer B · uniqueness</text>
+    </g>
+    <g class="node evidence" transform="translate(995,212)">
+      <rect class="box" width="170" height="62" rx="3"/>
+      <text class="title" x="9" y="20">Evidence page</text>
+      <text class="title" x="9" y="34">DuckDB view</text>
+      <text class="sub" x="9" y="50">human reads</text>
+    </g>
+
+    <!-- happy edges -->
+    <path class="edge" d="M190 103 L215 103" marker-end="url(#arrow)"/>
+    <path class="edge" d="M385 103 L410 103" marker-end="url(#arrow)"/>
+    <path class="edge" d="M570 110 L590 110 L590 212" marker-end="url(#arrow)"/>
+    <path class="edge" d="M765 243 L795 243" marker-end="url(#arrow)"/>
+    <path class="edge" d="M965 243 L995 243" marker-end="url(#arrow)"/>
+
+    <!-- failure: schema fail loops back -->
+    <path class="edge fail" d="M300 72 L300 50 L100 50 L100 72" marker-end="url(#arrowR)"/>
+    <text class="edge-label" x="120" y="45">schema fail → fix at source → re-run</text>
+  </svg>
+</div>
+
+<div class="callout">
+  <div class="lbl">Locality property</div>
+  <p style="margin:0">Schema error fires <strong>at the source</strong>, not 4 nodes downstream. Analyst sees exact column, exact failing rows, exact check that fired. Round-trip from broken-extract to fix: minutes, not days.</p>
+</div>
+</section>
+
+<section id="sec4">
+<h2>4 · Council read</h2>
+<p class="lead">Five voices on a single question: <em>adopt Pandera, skip, or scope-pilot?</em></p>
+
+<div class="council">
+
+<div class="persona">
+  <div class="name">Torvalds · <span class="role">pragmatic shipping</span></div>
+  <p>Hamilton's <code>@check_output</code> is runtime assertion, not schema contract. Pandera gives declarative reusable schema — versionable, testable, attached independently. Cost = 1 dep + 1 maintenance surface. Worth it <em>only if</em> schemas live once and are referenced by tests + pipeline. If team won't write them, skip — light Pydantic on Claim is fine.</p>
+</div>
+
+<div class="persona">
+  <div class="name">Karpathy · <span class="role">empirical ML</span></div>
+  <p>Unique angle: <strong>distribution drift</strong>, not just schema. <code>@check_output</code> says column exists w/ dtype <code>float64</code>. Pandera's <code>Hypothesis</code> says 99th percentile didn't 3× from yesterday. Column presence = table stakes. Statistical checks = what catches "Shopify changed tax line format, <code>order_value</code> silently inflated 8%". Orthogonal to Layer A.</p>
+</div>
+
+<div class="persona">
+  <div class="name">Taleb · <span class="role">antifragility / tail risk</span></div>
+  <p>Hamilton check fires when it fires — point-in-time. Pandera catches <strong>silent coercions + partial-row failures</strong>. 5% nulls in join key passes most dtype checks but silently drops cohort members, biasing Claims. The tail risk is success-quietly-with-wrong-frame → Claims pass Layer A/B → Evidence → budget decision. Make failure loud + early.</p>
+</div>
+
+<div class="persona">
+  <div class="name">Rams · <span class="role">simplicity</span></div>
+  <p>Four validators = too many surfaces. Real smell. Mitigation: Pandera <strong>collapses into</strong> the implicit DataFrame contract Layer A already assumes — moves earlier what was previously implicit. Resist running Pandera + Hamilton check + Layer A all checking column existence. Pick one owner per concern: Pandera = raw frame · Layer A = Claim payload · <code>@check_output</code> = node tag.</p>
+</div>
+
+<div class="persona">
+  <div class="name">Meadows · <span class="role">systems / feedback loops</span></div>
+  <p>Today's loop: malformed frame → Hamilton silently coerces → Claim emits bad data → Layer A passes (it checks Claim, not derivation) → Evidence shows wrong number → analyst notices 3 days later. Pandera closes loop at source. Error locality = correction speed. Layer C operates post-emission; Pandera operates pre-emission. Both necessary, different loops.</p>
+</div>
+
+<div class="persona synth">
+  <div class="name">Synth · <span class="role">verdict</span></div>
+  <p><strong>Adopt as Layer-0, strict boundary discipline.</strong> Raw-frame schema at Hamilton node inputs/outputs — distinct from <code>@check_output</code> (return-type tag), Layer A (Claim payload), Layer B/C (post-emission). Thin <code>@validate_frame(schema=…)</code> decorator wrapping transforms; schemas live next to node defs in <code>insight_kit/schemas/</code>, importable in tests. Pilot on Shopify→Meta join — highest-risk node, most likely silent-drift source. Skip if team won't maintain schemas.</p>
+</div>
+
+</div>
+</section>
+
+<section id="sec5">
+<h2>5 · Pilot — Shopify → Meta join</h2>
+<p class="lead">Taleb's "highest-risk node" rule. Pick the join most likely to silently corrupt downstream Claims. Wire one schema, measure 2 weeks, decide rollout.</p>
+
+<table>
+<thead><tr><th>Step</th><th>Action</th><th>Cost</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Add <code>pip install sf-hamilton[pandera]</code> + <code>insight_kit/schemas/</code> dir</td><td>15 min</td></tr>
+<tr><td>2</td><td>Infer baseline schemas: <code>pa.infer_schema(orders_df).to_yaml()</code> · <code>pa.infer_schema(meta_df).to_yaml()</code></td><td>30 min</td></tr>
+<tr><td>3</td><td>Hand-tighten: drop infer-loose bounds, add <code>Check.in_range</code>, add <code>Hypothesis.two_sample_ttest</code> for spend drift</td><td>2 hr</td></tr>
+<tr><td>4</td><td>Wire <code>@check_output(schema=…)</code> on <code>extract_shopify_orders</code>, <code>extract_meta_ads</code>, <code>join_meta_ads</code></td><td>30 min</td></tr>
+<tr><td>5</td><td>Run on last 14 days of agent_runs — count schema fires, classify (real-bug vs noise)</td><td>1 hr</td></tr>
+<tr><td>6</td><td>Decision: rollout to remaining nodes if signal-to-noise ≥ 3:1</td><td>—</td></tr>
+</tbody>
+</table>
+
+<p>Total: <strong>~4 hr</strong> to a fired-or-quiet signal. If 0 fires, you've quantified that the pipeline is cleaner than Taleb suspected. If fires, you have the silent-drift catalog Karpathy wants.</p>
+</section>
+
+<section id="sec55">
+<h2>5.5 · Cross-run cache sharing across analysts</h2>
+<p class="lead">Operational concern, not a mechanism one. The <a class="g-link" href="#g-fingerprint">fingerprint</a> mechanism in <a href="cache-walkthrough.html">cache-walkthrough §3</a> works <em>per-laptop</em> by default — Hamilton writes the cache to <code>~/.cache/hamilton/</code>. To get cache hits across <em>analysts</em>, you need a shared backend.</p>
+
+<h3>Why this matters</h3>
+<p>Today: analyst-A runs <code>extract_shopify_orders</code> Monday → caches 850MB locally. Analyst-B opens same notebook Tuesday → cache-miss → re-extracts from Shopify API (rate-limited, slow, possibly different data if window shifted). Same fingerprint, different result-store. Wasted compute + cache pollution risk.</p>
+<p>With shared backend: Analyst-A's Monday extract is <em>Analyst-B's cache hit</em>. Same fingerprint = same artifact. Pipeline becomes idempotent across team.</p>
+
+<h3>Three backends, three trade-offs</h3>
+<div class="approaches">
+
+<div class="approach">
+  <div class="approach-head">
+    <span class="num">Option 1 · default</span>
+    <h3>Local filesystem</h3>
+    <span class="sub">~/.cache/hamilton/</span>
+  </div>
+  <p class="owns"><strong>Pros:</strong> zero ops. Works offline. Fast. Encrypted at rest if disk is.</p>
+  <p class="doesnt">⌀ no cross-analyst share · ⌀ no CI reuse · ⌀ no audit trail</p>
+  <div class="code"><pre>cache = HamiltonCacheAdapter(
+    fn_graph_cache=<span class="st">"~/.cache/hamilton"</span>,
+    result_store=<span class="st">"~/.cache/hamilton/results"</span>,
+)</pre></div>
+</div>
+
+<div class="approach owned">
+  <div class="approach-head">
+    <span class="num">Option 2 · recommended</span>
+    <h3>S3 / R2 result store</h3>
+    <span class="sub">s3://insight-kit-cache/&lt;team&gt;/</span>
+  </div>
+  <p class="owns"><strong>Pros:</strong> cross-analyst hit. CI reuses prod cache. Bucket-versioned audit. Cheap (~$0.02/GB-mo).</p>
+  <p class="doesnt">⚠ network latency on miss · ⚠ creds in env · ⚠ no SQL queries over metadata</p>
+  <div class="code"><pre><span class="kw">from</span> hamilton.plugins.h_s3 <span class="kw">import</span> S3ResultStore
+
+cache = HamiltonCacheAdapter(
+    fn_graph_cache=<span class="st">"~/.cache/hamilton"</span>,
+    result_store=S3ResultStore(
+        bucket=<span class="st">"insight-kit-cache"</span>,
+        prefix=<span class="st">"growth/"</span>,
+    ),
+)</pre></div>
+</div>
+
+<div class="approach">
+  <div class="approach-head">
+    <span class="num">Option 3 · advanced</span>
+    <h3>Postgres metadata + S3 blobs</h3>
+    <span class="sub">fingerprint table + blob bucket</span>
+  </div>
+  <p class="owns"><strong>Pros:</strong> SQL queries over cache state ("which nodes ran today?"). Multi-region. Hamilton UI can read this.</p>
+  <p class="doesnt">⚠ runs a database · ⚠ migration churn · ⚠ overkill for &lt;5 analysts</p>
+  <div class="code"><pre>cache = HamiltonCacheAdapter(
+    fn_graph_cache=PostgresMetadataStore(
+        dsn=<span class="st">"postgres://…/hamilton"</span>,
+    ),
+    result_store=S3ResultStore(...),
+)</pre></div>
+</div>
+
+</div>
+
+<div class="callout">
+  <div class="lbl">Security · use Signet Secrets</div>
+  <p style="margin:0">S3/Postgres creds must NOT live in chat, code, or <code>.env</code> committed to git. Use <code>secret_exec</code> or provider-backed secret refs. Pattern: <code>cache = HamiltonCacheAdapter(result_store=S3ResultStore(bucket=…, creds=signet_secret("aws/insight-kit-cache")))</code></p>
+</div>
+
+<h3>Decision criterion</h3>
+<table>
+<thead><tr><th>Team size</th><th>Cache hits/day</th><th>Backend</th></tr></thead>
+<tbody>
+<tr><td>1 analyst</td><td>solo dev loop</td><td>local fs</td></tr>
+<tr><td>2–5 analysts</td><td>10–100/day shared</td><td><strong>S3 / R2 (recommended)</strong></td></tr>
+<tr><td>5+ analysts + CI + UI</td><td>1k+/day · audit needed</td><td>Postgres + S3</td></tr>
+</tbody>
+</table>
+
+<p>For insight-kit pilot (1–3 analysts on growth_insights): start with <strong>local fs</strong>. Bump to S3 the first time analyst-B says "wait, I'm waiting on Shopify API again, didn't analyst-A run this 2 hours ago?".</p>
+</section>
+
+<section id="sec6">
+<div class="verdict">
+  <div class="label">Verdict · 2026-05-14</div>
+  <h3>Adopt Pandera as Layer-0; pilot on Shopify→Meta join; defer shared cache until team feels the pain.</h3>
+  <ol>
+    <li><strong>Pandera adds Layer-0:</strong> raw frame contract at node boundary. No overlap w/ existing layers if boundary discipline holds.</li>
+    <li><strong>Hamilton plugin exists</strong> (<code>sf-hamilton[pandera]</code>). No custom glue.</li>
+    <li><strong>Pilot scope:</strong> 3 nodes (<code>extract_shopify_orders</code>, <code>extract_meta_ads</code>, <code>join_meta_ads</code>), ~4 hr work. Measure 2 weeks.</li>
+    <li><strong>Cache sharing:</strong> stay local until cross-analyst friction shows up. Then S3/R2 result-store, creds via Signet Secrets.</li>
+    <li><strong>Skip if</strong> team won't maintain YAML schemas in git review.</li>
+  </ol>
+</div>
+</section>
+
+<div class="glossary-toggle-wrap">
+  <button class="glossary-toggle" data-glossary-toggle>Show glossary ↓</button>
+</div>
+
+<footer>
+  insight-kit × Hamilton · pandera fit · 2026-05-14<br>
+  refs: <a href="https://pandera.readthedocs.io">pandera.readthedocs.io</a> · <a href="https://github.com/apache/hamilton/tree/main/examples/data_quality/pandera">hamilton/examples/data_quality/pandera</a> · <a href="cache-walkthrough.html">cache-walkthrough §3</a> · <a href="index.html">synthesis index</a>
+</footer>
+
+</main>
+
+<aside class="glossary-rail" id="glossary">
+<h4>Glossary</h4>
+<dl>
+<dt id="g-pandera">Pandera</dt>
+<dd>Python dataframe schema-validation lib. Class-based (<code>DataFrameModel</code>) or object-based (<code>DataFrameSchema</code>). Validates types, nullability, value ranges, distributions. First-class pandas/polars/pyspark.</dd>
+
+<dt id="g-check-output">@check_output</dt>
+<dd>Hamilton decorator. Asserts return-type tag on a node. Used for graph wiring + cache invalidation. NOT row-level.</dd>
+
+<dt id="g-layer-a">Layer A</dt>
+<dd>insight-kit validation pass over Claim payload — id regex, tier enum, confidence bounds, required fields. Pydantic-style. Fires at <code>Run.emit()</code>.</dd>
+
+<dt id="g-claim">Claim</dt>
+<dd>insight-kit's unit of asserted finding. Has id, tier (raw/derived/critic/initiative/viz/counterfactual), confidence, statement, input_claims, supports/refutes edges.</dd>
+
+<dt id="g-fingerprint">Fingerprint</dt>
+<dd>Hamilton cache key = hash(code-source + input-fingerprint + config). Same fingerprint → cache hit. See <a href="cache-walkthrough.html#g-fingerprint">cache walkthrough</a>.</dd>
+
+<dt id="g-rams">Rams (Dieter)</dt>
+<dd>Council persona for user-centered design + simplicity. Argues "N validation layers smells; can it be collapsed?"</dd>
+
+<dt id="g-hypothesis">Pandera Hypothesis</dt>
+<dd>Statistical-test check class. Built-in <code>two_sample_ttest</code>; custom callable+relationship. Catches distribution drift the dtype check won't.</dd>
+
+<dt id="g-lazy">lazy=True</dt>
+<dd>Pandera flag. Collect all row+column failures into single <code>SchemaErrors</code> exception instead of failing on first. Analyst sees full picture.</dd>
+
+<dt id="g-result-store">Result store</dt>
+<dd>Hamilton cache backend. Default = local filesystem. Pluggable to S3/R2 (<code>S3ResultStore</code>) or Postgres-metadata + S3-blobs for cross-analyst sharing.</dd>
+
+<dt id="g-signet-secret">Signet Secrets</dt>
+<dd>Per-user credential store. <code>secret_exec</code> + provider-backed secret refs. Cache backend creds (AWS keys, Postgres DSN) MUST go here, never <code>.env</code> in git.</dd>
+
+<dt id="g-distribution-drift">Distribution drift</dt>
+<dd>The kind of failure Pandera <code>Hypothesis</code> catches that <code>@check_output</code> won't: column exists w/ right dtype, but the 99th percentile / mean / null-rate moved silently. Bias source for cohort Claims.</dd>
+
+<dt id="g-side-effect-node">Side-effect node</dt>
+<dd>Hamilton node tagged <code>@tag(side_effect=…, idempotency_key=…)</code>. Posts to external API (Meta, Shopify). Pandera validates the response frame at the boundary.</dd>
+</dl>
+</aside>
+
+</div>
+</div>
+
+<script>
+const tog = document.querySelector('[data-glossary-toggle]');
+const rail = document.querySelector('.glossary-rail');
+if(tog && rail){
+  tog.addEventListener('click', () => {
+    const open = rail.classList.toggle('is-open');
+    tog.textContent = open ? 'Hide glossary ↑' : 'Show glossary ↓';
+  });
+}
+document.querySelectorAll('a.g-link').forEach(a => {
+  a.addEventListener('click', () => {
+    if(window.innerWidth < 1280 && rail && !rail.classList.contains('is-open')){
+      rail.classList.add('is-open');
+      if(tog) tog.textContent = 'Hide glossary ↑';
+    }
+  });
+});
+</script>
+
+</body>
+</html>

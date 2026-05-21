@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hamilton cache — walkthrough on a growth_insights pipeline</title>
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+  --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;
+  --olive:#788C5D;--sage:#A8B89A;--rose:#C97B7B;
+  --g100:#F0EEE6;--g200:#E6E3DA;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1600px;margin:0 auto;padding:0 32px 140px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--g500)}
+h1.display{font-family:var(--serif);font-weight:500;font-size:clamp(38px,5.4vw,60px);line-height:1.06;letter-spacing:-.018em;margin:.3em 0 .25em}
+h1.display em{font-style:italic;color:var(--clay)}
+h2{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:-.012em;margin:54px 0 14px;border-top:1px solid var(--g200);padding-top:28px}
+h2 .num{font-family:var(--mono);color:var(--g500);font-size:13px;margin-right:14px;letter-spacing:.08em;vertical-align:5px}
+h3{font-family:var(--sans);font-weight:600;font-size:17px;margin:28px 0 8px;letter-spacing:-.005em}
+p{max-width:74ch}
+a{color:var(--clay);text-decoration:none;border-bottom:1px solid rgba(217,119,87,.35)}
+a:hover{color:var(--clay-d);border-bottom-color:var(--clay-d)}
+code,kbd{font-family:var(--mono);font-size:.92em;background:var(--g100);padding:1px 5px;border-radius:4px;color:var(--g700)}
+pre.tree,pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.5;white-space:pre;overflow-x:auto;background:var(--g100);border:1px solid var(--g200);border-radius:8px;padding:14px 16px;color:var(--g700)}
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--g200);z-index:30}
+.topbar-inner{max-width:1600px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.brand span{color:var(--clay)}
+nav.crumbs{display:flex;gap:18px;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+nav.crumbs a{color:var(--g500);border:none}
+nav.crumbs a.active{color:var(--slate)}
+nav.crumbs a:hover{color:var(--clay)}
+.hero{padding:64px 0 28px;border-bottom:1px solid var(--g200)}
+.tldr{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 8px;align-items:center}
+.pill{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;padding:6px 12px;border:1px solid var(--g300);border-radius:999px;background:var(--paper);color:var(--g700)}
+.pill.clay{background:var(--clay);border-color:var(--clay);color:#fff}
+.pill.olive{background:var(--olive);border-color:var(--olive);color:#fff}
+.pill.oat{background:var(--oat);border-color:var(--oat);color:var(--slate)}
+.arrow{color:var(--g500);font-family:var(--mono)}
+.callout{border:1px solid var(--g200);background:var(--paper);border-radius:10px;padding:18px 20px;margin:18px 0}
+.callout.clay{border-left:4px solid var(--clay)}
+.callout.olive{border-left:4px solid var(--olive)}
+.callout.rose{border-left:4px solid var(--rose)}
+.callout .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);margin-bottom:4px}
+.diagram{background:var(--paper);border:1px solid var(--g200);border-radius:12px;padding:18px;margin:18px 0;overflow-x:auto}
+.grid2{display:grid;grid-template-columns:1fr;gap:18px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.card{background:var(--paper);border:1px solid var(--g200);border-radius:10px;padding:18px 20px}
+.card h4{margin:0 0 6px;font-size:15px;font-family:var(--sans)}
+.card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500)}
+table.cache{border-collapse:collapse;width:100%;font-size:13.5px;margin:14px 0;background:var(--paper);border:1px solid var(--g200);border-radius:10px;overflow:hidden}
+table.cache th,table.cache td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--g200);vertical-align:top}
+table.cache th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--g500);font-weight:500;background:var(--g100)}
+table.cache tr:last-child td{border-bottom:none}
+table.cache td.node{font-family:var(--mono);font-size:12.5px;color:var(--slate);white-space:nowrap}
+table.cache td.fp{font-family:var(--mono);font-size:11.5px;color:var(--g700)}
+.state{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--g300);background:var(--paper);color:var(--g700);display:inline-block}
+.state.run{background:var(--clay);border-color:var(--clay);color:#fff}
+.state.cached{background:#e7eedf;border-color:#cfdcc5;color:#3e553a}
+.state.recompute{background:var(--rose);border-color:var(--rose);color:#fff}
+.state.hit{background:var(--oat);border-color:var(--oat);color:var(--slate)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0 6px;align-items:center;font-family:var(--mono);font-size:11px;color:var(--g500);letter-spacing:.08em;text-transform:uppercase}
+.fp-bar{font-family:var(--mono);font-size:12px;display:flex;gap:4px;align-items:center;color:var(--g700)}
+.fp-chip{padding:2px 7px;border-radius:4px;background:var(--g100);border:1px solid var(--g200)}
+.fp-chip.code{background:#f1e0d6;border-color:#e9c5b1}
+.fp-chip.input{background:#e7eedf;border-color:#cfdcc5}
+.fp-chip.cfg{background:var(--oat);border-color:var(--oat)}
+footer{margin-top:80px;font-family:var(--mono);font-size:11.5px;color:var(--g500);letter-spacing:.06em}
+.scenario-head{display:flex;gap:10px;align-items:baseline;margin:18px 0 4px;flex-wrap:wrap}
+.scenario-head .badge{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;background:var(--slate);color:var(--ivory);padding:3px 9px;border-radius:4px}
+
+/* page layout w/ glossary rail */
+.page-grid{display:grid;grid-template-columns:1fr;gap:24px}
+@media(min-width:1280px){.page-grid{grid-template-columns:minmax(0,1fr) 280px}}
+
+/* inline g-link */
+a.g-link{color:inherit;text-decoration:none;border-bottom:1px dotted var(--g500);cursor:help;transition:color 120ms,border-bottom-color 120ms}
+a.g-link:hover,a.g-link:focus{color:var(--clay);border-bottom-color:var(--clay);outline:none}
+
+/* glossary rail */
+.glossary-rail{font-family:var(--sans)}
+@media(max-width:1279px){
+  .glossary-rail{display:none}
+  .glossary-rail.is-open{display:block;margin-top:24px;border-top:1px solid var(--g200);padding-top:18px}
+}
+@media(min-width:1280px){
+  .glossary-rail{position:sticky;top:120px;align-self:start;max-height:calc(100vh - 144px);overflow-y:auto;padding-right:6px}
+}
+.glossary-rail h3{font-family:var(--serif);font-size:18px;font-weight:500;margin:0 0 4px;letter-spacing:-.01em}
+.glossary-rail .g-sub{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--g500);margin-bottom:14px}
+.glossary-rail dl{margin:0;padding:0}
+.glossary-rail dt{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--slate);margin-top:14px;letter-spacing:.01em}
+.glossary-rail dt:first-of-type{margin-top:0}
+.glossary-rail dd{margin:3px 0 0;padding:0;font-size:12.5px;color:var(--g700);line-height:1.5}
+.glossary-rail dd code{font-family:var(--mono);font-size:11.5px;color:var(--slate);background:var(--g100);padding:1px 4px;border-radius:3px}
+.glossary-rail dt:target{background:#FBEBE2;padding:4px 8px;margin-left:-8px;border-left:2px solid var(--clay);border-radius:0 4px 4px 0;transition:background 200ms}
+.glossary-toggle-wrap{display:block;margin-top:28px}
+@media(min-width:1280px){.glossary-toggle-wrap{display:none}}
+.glossary-toggle{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border:1px solid var(--g300);background:var(--paper);color:var(--g700);border-radius:6px;cursor:pointer}
+.glossary-toggle:hover{color:var(--clay);border-color:var(--clay)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit <span>×</span> hamilton</span>
+    <nav class="crumbs">
+      <a href="index.html">01 · Synthesis</a>
+      <a href="current-state.html">02 · Current state</a>
+      <a href="cache-walkthrough.html" class="active">03 · Cache walkthrough</a>
+      <a href="hamilton.html">04 · Hamilton deep dive</a>
+      <a href="evidence-sdk.html">A · Evidence SDK</a>
+      <a href="pandera-fit.html">B · Pandera</a>
+      <a href="dataframe-stack-fit.html">C · DF stack</a>
+      <a href="provenance-loop.html">D · Provenance loop</a>
+      <a href="feature-platform-and-claim-bundle.html">E · Feature platform</a>
+      <a href="agent-team-orchestration.html">F · Orchestration</a>
+      <a href="glossary.html">05 · Glossary</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="eyebrow">apache hamilton · HamiltonCacheAdapter · behaviour="default"</div>
+  <h1 class="display">The cache, on a <em>real</em> pipeline.</h1>
+  <p style="font-size:18px;color:var(--g700);max-width:74ch">
+    Hamilton's cache is the structural answer to the analyst's exploratory loop: 5 throwaway
+    <code>.py</code> + 1 final annotated module. When the analyst tweaks one node, only that node
+    and its descendants recompute. Everything upstream is a cache hit. This page shows what that
+    looks like on a five-node growth_insights pipeline — first run, edit-cohort-filter, edit-input,
+    edit-config — with concrete fingerprints.
+  </p>
+  <div class="tldr">
+    <span class="pill oat">extract_shopify_orders</span><span class="arrow">→</span>
+    <span class="pill oat">join_meta_ads</span><span class="arrow">→</span>
+    <span class="pill oat">cohort_filter</span><span class="arrow">→</span>
+    <span class="pill oat">build_initiatives</span><span class="arrow">→</span>
+    <span class="pill oat">evidence_view</span>
+  </div>
+</section>
+
+<div class="page-grid">
+<main>
+
+<h2><span class="num">§1</span>The fingerprint</h2>
+<p>
+A Hamilton cache entry is keyed by a <strong><a class="g-link" href="#g-fingerprint">fingerprint</a></strong>. The fingerprint is the SHA-256
+of three things stitched together:
+</p>
+
+<div class="callout olive">
+  <div class="lbl">fingerprint(node)</div>
+  <div class="fp-bar">
+    <span class="fp-chip code"><a class="g-link" href="#g-code-hash">sha(source-code body of the function)</a></span>
+    <span>⊕</span>
+    <span class="fp-chip input"><a class="g-link" href="#g-input-hash">sha(fingerprints of every upstream node)</a></span>
+    <span>⊕</span>
+    <span class="fp-chip cfg"><a class="g-link" href="#g-config-hash">sha(relevant Driver config values)</a></span>
+  </div>
+</div>
+
+<p style="margin-top:6px">Three consequences flow from this definition:</p>
+<ul>
+  <li><strong>Edit code</strong> in a node → its <span class="fp-chip code">code</span> chunk changes → fingerprint changes → it recomputes. Every descendant's <span class="fp-chip input">input</span> chunk also changes → descendants recompute. Ancestors are untouched.</li>
+  <li><strong>Edit raw input</strong> on disk → the source node (the one that reads the file) sees a new <span class="fp-chip input">input</span> chunk → recomputes → cascade.</li>
+  <li><strong>Edit a config value</strong> referenced via <a class="g-link" href="#g-config-when"><code>@config.when</code></a> or a parameter resolved from <code>Driver.with_config(...)</code> → only nodes whose <span class="fp-chip cfg">config</span> chunk includes that key recompute.</li>
+</ul>
+
+<div class="callout clay">
+  <div class="lbl">Source of truth</div>
+  Hamilton's tutorial materials live at <code>/tmp/hamilton/examples/caching/</code> —
+  <code>tutorial.ipynb</code>, <code>in_memory_tutorial.ipynb</code>, <code>materializer_tutorial.ipynb</code>.
+  The <a class="g-link" href="#g-hamilton-cache-adapter"><code>HamiltonCacheAdapter</code></a> exposes four <a class="g-link" href="#g-cache-behavior">behaviours</a>: <code>DEFAULT</code> (use cache),
+  <code>RECOMPUTE</code> (force re-run, write to cache), <code>DISABLE</code> (skip cache entirely),
+  <code>IGNORE</code> (read cache, don't write). insight-kit's recommended setting during exploration
+  is <code>RECOMPUTE</code>; for promoted modules, <code>DEFAULT</code>.
+</div>
+
+<h2><span class="num">§2</span>The pipeline we'll trace</h2>
+<p>
+Five nodes, taken from a plausible Hamilton port of the existing
+<code>analyses/g1_spend_reallocation</code> work. The shape is real (the inputs exist under
+<code>data/agent_runs/2026-04-23_2218_human_shopify_orders_bulk/output/orders.parquet</code> and
+<code>data/agent_runs/2026-04-24_0413_w1_adset_targeting_meta_metadata/output/</code>); the module
+itself is illustrative.
+</p>
+
+<pre class="code">  # analyses/spend_reallocation.py
+  import pandas as pd
+  from hamilton.function_modifiers import tag, config
+
+  def extract_shopify_orders(orders_parquet_path: str) -&gt; pd.DataFrame:
+      return pd.read_parquet(orders_parquet_path)
+
+  def join_meta_ads(
+      extract_shopify_orders: pd.DataFrame,
+      meta_metadata_parquet: str,
+  ) -&gt; pd.DataFrame:
+      ads = pd.read_parquet(meta_metadata_parquet)
+      return extract_shopify_orders.merge(
+          ads, left_on="utm_campaign", right_on="campaign_name", how="left")
+
+  def cohort_filter(
+      join_meta_ads: pd.DataFrame,
+      min_purchase_kes: int,         # config-driven
+  ) -&gt; pd.DataFrame:
+      return join_meta_ads[join_meta_ads.purchase_value_kes &gt;= min_purchase_kes]
+
+  @tag(emit="metric", claim_tier="derived",
+       claim_id="MD-D-008")
+  def build_initiatives(
+      cohort_filter: pd.DataFrame,
+  ) -&gt; pd.DataFrame:
+      grouped = cohort_filter.groupby("age_gender_segment")\
+                             .agg(roas=("revenue_kes","sum"),
+                                  spend=("spend_kes","sum"))
+      grouped["roas_ratio"] = grouped.roas / grouped.spend
+      return grouped.reset_index()
+
+  @tag(emit="viz", claim_tier="viz", claim_id="MD-V-002")
+  def evidence_view(
+      build_initiatives: pd.DataFrame,
+  ) -&gt; pd.DataFrame:
+      return build_initiatives.sort_values("roas_ratio", ascending=False)\
+                              .head(20)</pre>
+
+<div class="diagram">
+<pre class="tree">
+   extract_shopify_orders   ──▶   join_meta_ads   ──▶   cohort_filter   ──▶   build_initiatives   ──▶   evidence_view
+      reads orders.parquet      merge w/ meta ads     filter &gt;= K KES         groupby age_gender         top-20 sort
+                                                       (config-driven)        emits MD-D-008             emits MD-V-002
+</pre>
+</div>
+
+<div class="legend">
+  <span><span class="state run">RUN</span> first execute, fingerprint computed and stored</span>
+  <span><span class="state hit">HIT</span> fingerprint matches cache → result loaded, function skipped</span>
+  <span><span class="state recompute">RECOMP</span> fingerprint changed → function re-executes, cache rewritten</span>
+</div>
+
+<h2><span class="num">§3</span>Scenario A — first run, cold cache</h2>
+<div class="scenario-head">
+  <span class="badge">A</span>
+  <h3 style="margin:0">Every node executes and caches.</h3>
+</div>
+<p>
+Nothing in the cache yet. The <a class="g-link" href="#g-driver-execute">Driver</a> walks the DAG topologically and runs each node. After each
+node returns, the cache adapter writes a row keyed by the fingerprint, value = the result
+(serialized via the <a class="g-link" href="#g-materializer">materializer</a>).
+</p>
+
+<table class="cache">
+<thead><tr><th>Node</th><th>code chunk</th><th>input chunk</th><th>config chunk</th><th>State</th></tr></thead>
+<tbody>
+<tr><td class="node">extract_shopify_orders</td><td class="fp">7a3f…b210</td><td class="fp">— (root)</td><td class="fp">e1c0…</td><td><span class="state run">RUN + cache</span></td></tr>
+<tr><td class="node">join_meta_ads</td><td class="fp">9b14…d8e2</td><td class="fp">⊕ shopify_fp</td><td class="fp">e1c0…</td><td><span class="state run">RUN + cache</span></td></tr>
+<tr><td class="node">cohort_filter</td><td class="fp">22a8…51fc</td><td class="fp">⊕ join_fp</td><td class="fp">min_purchase_kes=50</td><td><span class="state run">RUN + cache</span></td></tr>
+<tr><td class="node">build_initiatives</td><td class="fp">4f9d…6c10</td><td class="fp">⊕ cohort_fp</td><td class="fp">e1c0…</td><td><span class="state run">RUN + cache</span></td></tr>
+<tr><td class="node">evidence_view</td><td class="fp">c3e2…77a9</td><td class="fp">⊕ build_fp</td><td class="fp">e1c0…</td><td><span class="state run">RUN + cache</span></td></tr>
+</tbody>
+</table>
+
+<p style="font-size:13.5px;color:var(--g700)">
+5 / 5 nodes executed. Wall time = sum of compute. Claims <code>MD-D-008</code> and <code>MD-V-002</code>
+emitted via <code>InsightKitHook</code>. <code>manifest.json</code> records 5 OutputRecords (one per node)
+plus the input parquet shas.
+</p>
+
+<h2><span class="num">§4</span>Scenario B — edit <code>cohort_filter</code></h2>
+<div class="scenario-head">
+  <span class="badge">B</span>
+  <h3 style="margin:0">Analyst tightens the cohort threshold logic. Only it + downstream recompute.</h3>
+</div>
+<p>
+The analyst changes <code>cohort_filter</code>'s body to also drop rows where
+<code>purchase_value_kes</code> exceeds the 99th percentile (truncate outliers). They re-run.
+</p>
+
+<table class="cache">
+<thead><tr><th>Node</th><th>code chunk</th><th>input chunk</th><th>config chunk</th><th>State</th></tr></thead>
+<tbody>
+<tr><td class="node">extract_shopify_orders</td><td class="fp">7a3f…b210</td><td class="fp">— (root)</td><td class="fp">e1c0…</td><td><span class="state hit">HIT — return cached</span></td></tr>
+<tr><td class="node">join_meta_ads</td><td class="fp">9b14…d8e2</td><td class="fp">⊕ shopify_fp</td><td class="fp">e1c0…</td><td><span class="state hit">HIT — return cached</span></td></tr>
+<tr><td class="node">cohort_filter</td><td class="fp"><strong style="color:var(--clay)">8d11…aa07</strong> (was 22a8)</td><td class="fp">⊕ join_fp</td><td class="fp">min_purchase_kes=50</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">build_initiatives</td><td class="fp">4f9d…6c10</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW cohort_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">evidence_view</td><td class="fp">c3e2…77a9</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW build_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+</tbody>
+</table>
+
+<p style="font-size:13.5px;color:var(--g700)">
+3 / 5 nodes executed. 2 <a class="g-link" href="#g-cache-hit">cache hits</a>. Shopify parquet was <em>not</em> re-read. Meta join was
+<em>not</em> recomputed. Two new claim emissions (<code>MD-D-008</code>, <code>MD-V-002</code>) with
+<code>supersedes</code> back-references to their prior IDs. <em>This is the loop that today eats
+4 throwaway scripts.</em>
+</p>
+
+<h2><span class="num">§5</span>Scenario C — input parquet refreshed</h2>
+<div class="scenario-head">
+  <span class="badge">C</span>
+  <h3 style="margin:0">Upstream ingest re-ran. Everything cascades.</h3>
+</div>
+<p>
+The Shopify ingest worker re-pulled overnight; <code>orders.parquet</code> now has a different
+sha. The analyst re-runs without changing any code. <a class="g-link" href="#g-extract-shopify-orders"><code>extract_shopify_orders</code></a> reads the
+file and gets a new dataframe — its <a class="g-link" href="#g-upstream-downstream">downstream</a> nodes' input chunks all change.
+</p>
+
+<table class="cache">
+<thead><tr><th>Node</th><th>code chunk</th><th>input chunk</th><th>config chunk</th><th>State</th></tr></thead>
+<tbody>
+<tr><td class="node">extract_shopify_orders</td><td class="fp">7a3f…b210</td><td class="fp"><strong style="color:var(--clay)">— (root, new file sha)</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">join_meta_ads</td><td class="fp">9b14…d8e2</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW shopify_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">cohort_filter</td><td class="fp">8d11…aa07</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW join_fp</strong></td><td class="fp">min_purchase_kes=50</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">build_initiatives</td><td class="fp">4f9d…6c10</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW cohort_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">evidence_view</td><td class="fp">c3e2…77a9</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW build_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+</tbody>
+</table>
+
+<p style="font-size:13.5px;color:var(--g700)">
+5 / 5 nodes executed. No cache hits — but the cache stays useful for the <em>next</em> edit. This
+is the worst case: it costs the same as Scenario A. The win is that the analyst didn't have to
+think about which downstream views to refresh — Hamilton walked the descendants for them.
+</p>
+
+<h2><span class="num">§6</span>Scenario D — config flip only</h2>
+<div class="scenario-head">
+  <span class="badge">D</span>
+  <h3 style="margin:0">Threshold change: <code>min_purchase_kes</code> from 50 → 200.</h3>
+</div>
+<p>
+The analyst is sweeping the threshold to see which level surfaces the strongest signal. They run
+the Driver with <code>dr.with_config(min_purchase_kes=200).build()</code>. Only nodes that read
+this <a class="g-link" href="#g-config-hash">config key</a> recompute. Everything else hits cache.
+</p>
+
+<table class="cache">
+<thead><tr><th>Node</th><th>code chunk</th><th>input chunk</th><th>config chunk</th><th>State</th></tr></thead>
+<tbody>
+<tr><td class="node">extract_shopify_orders</td><td class="fp">7a3f…b210</td><td class="fp">— (root)</td><td class="fp">e1c0…</td><td><span class="state hit">HIT</span></td></tr>
+<tr><td class="node">join_meta_ads</td><td class="fp">9b14…d8e2</td><td class="fp">⊕ shopify_fp</td><td class="fp">e1c0…</td><td><span class="state hit">HIT</span></td></tr>
+<tr><td class="node">cohort_filter</td><td class="fp">8d11…aa07</td><td class="fp">⊕ join_fp</td><td class="fp"><strong style="color:var(--clay)">min_purchase_kes=200</strong></td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">build_initiatives</td><td class="fp">4f9d…6c10</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW cohort_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+<tr><td class="node">evidence_view</td><td class="fp">c3e2…77a9</td><td class="fp"><strong style="color:var(--clay)">⊕ NEW build_fp</strong></td><td class="fp">e1c0…</td><td><span class="state recompute">RECOMP + cache</span></td></tr>
+</tbody>
+</table>
+
+<p style="font-size:13.5px;color:var(--g700)">
+3 / 5 nodes executed. <code>extract_shopify_orders</code> and <code>join_meta_ads</code> don't
+reference <code>min_purchase_kes</code>, so their config chunk is unaffected and they hit cache.
+Run a 6-value sweep (50, 100, 200, 500, 1000, 2000) and you pay parquet-read + join cost once;
+each threshold then costs only the three downstream nodes.
+</p>
+
+<h2><span class="num">§7</span>Why this matters for insight-kit's iteration shape</h2>
+
+<div class="grid2">
+  <div class="card">
+    <div class="tag">today (no cache)</div>
+    <h4>5 throwaway .py + 1 final module</h4>
+    <p style="font-size:13.5px;color:var(--g700);max-width:none">
+      The pattern documented at <code>nairomarket/growth_insights/CLAUDE.md</code> — analyst spikes
+      five exploratory scripts, each re-reads the same parquet, each computes the same join, each
+      writes its own claims. Sequencing is bash, sha tracking is manual, "this run is broken, let
+      me edit and re-run" means re-running everything from disk.
+    </p>
+  </div>
+  <div class="card">
+    <div class="tag">after Hamilton cache</div>
+    <h4>One module, N config sweeps, free</h4>
+    <p style="font-size:13.5px;color:var(--g700);max-width:none">
+      The five spikes collapse into one module. The "swap the cohort threshold" iteration costs only
+      the changed branch — Scenario D. The "fix a typo in the join" iteration costs only the join +
+      everything downstream — Scenario B. The "ingest refreshed overnight" iteration is a full
+      recompute — Scenario C — but the analyst doesn't have to remember to invalidate the views.
+    </p>
+  </div>
+</div>
+
+<div class="callout olive">
+  <div class="lbl">Tie-back</div>
+  Cache invalidation = <a class="g-link" href="#g-claim-invalidation">claim invalidation</a>. When <code>cohort_filter</code> recomputes,
+  <code>build_initiatives</code> re-emits <code>MD-D-008</code> with a <code>supersedes</code> edge
+  pointing at the prior run's claim of the same ID. The old <code>MD-D-008</code> is preserved on
+  disk (older run dir) but Layer-B's uniqueness rule is satisfied by the supersedes chain. The
+  Evidence.dev <code>claims_manifest</code> view exposes both rows; the page renders the latest by
+  default and the timeline on hover.
+</div>
+
+<h2><span class="num">§8</span>Operational notes</h2>
+<ul>
+  <li><strong>Cache backend.</strong> Hamilton ships an in-memory cache by default; for persistence pair with the <code>h_diskcache</code> plugin or a custom adapter that writes to <code>.insight-kit/cache/</code>. The fingerprint becomes the filename. See <a class="g-link" href="#g-result-store">result store</a> options.</li>
+  <li><strong>Pinning.</strong> <code>@cache(behavior="recompute")</code> on a node forces a fresh run regardless of cache state — useful for nodes that read live APIs (Meta, Shopify) where the input isn't deterministic.</li>
+  <li><strong>Eviction.</strong> No automatic eviction. The cache is <a class="g-link" href="#g-idempotency">content-addressed</a> and append-only; clean up with a CLI sweep keyed by mtime or run-dir purge.</li>
+  <li><strong>Cache <em>vs</em> manifest.</strong> The cache stores compute results. The manifest stores provenance. They are not the same artifact — even with a cache hit, insight-kit's hook still emits OutputRecord + claim into <code>manifest.json</code> + <code>claims.jsonl</code> for the new run. Cache speed up; manifest preserves audit.</li>
+  <li><strong>Notebook bridge.</strong> The same cache works inside a Jupyter session. An analyst iterating in a notebook with <code>dr.execute([…])</code> gets the same incremental behaviour as the CLI — that's what makes "5 exploratory .py" obsolete.</li>
+</ul>
+
+<h2><span class="num">§9</span>What this page deliberately does <em>not</em> cover</h2>
+<ul>
+  <li><strong>Distributed cache</strong> (Ray, Dask). Same mechanics, different store. Read <code>/tmp/hamilton/examples/caching/</code> notebooks.</li>
+  <li><strong>Pandera-typed cache keys</strong>. Pairs naturally with <code>@check_output</code>; out of scope here.</li>
+  <li><strong>Cross-run cache sharing</strong> across analysts. Requires shared backend (S3, Postgres); operational concern, not a mechanism question.</li>
+  <li><strong>Manual cache invalidation</strong> CLI. The integration plan owes one but doesn't ship it yet; planned as <code>ik cache purge --before &lt;date&gt;</code>.</li>
+</ul>
+
+<footer>
+  Hamilton cache walkthrough · 2026-05-14 ·
+  <a href="index.html" style="color:var(--clay)">synthesis</a> ·
+  <a href="current-state.html" style="color:var(--clay)">current state</a> ·
+  <a href="hamilton.html" style="color:var(--clay)">deep dive</a> ·
+  <a href="glossary.html" style="color:var(--clay)">glossary</a>
+</footer>
+
+<div class="glossary-toggle-wrap">
+  <button class="glossary-toggle" data-glossary-toggle type="button">Show glossary ↓</button>
+</div>
+
+</main>
+
+<aside class="glossary-rail" id="glossary">
+  <h3>Glossary · this page</h3>
+  <div class="g-sub">Click any dotted term to jump here.</div>
+  <dl>
+    <dt id="g-fingerprint">Fingerprint</dt>
+    <dd>SHA-256 of three components stitched together: the <code>code hash</code> (function body), the <code>input hash</code> (fingerprints of every upstream node), and the <code>config hash</code> (relevant Driver config values). Uniquely identifies the expected output of a node given its current state.</dd>
+
+    <dt id="g-code-hash">Code hash</dt>
+    <dd>The SHA-256 of a Hamilton node's Python function body. Changing any character in the function — even whitespace — produces a new code hash, invalidating the cache for that node and all descendants.</dd>
+
+    <dt id="g-input-hash">Input hash</dt>
+    <dd>The XOR/concatenation of the fingerprints of every upstream node that feeds into a given node. If any ancestor recomputes (changing its fingerprint), the input hash of all downstream nodes changes too.</dd>
+
+    <dt id="g-config-hash">Config hash</dt>
+    <dd>The SHA-256 of the Driver config values referenced by a node (e.g. <code>min_purchase_kes</code>). Only nodes that actually consume a config key are affected when that key changes.</dd>
+
+    <dt id="g-hamilton-cache-adapter">HamiltonCacheAdapter</dt>
+    <dd>The Hamilton plugin (from <code>hamilton.plugins.h_cache</code>) that intercepts node execution. Before running a node it checks whether a cached result exists for the current fingerprint; after running it writes the result to the store.</dd>
+
+    <dt id="g-cache-behavior">Cache behavior</dt>
+    <dd>One of four modes controlling how the adapter handles a node: <code>DEFAULT</code> — use cache if hit; <code>RECOMPUTE</code> — force re-run, then write; <code>DISABLE</code> — skip cache entirely; <code>IGNORE</code> — read cache but never write. Recommended: <code>RECOMPUTE</code> during exploration, <code>DEFAULT</code> for promoted modules.</dd>
+
+    <dt id="g-cache-hit">Cache hit</dt>
+    <dd>When the current fingerprint of a node matches a stored fingerprint, the cached result is returned and the function body is not executed. Shown as <span style="font-family:var(--mono);font-size:11px;padding:2px 6px;background:#e7eedf;border-radius:4px;color:#3e553a">HIT</span> in the scenario tables.</dd>
+
+    <dt id="g-cache-miss">Cache miss</dt>
+    <dd>When no stored entry matches the current fingerprint — either the cache is cold (first run) or the fingerprint changed. The node executes and the result is written to the store.</dd>
+
+    <dt id="g-node">Node</dt>
+    <dd>A Python function in a Hamilton module. Each function is a node in the DAG; its name is its output column name. Nodes declare dependencies through parameter names matching other node names.</dd>
+
+    <dt id="g-driver-execute">Driver.execute()</dt>
+    <dd>The Hamilton entrypoint that walks the DAG topologically and executes (or cache-hits) each node needed to produce the requested outputs. Called as <code>dr.execute([…], inputs={…})</code>.</dd>
+
+    <dt id="g-config-when">@config.when</dt>
+    <dd>Hamilton function modifier that activates a node only when a Driver config value matches. Affects the config chunk of the fingerprint — changing the referenced config key invalidates only the nodes decorated with matching <code>@config.when</code> conditions.</dd>
+
+    <dt id="g-materializer">Materializer</dt>
+    <dd>The serializer/deserializer the cache adapter uses to store and restore node results. Common choices: <code>parquet</code> for DataFrames, <code>pickle</code> for arbitrary objects, <code>json</code> for small dicts. Configured per-node or globally on the adapter.</dd>
+
+    <dt id="g-result-store">Result store</dt>
+    <dd>The persistence backend for cached results. Options include in-memory (default, non-persistent), <code>h_diskcache</code> (file-based), SQLite, or Redis. The fingerprint becomes the lookup key; the result is the serialized value.</dd>
+
+    <dt id="g-claim-invalidation">Claim invalidation</dt>
+    <dd>When a node recomputes, its downstream claim emissions (via <code>@tag(claim_id=…)</code>) produce new claims with a <code>supersedes</code> back-reference to the prior claim of the same ID. Old claims are preserved on disk; the manifest renders the latest by default.</dd>
+
+    <dt id="g-idempotency">Idempotency</dt>
+    <dd>A property of the cache: running the same inputs + code + config multiple times always produces the same fingerprint and thus the same cached result. No side effects accumulate from repeated runs.</dd>
+
+    <dt id="g-extract-shopify-orders">extract_shopify_orders</dt>
+    <dd>The root node of the example pipeline. Reads <code>orders.parquet</code> from disk; its fingerprint's input chunk reflects the file's content hash. A new ingest run that updates the parquet cascades a full recompute through the DAG.</dd>
+
+    <dt id="g-upstream-downstream">Upstream / downstream</dt>
+    <dd>Upstream nodes are dependencies (they appear as parameters in a function). Downstream nodes depend on the output of a given node. A fingerprint change always cascades <em>downstream</em> only — ancestors are never affected by a descendant's change.</dd>
+  </dl>
+</aside>
+
+</div>
+</div>
+
+<script>
+document.querySelectorAll('h2').forEach((h,i)=>{ if(!h.id) h.id='sec'+(i+1); });
+(function(){
+  const btn = document.querySelector('[data-glossary-toggle]');
+  const rail = document.getElementById('glossary');
+  if(!btn || !rail) return;
+  btn.addEventListener('click', () => {
+    const open = rail.classList.toggle('is-open');
+    btn.textContent = open ? 'Hide glossary ↑' : 'Show glossary ↓';
+    if(open) rail.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  document.querySelectorAll('a.g-link').forEach(a => {
+    a.addEventListener('click', () => {
+      if(window.innerWidth < 1280){
+        rail.classList.add('is-open');
+        btn.textContent = 'Hide glossary ↑';
+      }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
