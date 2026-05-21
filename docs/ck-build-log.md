@@ -133,3 +133,19 @@ Fixed now:
   (`snapshot_ref` still required, `snapshot_fingerprint` optional).
 - T22 tests: `test_knowledge_records.py` (21 tests). Full gate suite green,
   ruff clean.
+
+## 2026-05-22 — T23 post-hoc utility verdict (V21, I.events)
+
+- New module `gate/verdict.py` — `ik_utility_verdict(record_id, verdict, ...)`
+  appends a `useful`/`not_useful` event to
+  `records/{id}/events/utility_verdict.jsonl`. `UtilityVerdict` StrEnum.
+- **Event-only, by construction.** The function never calls `write_record` —
+  it only `append_event`s. record.json cannot be mutated by it (V21). Verdict
+  is revisable: each call appends a line; current verdict = last line.
+- Placed in its own module (not `runstate.py`) — unlike the T12 critique gate
+  it is post-hoc and carries no `RunState` coupling; mirrors `feature.py` as a
+  small typed-API module.
+- Rejections: invalid verdict value, missing target, or target not a
+  research/skill_use record (`utility-verdict-{invalid,target-missing,wrong-type}`).
+- T23 tests: `test_utility_verdict.py` (13 tests). Full gate suite green,
+  ruff clean. **Gate-core (T21-T23) complete — every §V invariant enforced.**

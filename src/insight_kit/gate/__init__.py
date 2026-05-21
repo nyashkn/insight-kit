@@ -16,10 +16,13 @@ Public API:
   Feature catalog (V18):
     ik_feature_get, ProvisionalFeature
 
+  Post-hoc utility verdict on knowledge records (V21, I.events):
+    ik_utility_verdict, UtilityVerdict
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
-Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, V14, V15, V18.
+Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, V14, V15, V18, V21.
 """
 from __future__ import annotations
 
@@ -58,6 +61,10 @@ from insight_kit.gate.schema import (
     SelectionParams,
     SkillUseRecord,
 )
+from insight_kit.gate.verdict import (
+    UtilityVerdict,
+    ik_utility_verdict,
+)
 
 __all__ = [
     "CheckResult",
@@ -77,6 +84,7 @@ __all__ = [
     "RunState",
     "SelectionParams",
     "SkillUseRecord",
+    "UtilityVerdict",
     "check_annual_equals_monthly_sum",
     "finalizeRun",
     "ik_claim_emit",
@@ -85,4 +93,5 @@ __all__ = [
     "ik_research_emit",
     "ik_run_check",
     "ik_skill_use_emit",
+    "ik_utility_verdict",
 ]
