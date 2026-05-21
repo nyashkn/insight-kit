@@ -71,26 +71,26 @@ outside world; `research` + `skill_use` acquire knowledge that feeds `claim`/`in
 
 ```
 id  | st | desc                                                                                  | cites
-T1  | .  | define RecordSchema — pydantic discriminated union on record_type over ClaimSchema/InterventionSchema/ResearchSchema/SkillUseSchema; claim = dict fields w/ fmt_hint + tier enum | V2,V8,C5
-T2  | .  | impl core _record_emit gate + typed wrappers (ik_claim_emit/ik_intervention_emit/ik_research_emit/ik_skill_use_emit) — validate → fingerprint → write record.json → append index | V1,V2,I.emit
-T3  | .  | content-address fingerprints — data/record/code/env, sha256 canonical-JSON, pin float repr, NFC-normalize unicode, tag data_fingerprint_source (registered_input|payload) | V4,V6,V22,C10
-T4  | .  | storage — records/{id}/record.json canonical + records.jsonl derived index w/ record_type + events/*.jsonl; claims.jsonl as regenerable claim-projection view | V7,I.store,I.events
-T5  | .  | RunState accumulator + idempotent finalizeRun + manifest_complete assert               | V10,V17,I.run
-T6  | .  | supersession — new record w/ supersedes edge                                           | V3
-T7  | .  | tier gate — published claim/intervention requires full fingerprint set (data/code/agent/env) + data_fingerprint_source==registered_input else downgrade | V6,V22,C7
-T8  | .  | Layer A/B/C wiring — A at the gate (reuse validation/ guards), B/C post-run via ik_run_check | V2,I.runcheck,C13
-T9  | .  | input-provenance check — reject raw parquet paths, require registered-upstream fingerprint; extend InsightKitHook.run_before_node_execution to capture node_input_types (dropped via **future_kwargs at adapter.py:79) + compute h_dlt fingerprint sha256(resource_name+schema) at hook time | V13,V22,C8
-T10 | .  | coverage-warning gate — published + partial-period/n<30 + no warning → reject          | V14
-T11 | .  | selection params as explicit claim fields + Layer-C cross-check (annual=Σmonthly)      | V15
-T12 | .  | critique severity gate + critiqueRounds counter in RunState                            | V16
-T13 | .  | published-tier fail-closed hooks — manifest/finalize fatal on published                | V17
-T14 | .  | ik_feature_get — provisional-feature return on miss + draft-lock                       | V18
+T1  | x  | define RecordSchema — pydantic discriminated union on record_type over ClaimSchema/InterventionSchema/ResearchSchema/SkillUseSchema; claim = dict fields w/ fmt_hint + tier enum | V2,V8,C5
+T2  | x  | impl core _record_emit gate + typed wrappers (ik_claim_emit/ik_intervention_emit/ik_research_emit/ik_skill_use_emit) — validate → fingerprint → write record.json → append index | V1,V2,I.emit
+T3  | x  | content-address fingerprints — data/record/code/env, sha256 canonical-JSON, pin float repr, NFC-normalize unicode, tag data_fingerprint_source (registered_input|payload) | V4,V6,V22,C10
+T4  | x  | storage — records/{id}/record.json canonical + records.jsonl derived index w/ record_type + events/*.jsonl; claims.jsonl as regenerable claim-projection view | V7,I.store,I.events
+T5  | x  | RunState accumulator + idempotent finalizeRun + manifest_complete assert               | V10,V17,I.run
+T6  | x  | supersession — new record w/ supersedes edge                                           | V3
+T7  | x  | tier gate — published claim/intervention requires full fingerprint set (data/code/agent/env) + data_fingerprint_source==registered_input else downgrade | V6,V22,C7
+T8  | x  | Layer A/B/C wiring — A at the gate (reuse validation/ guards), B/C post-run via ik_run_check | V2,I.runcheck,C13
+T9  | x  | input-provenance check — reject raw parquet paths, require registered-upstream fingerprint; extend InsightKitHook.run_before_node_execution to capture node_input_types (dropped via **future_kwargs at adapter.py:79) + compute h_dlt fingerprint sha256(resource_name+schema) at hook time | V13,V22,C8
+T10 | x  | coverage-warning gate — published + partial-period/n<30 + no warning → reject          | V14
+T11 | x  | selection params as explicit claim fields + Layer-C cross-check (annual=Σmonthly)      | V15
+T12 | x  | critique severity gate + critiqueRounds counter in RunState                            | V16
+T13 | x  | published-tier fail-closed hooks — manifest/finalize fatal on published                | V17
+T14 | x  | ik_feature_get — provisional-feature return on miss + draft-lock                       | V18
 T15 | .  | Evidence read-end — <ClaimNum>/<ClaimChart> resolve from index, fingerprint vs record.json | V9,I.evidence
 T16 | .  | Layer-D render audit — L5 HTML-token→claim join + L6 prose lint, CI-blocking on published | V12,I.audit
 T17 | .  | eval harness — containerize growth_insights fixture, golden=audited-truth, semantic field-diff, classify regression/legitimate/coverage-drop, buggy runs as negative fixtures | V11,C10,C11
 T18 | .  | L3 pi extension (.pi/extensions/*.ts) — typed-wrapper TS ToolDefinitions (ik_claim_emit + ik_intervention_emit + ik_research_emit + ik_skill_use_emit), call L1 via pi.exec uv-run subprocess, gen TypeBox parameters from pydantic JSON Schema, gate on tool_call/tool_result hooks | C4,C5,I.emit
-T19 | .  | purity lint — no hamilton/pi import in L1 module                                       | V5
-T20 | .  | env capture — container digest + lockfile hash into run.json                           | V6,C10
+T19 | x  | purity lint — no hamilton/pi import in L1 module                                       | V5
+T20 | x  | env capture — container digest + lockfile hash into run.json                           | V6,C10
 T21 | .  | intervention reconciliation — intent/realized fields, emit-time reconciliation gate, draft→published promotion lock until realized populated | V19,C12
 T22 | .  | research/skill_use knowledge records — captured-results snapshot persist, cites-edge requirement on dependent published claim/intervention | V20,I.cites
 T23 | .  | post-hoc utility verdict — append-only useful/not_useful event on research/skill_use records | V21,I.events
