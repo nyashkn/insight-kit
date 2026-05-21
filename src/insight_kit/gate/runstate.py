@@ -211,6 +211,8 @@ class RunState:
     critiqueRounds: incremented by the critique severity gate (T12 seam).
     completedAt:    set by finalizeRun; None until finalized.
     run_dir:        run directory path (required for manifest_complete assertion).
+    tool_calls:     count of tool_call messages seen in this run (T13 — V17).
+    tool_results:   count of tool_result messages seen in this run (T13 — V17).
     """
 
     records: list[RecordRef] = field(default_factory=list)
@@ -218,6 +220,8 @@ class RunState:
     critiqueRounds: int = 0  # noqa: N815  camelCase = cross-language on-disk contract — do not snake_case
     completedAt: str | None = None  # noqa: N815  camelCase = cross-language on-disk contract — do not snake_case
     run_dir: Path | None = None
+    tool_calls: int = 0
+    tool_results: int = 0
 
     def record_ids(self) -> list[str]:
         """Return list of record_ids in emission order."""
@@ -260,6 +264,8 @@ class RunState:
             "critiqueRounds": self.critiqueRounds,
             "completedAt": self.completedAt,
             "run_dir": str(self.run_dir) if self.run_dir else None,
+            "tool_calls": self.tool_calls,
+            "tool_results": self.tool_results,
         }
 
 
@@ -291,6 +297,50 @@ def finalizeRun(  # noqa: N802  camelCase = cross-language on-disk contract — 
 
     if assert_manifest:
         run_state.manifest_complete()
+
+    run_state.completedAt = datetime.now(UTC).isoformat()
+    return run_state
+
+
+# ---------------------------------------------------------------------------
+# T13 — finalize_published_run: published-tier fail-closed (V17)
+# ---------------------------------------------------------------------------
+
+
+def finalize_published_run(run_state: RunState) -> RunState:
+    """Fail-closed finalization for published runs (V17).
+
+    Unlike finalizeRun which is permissive on draft, this function is FATAL
+    on any mismatch — no unauditable published record can escape.
+
+    Checks (all raise PublishedRunError on failure):
+      1. records.jsonl row count == len(RunState.records)
+         (the core manifest_complete assertion, V17).
+      2. tool_calls == tool_results
+         (every tool_call must have a paired tool_result — no hanging calls).
+
+    On success: sets completedAt and returns the mutated RunState.
+    On failure: leaves completedAt as None (run is aborted, not finalized).
+
+    Note: this function is NOT idempotent — it re-checks on every call.
+    This is intentional: a second call after a manifest fix should succeed.
+    """
+    # Check 1: tool_call / tool_result balance
+    if run_state.tool_calls != run_state.tool_results:
+        raise PublishedRunError(
+            f"Published run finalization failed (V17): "
+            f"tool_calls={run_state.tool_calls} != tool_results={run_state.tool_results}. "
+            "Every tool_call must have a paired tool_result. "
+            "Run fails closed — no unauditable published record."
+        )
+
+    # Check 2: manifest completeness (records.jsonl == RunState.records length)
+    try:
+        run_state.manifest_complete()
+    except ManifestError as exc:
+        raise PublishedRunError(
+            f"Published run finalization failed (V17): manifest mismatch — {exc}"
+        ) from exc
 
     run_state.completedAt = datetime.now(UTC).isoformat()
     return run_state
