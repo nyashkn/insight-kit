@@ -86,7 +86,7 @@ T12 | x  | critique severity gate + critiqueRounds counter in RunState          
 T13 | x  | published-tier fail-closed hooks — manifest/finalize fatal on published                | V17
 T14 | x  | ik_feature_get — provisional-feature return on miss + draft-lock                       | V18
 T15 | .  | Evidence read-end — <ClaimNum>/<ClaimChart> resolve from index, fingerprint vs record.json | V9,I.evidence
-T16 | .  | Layer-D render audit — L5 HTML-token→claim join + L6 prose lint, CI-blocking on published | V12,I.audit
+T16 | x  | Layer-D render audit — L5 HTML-token→claim join + L6 prose lint, CI-blocking on published | V12,I.audit
 T17 | .  | eval harness — containerize growth_insights fixture, golden=audited-truth, semantic field-diff, classify regression/legitimate/coverage-drop, buggy runs as negative fixtures | V11,C10,C11
 T18 | .  | L3 pi extension (.pi/extensions/*.ts) — typed-wrapper TS ToolDefinitions (ik_claim_emit + ik_intervention_emit + ik_research_emit + ik_skill_use_emit), call L1 via pi.exec uv-run subprocess, gen TypeBox parameters from pydantic JSON Schema, gate on tool_call/tool_result hooks | C4,C5,I.emit
 T19 | x  | purity lint — no hamilton/pi import in L1 module                                       | V5

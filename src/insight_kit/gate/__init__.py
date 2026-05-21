@@ -19,13 +19,28 @@ Public API:
   Post-hoc utility verdict on knowledge records (V21, I.events):
     ik_utility_verdict, UtilityVerdict
 
+  Layer-D render audit (V12, I.audit):
+    run_render_audit, audit_l5, audit_l6, load_claims_index, RenderedToken,
+    ClaimFieldRef, RenderAdapter, AuditReport, VegaLiteAdapter
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
-Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, V14, V15, V18, V21.
+Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
+V15, V18, V21.
 """
 from __future__ import annotations
 
+from insight_kit.gate.audit import (
+    AuditReport,
+    ClaimFieldRef,
+    RenderAdapter,
+    RenderedToken,
+    audit_l5,
+    audit_l6,
+    load_claims_index,
+    run_render_audit,
+)
 from insight_kit.gate.emit import (
     ik_claim_emit,
     ik_intervention_emit,
@@ -36,6 +51,7 @@ from insight_kit.gate.feature import (
     ProvisionalFeature,
     ik_feature_get,
 )
+from insight_kit.gate.render_adapters import VegaLiteAdapter
 from insight_kit.gate.runcheck import (
     CheckResult,
     CrossCheckResult,
@@ -67,7 +83,9 @@ from insight_kit.gate.verdict import (
 )
 
 __all__ = [
+    "AuditReport",
     "CheckResult",
+    "ClaimFieldRef",
     "ClaimRecord",
     "ClaimTier",
     "CoverageInfo",
@@ -80,11 +98,16 @@ __all__ = [
     "RealizedPayload",
     "RecordRef",
     "RecordSchema",
+    "RenderAdapter",
+    "RenderedToken",
     "ResearchRecord",
     "RunState",
     "SelectionParams",
     "SkillUseRecord",
     "UtilityVerdict",
+    "VegaLiteAdapter",
+    "audit_l5",
+    "audit_l6",
     "check_annual_equals_monthly_sum",
     "finalizeRun",
     "ik_claim_emit",
@@ -94,4 +117,6 @@ __all__ = [
     "ik_run_check",
     "ik_skill_use_emit",
     "ik_utility_verdict",
+    "load_claims_index",
+    "run_render_audit",
 ]

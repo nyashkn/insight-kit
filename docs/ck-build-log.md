@@ -149,3 +149,27 @@ Fixed now:
   research/skill_use record (`utility-verdict-{invalid,target-missing,wrong-type}`).
 - T23 tests: `test_utility_verdict.py` (13 tests). Full gate suite green,
   ruff clean. **Gate-core (T21-T23) complete — every §V invariant enforced.**
+
+## 2026-05-22 — T16 Layer-D render audit, modular (V8, V9, V12, I.audit)
+
+- **User steer: make the render audit modular** — it must work across render
+  backends (Evidence, Altair/Vega-Lite, later Superset / Lightdash / PowerBI /
+  Malloy). This dissolved the earlier defer-or-build fork.
+- **Split: backend-agnostic core + per-backend adapters.**
+  - `gate/audit.py` — the core. `RenderedToken` normalized contract +
+    `RenderAdapter` protocol; `audit_l5` (V9 token→claim join, orphan/unknown/
+    mismatch), `audit_l6` (V8 prose lint — bare numeric literal in narrative.md
+    prose; code blocks, inline code, `<ClaimNum>`/`<ClaimChart>` tags and list
+    ordinals exempt); `run_render_audit` → `AuditReport`. Zero format-guessing
+    risk — the core operates on the normalized contract, never raw HTML.
+  - `gate/render_adapters.py` — `VegaLiteAdapter` for Altair `chart.vl.json`
+    (a pinned public spec). Claim binding via the Vega-Lite `usermeta` slot:
+    `usermeta.insight_kit.{claim_id, field_map}`. Unmapped numeric field →
+    orphan token.
+- **Adapters deferred:** `EvidenceAdapter` ships with the Evidence SDK loop;
+  Superset/Lightdash/PowerBI/Malloy when adopted. The core never changes when a
+  backend is added — only a new adapter module.
+- **Scope note.** RT1 (downstream loop) is closed on the *enforcement* side;
+  its other half (the actual `<ClaimNum>` Evidence render, T15) stays in the
+  Evidence loop. L6's "field ref" contract = `<ClaimNum>`/`<ClaimChart>`.
+- T16 tests: `test_render_audit.py` (34 tests). Full gate suite green, ruff clean.
