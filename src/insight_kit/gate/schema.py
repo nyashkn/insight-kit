@@ -70,6 +70,27 @@ class CoverageInfo(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class SelectionParams(BaseModel):
+    """V15 — explicit selection params for a claim.
+
+    Date-window / baseline / filter / grain selections MUST be emitted as
+    explicit, structured claim fields — never left implicit in prompt text
+    (RT4: an agent-chosen window/filter must not cross the gate unrecorded).
+
+    date_window: selected window, e.g. "2026-03-01/2026-03-31".
+    baseline:    baseline period or baseline claim_id the value is measured against.
+    grain:       aggregation grain, e.g. "month", "week", "day".
+    filters:     dimension filters applied, e.g. {"channel": "meta"}.
+    """
+
+    date_window: str | None = None
+    baseline: str | None = None
+    grain: str | None = None
+    filters: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {"extra": "forbid"}
+
+
 # ---------------------------------------------------------------------------
 # ClaimRecord  (C6 — claim fields dict + tier + narrative ref)
 # ---------------------------------------------------------------------------
@@ -87,6 +108,7 @@ class ClaimRecord(BaseModel):
     coverage: optional input-coverage metadata (n, partial_period) — T10/V14.
     coverage_warning: warning text; a published claim with thin coverage
         (partial_period or n<30) must carry one or emit rejects (T10/V14).
+    selection: optional explicit selection params (window/baseline/grain/filters) — T11/V15.
     data_fingerprint_source: V22 provenance honesty — set by emit, not caller.
     """
 
@@ -104,6 +126,8 @@ class ClaimRecord(BaseModel):
     # T10/V14 — input coverage + the warning thin coverage requires.
     coverage: CoverageInfo | None = None
     coverage_warning: str | None = None
+    # T11/V15 — explicit selection params (window / baseline / grain / filters).
+    selection: SelectionParams | None = None
     # V22 — injected by _record_emit; callers must not set this manually.
     data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 

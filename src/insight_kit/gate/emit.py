@@ -440,6 +440,7 @@ def ik_claim_emit(
     supersedes: str | None = None,
     coverage: dict[str, Any] | None = None,
     coverage_warning: str | None = None,
+    selection: dict[str, Any] | None = None,
     run_state: RunState,
     run_dir: Path | None = None,
     input_data: bytes | dict[str, Any] | None = None,
@@ -456,6 +457,9 @@ def ik_claim_emit(
     coverage / coverage_warning — T10/V14: a published claim with thin coverage
     (coverage={"partial_period": True} or coverage={"n": <30}) is rejected at
     emit unless coverage_warning is set.
+
+    selection — T11/V15: explicit window/baseline/grain/filters params; emit
+    them as structured fields, never implicit in prose.
     """
     # Normalise fields
     normalised: dict[str, dict[str, Any]] = {}
@@ -485,6 +489,8 @@ def ik_claim_emit(
         payload["coverage"] = coverage
     if coverage_warning is not None:
         payload["coverage_warning"] = coverage_warning
+    if selection is not None:
+        payload["selection"] = selection
 
     return _record_emit(payload, run_state=run_state, run_dir=run_dir, input_data=input_data)
 

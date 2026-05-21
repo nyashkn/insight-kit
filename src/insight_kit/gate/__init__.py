@@ -10,16 +10,16 @@ Public API:
   Run accumulator:
     RunState, RecordRef, finalizeRun, ManifestError
 
-  Layer-B/C runner (I.runcheck):
-    ik_run_check, CheckResult
+  Layer-B/C runner + cross-checks (I.runcheck):
+    ik_run_check, CheckResult, check_annual_equals_monthly_sum, CrossCheckResult
 
   Feature catalog (V18):
     ik_feature_get, ProvisionalFeature
 
   Key types:
-    ClaimTier, FieldEntry, IntentPayload, RealizedPayload
+    ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
-Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, V18.
+Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, V14, V15, V18.
 """
 from __future__ import annotations
 
@@ -35,6 +35,8 @@ from insight_kit.gate.feature import (
 )
 from insight_kit.gate.runcheck import (
     CheckResult,
+    CrossCheckResult,
+    check_annual_equals_monthly_sum,
     ik_run_check,
 )
 from insight_kit.gate.runstate import (
@@ -46,12 +48,14 @@ from insight_kit.gate.runstate import (
 from insight_kit.gate.schema import (
     ClaimRecord,
     ClaimTier,
+    CoverageInfo,
     FieldEntry,
     IntentPayload,
     InterventionRecord,
     RealizedPayload,
     RecordSchema,
     ResearchRecord,
+    SelectionParams,
     SkillUseRecord,
 )
 
@@ -59,6 +63,8 @@ __all__ = [
     "CheckResult",
     "ClaimRecord",
     "ClaimTier",
+    "CoverageInfo",
+    "CrossCheckResult",
     "FieldEntry",
     "IntentPayload",
     "InterventionRecord",
@@ -69,7 +75,9 @@ __all__ = [
     "RecordSchema",
     "ResearchRecord",
     "RunState",
+    "SelectionParams",
     "SkillUseRecord",
+    "check_annual_equals_monthly_sum",
     "finalizeRun",
     "ik_claim_emit",
     "ik_feature_get",
