@@ -10,7 +10,6 @@ Covers:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -26,7 +25,6 @@ from insight_kit.gate.store import (
     resolve_run_dir,
     write_record,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -122,7 +120,7 @@ class TestAppendIndexRow:
     def test_multiple_rows_appended(self, run_dir):
         append_index_row(run_dir, _claim_dict("TEST-D-001"), "rec001")
         append_index_row(run_dir, _research_dict("RES-001"), "rec002")
-        rows = [json.loads(l) for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows = [json.loads(ln) for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows) == 2
         assert {r["record_type"] for r in rows} == {"claim", "research"}
 
@@ -173,7 +171,7 @@ class TestAppendEvent:
         append_event(run_dir, "rec001", "critique", {"round": 1})
         append_event(run_dir, "rec001", "critique", {"round": 2})
         ev_path = run_dir / "records" / "rec001" / "events" / "critique.jsonl"
-        rows = [json.loads(l) for l in ev_path.read_text().splitlines() if l.strip()]
+        rows = [json.loads(ln) for ln in ev_path.read_text().splitlines() if ln.strip()]
         assert len(rows) == 2
         assert rows[0]["round"] == 1
         assert rows[1]["round"] == 2
@@ -204,7 +202,7 @@ class TestReindex:
         count = reindex(run_dir)
         assert count == 2
 
-        rows = [json.loads(l) for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows = [json.loads(ln) for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows) == 2
         assert {r["record_type"] for r in rows} == {"claim", "research"}
 
@@ -213,9 +211,9 @@ class TestReindex:
         write_record(run_dir, "rec002", _research_dict("RES-001"))
         reindex(run_dir)
         claim_rows = [
-            json.loads(l)
-            for l in claims_index_path(run_dir).read_text().splitlines()
-            if l.strip()
+            json.loads(ln)
+            for ln in claims_index_path(run_dir).read_text().splitlines()
+            if ln.strip()
         ]
         assert len(claim_rows) == 1
         assert claim_rows[0]["claim_id"] == "TEST-D-001"
@@ -225,7 +223,7 @@ class TestReindex:
         write_record(run_dir, "aaa", _claim_dict("TEST-D-001"))
         write_record(run_dir, "mmm", _claim_dict("TEST-D-002"))
         reindex(run_dir)
-        rows = [json.loads(l) for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows = [json.loads(ln) for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         ids = [r["record_id"] for r in rows]
         assert ids == sorted(ids)
 
@@ -239,11 +237,11 @@ class TestReindex:
         write_record(run_dir, "rec001", _claim_dict())
         append_index_row(run_dir, _claim_dict(), "rec001")
         append_index_row(run_dir, _claim_dict(), "rec001")  # stale duplicate
-        rows_before = [l for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows_before = [ln for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows_before) == 2  # stale
 
         reindex(run_dir)
-        rows_after = [l for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows_after = [ln for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows_after) == 1  # clean
 
     def test_reindex_returns_count(self, run_dir):

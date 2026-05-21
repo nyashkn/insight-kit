@@ -26,7 +26,6 @@ from insight_kit.gate.runstate import RunState
 from insight_kit.gate.store import index_path, record_path
 from insight_kit.validation import ValidationError as LayerAValidationError
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -62,7 +61,7 @@ class TestV1_OnlyEmitWrites:
     def test_emit_appends_records_jsonl(self, run_dir, state):
         _record_emit(_valid_claim_payload(), run_state=state, run_dir=run_dir)
         assert index_path(run_dir).exists()
-        rows = [l for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows = [ln for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows) == 1
 
     def test_two_emits_two_rows(self, run_dir, state):
@@ -71,7 +70,7 @@ class TestV1_OnlyEmitWrites:
         p2["claim_id"] = "TEST-D-002"
         _record_emit(p1, run_state=state, run_dir=run_dir)
         _record_emit(p2, run_state=state, run_dir=run_dir)
-        rows = [l for l in index_path(run_dir).read_text().splitlines() if l.strip()]
+        rows = [ln for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows) == 2
 
     def test_records_jsonl_carries_record_type(self, run_dir, state):

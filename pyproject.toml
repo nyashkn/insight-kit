@@ -54,6 +54,12 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# test identifiers are deliberately invariant-tagged (TestV1_...) and mirror
+# SPEC-mandated camelCase symbols (test_finalizeRun_*) — PEP8 naming N-rules
+# do not apply to test class/function names.
+"tests/**" = ["N801", "N802"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers -m 'not slow and not eval and not network'"

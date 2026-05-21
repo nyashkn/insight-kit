@@ -10,7 +10,8 @@ Covers:
 from __future__ import annotations
 
 import pytest
-from pydantic import TypeAdapter, ValidationError as PydanticValidationError
+from pydantic import TypeAdapter
+from pydantic import ValidationError as PydanticValidationError
 
 from insight_kit.gate.schema import (
     ClaimRecord,
@@ -188,6 +189,7 @@ class TestInterventionRecord:
             intent=IntentPayload(description="do thing"),
             realized=RealizedPayload(status="applied"),
         )
+        assert rec.realized is not None
         assert rec.realized.status == "applied"
 
     def test_realized_partial(self):
@@ -196,6 +198,7 @@ class TestInterventionRecord:
             intent=IntentPayload(description="do thing"),
             realized=RealizedPayload(status="partial", details="only half worked"),
         )
+        assert rec.realized is not None
         assert rec.realized.status == "partial"
 
     def test_realized_invalid_status_raises(self):
