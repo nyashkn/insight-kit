@@ -230,6 +230,58 @@ def _apply_tier_gate(
         record_dict["tier_downgrade_reason"] = "; ".join(reasons)
 
 
+_MIN_SAMPLE_N: int = 30
+
+
+def _check_coverage_warning(record_dict: dict[str, Any]) -> None:
+    """T10/V14 — published claim with thin coverage must carry a coverage_warning.
+
+    "Thin" coverage = the claim declares a CoverageInfo whose inputs are
+    partial-period OR have n < 30. A published-tier claim that is thin and lacks
+    a non-empty coverage_warning is REJECTED at emit (V14) — unlike the tier gate
+    (T7) this is a hard reject, not a downgrade.
+
+    Runs AFTER the tier gate, so a record already downgraded published->draft is
+    no longer subject to this check. Claims that declare no CoverageInfo are not
+    enforced — the gate can only assess coverage it was told about.
+
+    Raises LayerAValidationError(rule_id='coverage-warning-missing') on failure.
+    """
+    if record_dict.get("record_type") != "claim":
+        return
+    if record_dict.get("tier") != "published":
+        return
+    coverage = record_dict.get("coverage")
+    if not coverage:
+        return  # no coverage declared → gate cannot assess
+
+    n = coverage.get("n")
+    thin_reasons: list[str] = []
+    if coverage.get("partial_period"):
+        thin_reasons.append("inputs are partial-period")
+    if n is not None and n < _MIN_SAMPLE_N:
+        thin_reasons.append(f"sample size n={n} is below {_MIN_SAMPLE_N}")
+    if not thin_reasons:
+        return  # coverage is adequate
+
+    if not (record_dict.get("coverage_warning") or "").strip():
+        raise LayerAValidationError(
+            rule_id="coverage-warning-missing",
+            message=(
+                "Published-tier claim has thin input coverage ("
+                + "; ".join(thin_reasons)
+                + ") but carries no coverage_warning. V14 — a published claim "
+                "whose inputs are partial-period or n<30 must declare the "
+                "matching coverage_warning or it is rejected at emit."
+            ),
+            suggestion=(
+                "Add a coverage_warning describing the limitation (e.g. "
+                "'March figure is month-to-date, not a full month'), or emit "
+                "the claim at tier='draft'."
+            ),
+        )
+
+
 def _claim_ids_in_run(run_state: RunState) -> set[str]:
     """Extract claim_ids from RunState.records metadata.
 
@@ -317,6 +369,15 @@ def _record_emit(
     # Downgrade mutates record_dict["tier"] and adds "tier_downgrade_reason" if needed.
     _apply_tier_gate(record_dict, resolved_dir)
 
+    # --- Step 5c: T10/V14 coverage-warning gate ---
+    # After the tier gate (a downgraded record is no longer 'published'), and
+    # before fingerprint + storage so a reject is zero-partial-write (V2).
+    try:
+        _check_coverage_warning(record_dict)
+    except LayerAValidationError:
+        run_state.rejectionCount += 1
+        raise
+
     # record_fingerprint: sha256 of the canonical record dict (includes tier + downgrade reason
     # so a downgraded record has a different fingerprint than the same record at published).
     rfp = _record_fingerprint(record_dict)
@@ -377,6 +438,8 @@ def ik_claim_emit(
     narrative_ref: str | None = None,
     cites: list[str] | None = None,
     supersedes: str | None = None,
+    coverage: dict[str, Any] | None = None,
+    coverage_warning: str | None = None,
     run_state: RunState,
     run_dir: Path | None = None,
     input_data: bytes | dict[str, Any] | None = None,
@@ -389,6 +452,10 @@ def ik_claim_emit(
       - FieldEntry dict:   {"revenue": {"value": 123456, "fmt_hint": "$,.0f"}}
 
     All forms normalised to FieldEntry before validation.
+
+    coverage / coverage_warning — T10/V14: a published claim with thin coverage
+    (coverage={"partial_period": True} or coverage={"n": <30}) is rejected at
+    emit unless coverage_warning is set.
     """
     # Normalise fields
     normalised: dict[str, dict[str, Any]] = {}
@@ -414,6 +481,10 @@ def ik_claim_emit(
         payload["cites"] = cites
     if supersedes is not None:
         payload["supersedes"] = supersedes
+    if coverage is not None:
+        payload["coverage"] = coverage
+    if coverage_warning is not None:
+        payload["coverage_warning"] = coverage_warning
 
     return _record_emit(payload, run_state=run_state, run_dir=run_dir, input_data=input_data)
 

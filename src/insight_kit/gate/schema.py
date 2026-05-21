@@ -52,6 +52,24 @@ class FieldEntry(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class CoverageInfo(BaseModel):
+    """V14 — input-coverage metadata for a claim.
+
+    n: sample size of the claim's inputs (rows / observations behind the value).
+    partial_period: True when the input window is an incomplete calendar period
+                    (e.g. month-to-date treated as if it were a full month).
+
+    Optional: when absent the gate cannot assess coverage. When present and
+    "thin" (partial_period, or n < 30) a published claim MUST carry a
+    coverage_warning or it is rejected at emit (T10/V14).
+    """
+
+    n: int | None = None
+    partial_period: bool = False
+
+    model_config = {"extra": "forbid"}
+
+
 # ---------------------------------------------------------------------------
 # ClaimRecord  (C6 — claim fields dict + tier + narrative ref)
 # ---------------------------------------------------------------------------
@@ -65,7 +83,10 @@ class ClaimRecord(BaseModel):
     audience: optional intended audience tag (e.g. "board", "ops").
     narrative_ref: optional path/id pointing to narrative.md for this claim.
     cites: list of research/skill_use record ids that informed this claim (I.cites).
-    supersedes: id of the prior record this corrects (T6 seam, not yet enforced here).
+    supersedes: id of the prior record this corrects (T6 — emit validates the target exists).
+    coverage: optional input-coverage metadata (n, partial_period) — T10/V14.
+    coverage_warning: warning text; a published claim with thin coverage
+        (partial_period or n<30) must carry one or emit rejects (T10/V14).
     data_fingerprint_source: V22 provenance honesty — set by emit, not caller.
     """
 
@@ -80,6 +101,9 @@ class ClaimRecord(BaseModel):
     narrative_ref: str | None = None
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # T10/V14 — input coverage + the warning thin coverage requires.
+    coverage: CoverageInfo | None = None
+    coverage_warning: str | None = None
     # V22 — injected by _record_emit; callers must not set this manually.
     data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 
