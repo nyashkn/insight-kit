@@ -61,12 +61,16 @@ _RECORD_ADAPTER: TypeAdapter[Any] = TypeAdapter(RecordSchema)
 def _run_layer_a_guards(
     record: Any,
     run_state: RunState,
+    run_dir: "Path | None" = None,
 ) -> None:
     """Run applicable Layer-A guards from insight_kit.validation.
 
     Guards that apply to claims:
       - check_claim_id_format  (claim_id must match the regex)
       - check_claim_id_unique_in_run  (no duplicate within session)
+
+    Guards that apply to all record types:
+      - check_supersedes_exists  (T6 — V3: superseded record must exist in run dir)
 
     Raises LayerAValidationError on failure (V2 — no partial write).
     """
@@ -80,6 +84,35 @@ def _run_layer_a_guards(
 
         # claim_ids from records already emitted in this run session
         check_claim_id_unique_in_run(record.claim_id, _claim_ids_in_run(run_state))
+
+    # T6/V3 — validate supersedes target exists in run dir
+    supersedes = getattr(record, "supersedes", None)
+    if supersedes is not None and run_dir is not None:
+        _check_supersedes_exists(supersedes, run_dir)
+
+
+def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
+    """T6/V3 — verify the superseded record exists in the run dir.
+
+    Raises LayerAValidationError if the target record.json is not found.
+    """
+    from insight_kit.gate.store import record_path
+
+    target = record_path(run_dir, supersedes_id)
+    if not target.exists():
+        raise LayerAValidationError(
+            rule_id="supersedes-not-found",
+            message=(
+                f"supersedes={supersedes_id!r} does not correspond to any existing "
+                f"record in the run directory. Records are immutable post-emit (V3) — "
+                f"a supersession edge must point to a record that exists."
+            ),
+            suggestion=(
+                f"Emit the record you intend to supersede first, then emit the "
+                f"correcting record with supersedes={supersedes_id!r}. "
+                f"Or check the record_id is correct."
+            ),
+        )
 
 
 def _claim_ids_in_run(run_state: RunState) -> set[str]:
@@ -131,9 +164,12 @@ def _record_emit(
             suggestion="Fix the payload fields to match the schema for the given record_type.",
         ) from exc
 
+    # Resolve run_dir early so Layer-A guards (T6 supersedes check) can use it.
+    resolved_dir = resolve_run_dir(run_dir)
+
     # --- Step 2: Layer-A guards ---
     try:
-        _run_layer_a_guards(record, run_state)
+        _run_layer_a_guards(record, run_state, run_dir=resolved_dir)
     except LayerAValidationError:
         run_state.rejectionCount += 1
         raise  # re-raise unchanged — caller sees the structured ValidationError
@@ -160,7 +196,7 @@ def _record_emit(
     record_id = record_id_from_fingerprint(rfp)
 
     # --- Steps 6-8: Storage ---
-    resolved_dir = resolve_run_dir(run_dir)
+    # resolved_dir was already computed above (before Layer-A guards).
     # V2 — content-address collision: translate FileExistsError into a structured
     # ValidationError and increment rejectionCount (duplicate record is a schema reject).
     try:
