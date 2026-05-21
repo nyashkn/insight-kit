@@ -193,7 +193,12 @@ class ResearchRecord(BaseModel):
     """A knowledge-acquisition record: external research.
 
     Untiered (knowledge only — V20).
-    snapshot_ref: path/id pointing to the captured-results snapshot artifact.
+    snapshot_ref: caller-facing origin label for the captured results
+        (URL, dataset id, cache key) — descriptive, not load-bearing.
+    snapshot_fingerprint: T22/V20 — sha256 of the captured-results snapshot
+        that emit persisted under the record bundle. Injected by _record_emit;
+        callers must not set it. THIS is the load-bearing provenance — it is
+        folded into record_fingerprint, so the snapshot is content-addressed.
     query: the research question or query string.
     source: data source identifier (URL, tool name, dataset id, etc.).
     timestamp: ISO-8601 string of when research was conducted.
@@ -203,12 +208,14 @@ class ResearchRecord(BaseModel):
     record_type: Literal["research"] = "research"
 
     research_id: str = Field(..., description="Stable ID for this research record.")
-    snapshot_ref: str = Field(..., description="Ref to captured results snapshot.")
+    snapshot_ref: str = Field(..., description="Origin label for the captured results.")
     query: str
     source: str
     timestamp: str = Field(..., description="ISO-8601 timestamp of research.")
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # T22/V20 — injected by _record_emit (sha256 of the persisted snapshot).
+    snapshot_fingerprint: str | None = None
     # V22 — injected by _record_emit; callers must not set this manually.
     data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 
@@ -224,7 +231,11 @@ class SkillUseRecord(BaseModel):
     """A knowledge-acquisition record: tool/skill use.
 
     Untiered (knowledge only — V20).
-    snapshot_ref: path/id pointing to the captured-results snapshot artifact.
+    snapshot_ref: caller-facing origin label for the captured results
+        (endpoint, cache key) — descriptive, not load-bearing.
+    snapshot_fingerprint: T22/V20 — sha256 of the captured-results snapshot
+        that emit persisted under the record bundle. Injected by _record_emit;
+        callers must not set it. Folded into record_fingerprint.
     tool: name of the tool or skill used.
     source: data source or endpoint the tool queried.
     timestamp: ISO-8601 string of when the skill was invoked.
@@ -234,12 +245,14 @@ class SkillUseRecord(BaseModel):
     record_type: Literal["skill_use"] = "skill_use"
 
     skill_use_id: str = Field(..., description="Stable ID for this skill-use record.")
-    snapshot_ref: str = Field(..., description="Ref to captured results snapshot.")
+    snapshot_ref: str = Field(..., description="Origin label for the captured results.")
     tool: str
     source: str
     timestamp: str = Field(..., description="ISO-8601 timestamp of skill invocation.")
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # T22/V20 — injected by _record_emit (sha256 of the persisted snapshot).
+    snapshot_fingerprint: str | None = None
     # V22 — injected by _record_emit; callers must not set this manually.
     data_fingerprint_source: DataFingerprintSource = DataFingerprintSource.payload
 

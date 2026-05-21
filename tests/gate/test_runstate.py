@@ -206,6 +206,7 @@ class TestManifestComplete:
         ik_research_emit(
             "RES-001", "s/r.json", "query", "source",
             timestamp="2026-05-21T10:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state, run_dir=run_dir,
         )
         state.manifest_complete()  # 2 == 2, should pass

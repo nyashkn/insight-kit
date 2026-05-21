@@ -95,6 +95,44 @@ def read_record(run_dir: Path, record_id: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# snapshot.json — captured-results snapshot for knowledge records (T22/V20)
+# ---------------------------------------------------------------------------
+
+
+def snapshot_path(run_dir: Path, record_id: str) -> Path:
+    """Path to records/{id}/snapshot.json."""
+    return run_dir / "records" / record_id / "snapshot.json"
+
+
+def write_snapshot(
+    run_dir: Path,
+    record_id: str,
+    snapshot: dict[str, Any],
+) -> Path:
+    """Write a knowledge record's captured-results snapshot to the bundle (T22/V20).
+
+    Persists `snapshot` as records/{id}/snapshot.json next to record.json. The
+    snapshot is hashed into record_fingerprint (via snapshot_fingerprint) before
+    this write, so the file is content-addressed and tamper-evident.
+
+    Raises FileExistsError (V3) if snapshot.json already exists — immutable
+    post-emit. Returns the path to the written file.
+    """
+    path = snapshot_path(run_dir, record_id)
+    if path.exists():
+        raise FileExistsError(
+            f"snapshot.json already exists at {path}. "
+            "Knowledge-record snapshots are immutable post-emit (V3)."
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(snapshot, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return path
+
+
+# ---------------------------------------------------------------------------
 # records.jsonl — derived projection index
 # ---------------------------------------------------------------------------
 

@@ -92,7 +92,7 @@ T18 | .  | L3 pi extension (.pi/extensions/*.ts) — typed-wrapper TS ToolDefini
 T19 | x  | purity lint — no hamilton/pi import in L1 module                                       | V5
 T20 | x  | env capture — container digest + lockfile hash into run.json                           | V6,C10
 T21 | x  | intervention reconciliation — intent/realized fields, emit-time reconciliation gate, draft→published promotion lock until realized populated | V19,C12
-T22 | .  | research/skill_use knowledge records — captured-results snapshot persist, cites-edge requirement on dependent published claim/intervention | V20,I.cites
+T22 | x  | research/skill_use knowledge records — captured-results snapshot persist, cites-edge requirement on dependent published claim/intervention | V20,I.cites
 T23 | .  | post-hoc utility verdict — append-only useful/not_useful event on research/skill_use records | V21,I.events
 T24 | .  | Evidence intervention page — render per-intervention from intervention records (baseline/realized/delta/critic), replacing the initiatives_log.jsonl hand-edit | C12,I.evidence
 T25 | .  | cutover — rewire InsightKitHook adapter + cli + agents + insight_kit/__init__ exports onto the gate; delete provenance/run.py + provenance/claim.py; delete/rewrite obsolete tests; full uv run pytest green | C8,C13,V1

@@ -3,10 +3,12 @@
 Pipeline for every emit:
   1. Pydantic-validate payload against RecordSchema (discriminated union).
   2. Run applicable Layer-A validation/ guards (claim_id format, duplicate-in-run,
-     T6 supersedes existence).
+     T6 supersedes existence, T22 cites-edge integrity).
   3. On reject → raise, ZERO partial write, increment RunState.rejectionCount.
   4. Compute record_fingerprint + data_fingerprint.
   5. Inject fingerprints into the record dict.
+  4b. T22 knowledge snapshot: research/skill_use must carry a captured-results
+      snapshot → reject if missing; sha256 → snapshot_fingerprint (V20).
   5a. T21 intervention reconciliation: a published intervention with no
       realized result → reject (V19).
   5b. T7 tier gate: if tier==published but fingerprint set incomplete or
@@ -24,7 +26,7 @@ Typed wrappers:
   ik_research_emit
   ik_skill_use_emit
 
-Cites: V1, V2, V3, V6, V14, V19, V22, C7, I.emit.
+Cites: V1, V2, V3, V6, V14, V19, V20, V22, C7, I.cites, I.emit.
 """
 from __future__ import annotations
 
@@ -54,6 +56,7 @@ from insight_kit.gate.store import (
     append_index_row,
     resolve_run_dir,
     write_record,
+    write_snapshot,
 )
 from insight_kit.validation import ValidationError as LayerAValidationError
 
@@ -98,6 +101,10 @@ def _run_layer_a_guards(
     if supersedes is not None and run_dir is not None:
         _check_supersedes_exists(supersedes, run_dir)
 
+    # T22/V20/I.cites — knowledge-provenance edges must be valid.
+    if run_dir is not None:
+        _check_cites_edges(record, run_dir)
+
 
 def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
     """T6/V3 — verify the superseded record exists in the run dir.
@@ -121,6 +128,63 @@ def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
                 f"Or check the record_id is correct."
             ),
         )
+
+
+def _check_cites_edges(record: Any, run_dir: Path) -> None:
+    """T22/V20/I.cites — every `cites` target must exist and be a knowledge record.
+
+    The cites edge is the knowledge-provenance chain: a claim/intervention (or a
+    research/skill_use record) names the research/skill_use records that informed
+    it. Each cited id must:
+      - resolve to an existing record in the run dir (referential integrity), and
+      - be a research or skill_use record — cites points at knowledge, never at
+        a claim/intervention. (A claim correcting a prior claim uses `supersedes`,
+        not `cites`.)
+
+    Raises LayerAValidationError on a dangling or wrong-type cite.
+
+    Scope note: the gate enforces the *integrity* of the cites edges a record
+    declares. Whether a given published claim actually depended on external
+    knowledge — and therefore must declare a cite — is a generator-side
+    obligation; the gate cannot infer dependence ("freeze the gate, not the
+    generator").
+    """
+    cites = getattr(record, "cites", None)
+    if not cites:
+        return
+
+    from insight_kit.gate.store import read_record, record_path
+
+    for cited_id in cites:
+        if not record_path(run_dir, cited_id).exists():
+            raise LayerAValidationError(
+                rule_id="cites-not-found",
+                message=(
+                    f"cites references {cited_id!r}, which does not correspond to "
+                    "any record in the run directory. A cites edge must point to a "
+                    "research/skill_use knowledge record that already exists "
+                    "(I.cites, V20)."
+                ),
+                suggestion=(
+                    f"Emit the research/skill_use record first, then cite its "
+                    f"record_id. Or check {cited_id!r} is correct."
+                ),
+            )
+        cited_type = read_record(run_dir, cited_id).get("record_type")
+        if cited_type not in ("research", "skill_use"):
+            raise LayerAValidationError(
+                rule_id="cites-wrong-type",
+                message=(
+                    f"cites references {cited_id!r}, a {cited_type!r} record. The "
+                    "cites edge is the knowledge-provenance chain — it may only "
+                    "point to a research or skill_use record (I.cites, V20). To "
+                    "correct a prior claim/intervention use `supersedes`."
+                ),
+                suggestion=(
+                    "Cite the research/skill_use record that supplied the external "
+                    "knowledge, not a claim/intervention."
+                ),
+            )
 
 
 _PARQUET_EXTENSIONS: tuple[bytes, ...] = (b".pq", b".parquet")
@@ -370,6 +434,7 @@ def _record_emit(
     run_state: RunState,
     run_dir: Path | None = None,
     input_data: bytes | dict[str, Any] | None = None,
+    snapshot: dict[str, Any] | None = None,
 ) -> RecordRef:
     """Core typed-record gate.
 
@@ -379,6 +444,9 @@ def _record_emit(
         run_dir:    run directory; resolved from INSIGHT_KIT_RUN_DIR if None.
         input_data: optional raw inputs for data_fingerprint (V4).
                    If None, fingerprints the payload itself (draft convenience).
+        snapshot:   T22/V20 — captured-results payload for research/skill_use
+                   records. Required (non-empty) for those types; persisted as
+                   records/{id}/snapshot.json and hashed into record_fingerprint.
 
     Returns RecordRef on success.
     Raises on validation failure — ZERO partial write (V2).
@@ -426,6 +494,29 @@ def _record_emit(
         dfp = _data_fingerprint(record_dict)
         record_dict["data_fingerprint_source"] = "payload"
     record_dict["data_fingerprint"] = dfp
+
+    # --- Step 4b: T22/V20 knowledge-record snapshot ---
+    # research/skill_use must persist a captured-results snapshot under the
+    # bundle; its sha256 (snapshot_fingerprint) is folded into record_fingerprint
+    # so the snapshot is content-addressed. Empty/missing snapshot → reject,
+    # before any disk write (zero partial write, V2).
+    if record_dict["record_type"] in ("research", "skill_use"):
+        if not snapshot:
+            run_state.rejectionCount += 1
+            raise LayerAValidationError(
+                rule_id="knowledge-snapshot-missing",
+                message=(
+                    f"{record_dict['record_type']} record requires a non-empty "
+                    "captured-results snapshot. V20 — a knowledge record's emit "
+                    "must persist the actual results (query/tool/source/timestamp "
+                    "+ hashed payload), not merely a reference string."
+                ),
+                suggestion=(
+                    "Pass snapshot=<dict of the captured results> to "
+                    "ik_research_emit / ik_skill_use_emit."
+                ),
+            )
+        record_dict["snapshot_fingerprint"] = _data_fingerprint(snapshot)
 
     # --- Step 5a: T21/V19 intervention reconciliation gate ---
     # Runs on the caller's DECLARED tier, BEFORE the T7 tier gate — a published
@@ -480,6 +571,11 @@ def _record_emit(
                 "pointing to the prior record_id instead of re-emitting the same content."
             ),
         ) from exc
+    # T22/V20 — persist the knowledge-record snapshot next to record.json.
+    # Reached only after write_record succeeded (a duplicate raised above), so
+    # the bundle dir is fresh and snapshot.json cannot pre-exist.
+    if record_dict["record_type"] in ("research", "skill_use") and snapshot:
+        write_snapshot(resolved_dir, record_id, snapshot)
     append_index_row(resolved_dir, record_dict, record_id)
     append_claims_row(resolved_dir, record_dict, record_id)
 
@@ -611,6 +707,7 @@ def ik_research_emit(
     query: str,
     source: str,
     *,
+    snapshot: dict[str, Any],
     timestamp: str | None = None,
     cites: list[str] | None = None,
     supersedes: str | None = None,
@@ -620,6 +717,12 @@ def ik_research_emit(
 ) -> RecordRef:
     """Typed research emit wrapper.
 
+    snapshot: T22/V20 — the captured-results payload (dict). emit persists it as
+              records/{id}/snapshot.json and folds its sha256 into
+              record_fingerprint. Required and non-empty — a research record
+              with no persisted snapshot is rejected at emit.
+    snapshot_ref: a human-facing origin label only (URL / dataset id) — not
+              load-bearing provenance; `snapshot` is.
     timestamp: ISO-8601 string; defaults to current UTC time if not provided.
               Auto-timestamp makes the record non-deterministic by design —
               pass an explicit timestamp for a reproducible fingerprint.
@@ -637,7 +740,9 @@ def ik_research_emit(
     if supersedes is not None:
         payload["supersedes"] = supersedes
 
-    return _record_emit(payload, run_state=run_state, run_dir=run_dir, input_data=input_data)
+    return _record_emit(
+        payload, run_state=run_state, run_dir=run_dir, input_data=input_data, snapshot=snapshot
+    )
 
 
 def ik_skill_use_emit(
@@ -646,6 +751,7 @@ def ik_skill_use_emit(
     tool: str,
     source: str,
     *,
+    snapshot: dict[str, Any],
     timestamp: str | None = None,
     cites: list[str] | None = None,
     supersedes: str | None = None,
@@ -655,6 +761,12 @@ def ik_skill_use_emit(
 ) -> RecordRef:
     """Typed skill-use emit wrapper.
 
+    snapshot: T22/V20 — the captured-results payload (dict). emit persists it as
+              records/{id}/snapshot.json and folds its sha256 into
+              record_fingerprint. Required and non-empty — a skill_use record
+              with no persisted snapshot is rejected at emit.
+    snapshot_ref: a human-facing origin label only (endpoint / cache key) — not
+              load-bearing provenance; `snapshot` is.
     timestamp: ISO-8601 string; defaults to current UTC time if not provided.
               Auto-timestamp makes the record non-deterministic by design —
               pass an explicit timestamp for a reproducible fingerprint.
@@ -672,4 +784,6 @@ def ik_skill_use_emit(
     if supersedes is not None:
         payload["supersedes"] = supersedes
 
-    return _record_emit(payload, run_state=run_state, run_dir=run_dir, input_data=input_data)
+    return _record_emit(
+        payload, run_state=run_state, run_dir=run_dir, input_data=input_data, snapshot=snapshot
+    )

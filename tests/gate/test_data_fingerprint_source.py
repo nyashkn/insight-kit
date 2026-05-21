@@ -97,6 +97,7 @@ class TestResearchFingerprintSource:
         ref = ik_research_emit(
             "RES-001", "s/r.json", "query", "web",
             timestamp="2026-05-22T10:00:00+00:00",
+            snapshot={"results": "captured"},
             input_data=b"raw search results",
             run_state=state,
             run_dir=run_dir,
@@ -108,6 +109,7 @@ class TestResearchFingerprintSource:
         ref = ik_research_emit(
             "RES-001", "s/r.json", "query", "web",
             timestamp="2026-05-22T10:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state,
             run_dir=run_dir,
         )
@@ -124,6 +126,7 @@ class TestSkillUseFingerprintSource:
         ref = ik_skill_use_emit(
             "SKU-001", "s/k.json", "tavily", "tavily-api",
             timestamp="2026-05-22T10:00:00+00:00",
+            snapshot={"results": "captured"},
             input_data=b"tool output bytes",
             run_state=state,
             run_dir=run_dir,
@@ -135,6 +138,7 @@ class TestSkillUseFingerprintSource:
         ref = ik_skill_use_emit(
             "SKU-001", "s/k.json", "tavily", "tavily-api",
             timestamp="2026-05-22T10:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state,
             run_dir=run_dir,
         )

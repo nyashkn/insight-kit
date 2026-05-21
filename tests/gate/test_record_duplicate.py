@@ -34,6 +34,7 @@ def test_duplicate_research_raises_structured_error(run_dir, state):
         query="what is X",
         source="web",
         timestamp="2026-05-22T10:00:00+00:00",
+        snapshot={"results": "found X"},
         run_state=state,
         run_dir=run_dir,
     )
@@ -56,6 +57,7 @@ def test_duplicate_research_increments_rejection_count(run_dir, state):
         query="what is X",
         source="web",
         timestamp="2026-05-22T10:00:00+00:00",
+        snapshot={"results": "found X"},
         run_state=state,
         run_dir=run_dir,
     )
@@ -76,6 +78,7 @@ def test_duplicate_research_records_length_unchanged(run_dir, state):
         query="what is X",
         source="web",
         timestamp="2026-05-22T10:00:00+00:00",
+        snapshot={"results": "found X"},
         run_state=state,
         run_dir=run_dir,
     )

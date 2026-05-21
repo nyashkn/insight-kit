@@ -79,3 +79,57 @@ Fixed now:
   to a declared field during the T25 refactor.
 - **LOW** — `check_annual_equals_monthly_sum` (V15 Layer-C) is not yet wired into
   any `ik_run_check` driver — latent. Wire at T16/T17.
+
+## 2026-05-22 — Phase 2 decisions (Evidence / Harbor / credentials)
+
+- **Evidence DEFERRED out of this loop.** T15 (claim read-end) + T24
+  (intervention page) drop from the loop. Rationale (user): Evidence is the
+  end-user consumption surface — if it is built, it should be built properly
+  with the Evidence.dev SDK, not the plain `.md` + Altair cut. The cut version
+  would only be redone. This loop closes at gate-core (T21-T23) + T16 audit +
+  T17 harness + T18 pi extension + T25 cutover. Evidence becomes its own
+  follow-up loop, SDK-based. §T15/§T24 stay `.` (not done, deferred).
+- **Harbor DEFERRED.** T17's eval harness is built now as a plain verifier
+  (containerized fixture + golden-diff classifier living in the claim gate).
+  Harbor (Apache-2.0 Python pkg) is the right long-term shell — its
+  task/adapter/RewardKit structure maps cleanly and enables the AutoAgent
+  meta-loop — but it is early-stage (v0.7.1, 103 open issues); binding to it
+  during the foundation phase is the risk. Wrap the stable verifier in a Harbor
+  task (~1 day) when wiring the first AutoAgent run. "Freeze the gate" holds iff
+  gate imports stay in Harbor's `tests/checks.py`, never in the agent's
+  editable `agent.py`.
+- **Credentials → Infisical.** App/harness-runtime secrets go in an Infisical
+  project (`naimarket`), accessed via per-consumer Machine Identities
+  (`mi-eval-harness`, later `mi-autoagent` — least privilege). The identity's
+  bootstrap client credential is injected at container-launch via env, never
+  baked into the LOCAL T17 image, never committed. `growth_insights/.env` keys
+  migrate into Infisical and the on-disk `.env` is deleted. The frozen L1 gate
+  never sees a credential. (Signet Secrets remains for agent-operational use —
+  different layer.)
+
+## 2026-05-22 — T22 research/skill_use knowledge records (V20, I.cites)
+
+- **Snapshot persistence.** `ik_research_emit`/`ik_skill_use_emit` now require a
+  `snapshot` dict (the captured-results payload). emit step 4b persists it as
+  `records/{id}/snapshot.json` and folds its sha256 into `record_fingerprint`
+  via the new `snapshot_fingerprint` field — the snapshot is content-addressed
+  and tamper-evident. Empty/missing snapshot → hard reject
+  (`knowledge-snapshot-missing`).
+- **`snapshot_ref` demoted** from required load-bearing field to an optional
+  human origin label. The real provenance is the hashed `snapshot`. The old
+  `snapshot_ref`-points-to-a-string design was the RT10 hole.
+- **cites-edge integrity** (`_check_cites_edges`, Layer-A guard) — every id in a
+  record's `cites` must (a) resolve to an existing record and (b) be a
+  research/skill_use record. A claim/intervention cited via `cites` → reject
+  (`cites-wrong-type`); claim→claim corrections use `supersedes`.
+- **Scope boundary (logged).** The gate enforces *integrity* of declared cites.
+  It cannot infer that a claim *depended* on external knowledge — that honesty
+  is a generator-side obligation ("freeze the gate, not the generator"). V20's
+  "bare external assertion → reject" is therefore enforced as edge-integrity +
+  hashed-snapshot provenance; a harder "must-cite" rule would need a §V backprop
+  with an explicit caller-declared signal.
+- ~16 existing research/skill_use emit call sites across 6 test files updated to
+  pass `snapshot=` — mechanical, no behaviour change. `test_schema.py` unchanged
+  (`snapshot_ref` still required, `snapshot_fingerprint` optional).
+- T22 tests: `test_knowledge_records.py` (21 tests). Full gate suite green,
+  ruff clean.

@@ -130,6 +130,7 @@ class TestLayerAWiringNonClaimRecords:
             "query",
             "source",
             timestamp="2026-05-22T00:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state,
             run_dir=run_dir,
         )

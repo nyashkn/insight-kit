@@ -149,6 +149,7 @@ class TestSupersession:
             "query v1",
             "source",
             timestamp="2026-05-21T10:00:00+00:00",
+            snapshot={"results": "v1"},
             run_state=state,
             run_dir=run_dir,
         )
@@ -158,6 +159,7 @@ class TestSupersession:
             "query v2 corrected",
             "source",
             timestamp="2026-05-21T11:00:00+00:00",
+            snapshot={"results": "v2"},
             supersedes=ref1.record_id,
             run_state=state,
             run_dir=run_dir,

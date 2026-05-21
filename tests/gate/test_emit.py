@@ -203,6 +203,7 @@ class TestV4_Fingerprints:
         ref = ik_research_emit(
             "RES-001", "s/r.json", "query", "source",
             timestamp="2026-05-21T10:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state, run_dir=run_dir,
         )
         rec = json.loads(record_path(run_dir, ref.record_id).read_text())
@@ -358,6 +359,7 @@ class TestIkResearchEmit:
         ref = ik_research_emit(
             "RES-001", "s/r.json", "what is X", "web",
             timestamp="2026-05-21T10:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state, run_dir=run_dir,
         )
         assert ref.record_type == "research"
@@ -365,6 +367,7 @@ class TestIkResearchEmit:
     def test_timestamp_auto_set(self, run_dir, state):
         ref = ik_research_emit(
             "RES-001", "s/r.json", "query", "source",
+            snapshot={"results": "captured"},
             run_state=state, run_dir=run_dir,
         )
         rec = json.loads(record_path(run_dir, ref.record_id).read_text())
@@ -376,6 +379,7 @@ class TestIkSkillUseEmit:
         ref = ik_skill_use_emit(
             "SKU-001", "s/k.json", "tavily", "tavily-api",
             timestamp="2026-05-21T10:00:00+00:00",
+            snapshot={"results": "captured"},
             run_state=state, run_dir=run_dir,
         )
         assert ref.record_type == "skill_use"
@@ -383,6 +387,7 @@ class TestIkSkillUseEmit:
     def test_timestamp_auto_set(self, run_dir, state):
         ref = ik_skill_use_emit(
             "SKU-001", "s/k.json", "tavily", "tavily-api",
+            snapshot={"results": "captured"},
             run_state=state, run_dir=run_dir,
         )
         rec = json.loads(record_path(run_dir, ref.record_id).read_text())
