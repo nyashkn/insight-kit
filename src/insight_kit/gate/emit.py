@@ -7,8 +7,12 @@ Pipeline for every emit:
   3. On reject → raise, ZERO partial write, increment RunState.rejectionCount.
   4. Compute record_fingerprint + data_fingerprint.
   5. Inject fingerprints into the record dict.
+  5a. T21 intervention reconciliation: a published intervention with no
+      realized result → reject (V19).
   5b. T7 tier gate: if tier==published but fingerprint set incomplete or
       data_fingerprint_source==payload → downgrade to draft + record reason (V6,V22,C7).
+  5c. T10 coverage gate: published claim with thin coverage + no warning →
+      reject (V14).
   6. Write records/{id}/record.json (immutable, C3).
   7. Append projection row to records.jsonl.
   8. Append claim projection row to claims.jsonl (claim records only).
@@ -20,7 +24,7 @@ Typed wrappers:
   ik_research_emit
   ik_skill_use_emit
 
-Cites: V1, V2, V3, V6, V22, C7, I.emit.
+Cites: V1, V2, V3, V6, V14, V19, V22, C7, I.emit.
 """
 from __future__ import annotations
 
@@ -282,6 +286,65 @@ def _check_coverage_warning(record_dict: dict[str, Any]) -> None:
         )
 
 
+_REALIZED_STATUSES: frozenset[str] = frozenset({"applied", "partial", "failed"})
+
+
+def _check_intervention_reconciliation(record_dict: dict[str, Any]) -> None:
+    """T21/V19 — a published intervention must carry a reconciled `realized` result.
+
+    V19: emit of a published-tier intervention is rejected unless `realized` is
+    present and `realized.status` ∈ {applied, partial, failed}. A draft
+    intervention may emit with realized=None (the external action is still
+    pending). Because records are immutable (V3), "promoting" a draft
+    intervention to published means emitting a NEW record (typically with a
+    supersedes edge) at tier='published' — that new emit hits this same gate, so
+    the draft→published promotion lock needs no separate machinery.
+
+    intent≠realized is NOT a reject — a realized.status of 'partial' or 'failed'
+    passes. The invariant is *reconciliation captured*, not *action succeeded*.
+
+    Runs on the caller's DECLARED tier, BEFORE the T7 tier gate — the reject is
+    on the intent to publish. (Contrast _check_coverage_warning, which runs
+    AFTER the tier downgrade because a downgraded draft claim is legitimately
+    allowed to be thin.)
+
+    Hard reject — raises LayerAValidationError, never downgrades.
+    """
+    if record_dict.get("record_type") != "intervention":
+        return
+    if record_dict.get("tier") != "published":
+        return  # draft interventions may carry realized=None (action pending)
+
+    realized = record_dict.get("realized")
+    if realized is None:
+        raise LayerAValidationError(
+            rule_id="intervention-unreconciled",
+            message=(
+                "Published-tier intervention has no `realized` result. V19 — a "
+                "published intervention must record the actual external outcome "
+                "(realized.status ∈ {applied, partial, failed}); an intervention "
+                "whose action is still pending stays at tier='draft'."
+            ),
+            suggestion=(
+                "Emit the intervention at tier='draft' until the external action "
+                "completes, then emit a published record (with a supersedes edge "
+                "to the draft) carrying the realized result."
+            ),
+        )
+    # realized present — pydantic (RealizedPayload) already constrains status to
+    # a valid Literal; this is a defensive re-check of the explicit V19 contract.
+    if realized.get("status") not in _REALIZED_STATUSES:
+        raise LayerAValidationError(
+            rule_id="intervention-unreconciled",
+            message=(
+                f"Published-tier intervention realized.status is "
+                f"{realized.get('status')!r}; V19 requires it ∈ "
+                f"{sorted(_REALIZED_STATUSES)}."
+            ),
+            suggestion="Set realized.status to one of: applied, partial, failed.",
+        )
+
+
 def _claim_ids_in_run(run_state: RunState) -> set[str]:
     """Extract claim_ids from RunState.records metadata.
 
@@ -363,6 +426,17 @@ def _record_emit(
         dfp = _data_fingerprint(record_dict)
         record_dict["data_fingerprint_source"] = "payload"
     record_dict["data_fingerprint"] = dfp
+
+    # --- Step 5a: T21/V19 intervention reconciliation gate ---
+    # Runs on the caller's DECLARED tier, BEFORE the T7 tier gate — a published
+    # intervention with no reconciled `realized` result is rejected outright
+    # (zero partial write, V2). This also enforces the draft→published promotion
+    # lock: promotion is a fresh emit and hits this same check.
+    try:
+        _check_intervention_reconciliation(record_dict)
+    except LayerAValidationError:
+        run_state.rejectionCount += 1
+        raise
 
     # --- Step 5b: T7 Tier gate (V6, V22, C7) ---
     # Must run AFTER data_fingerprint_source is set, BEFORE record_fingerprint.

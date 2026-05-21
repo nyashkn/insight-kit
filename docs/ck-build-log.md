@@ -51,7 +51,24 @@ Fixed now:
 - **LOW** — `ik_run_check` had no subprocess timeout; a hung validator blocked
   the gate. Added `timeout=30.0s` + `TimeoutExpired` → failed `CheckResult`.
 
-Deferred follow-ups (logged, non-blocking):
+## 2026-05-22 — T21 intervention reconciliation (V19)
+
+- **Gate step 5a** — `_check_intervention_reconciliation` rejects a published
+  intervention with no `realized` (or status ∉ {applied,partial,failed}). Hard
+  reject, not a downgrade — contrast T7.
+- **Runs BEFORE the T7 tier gate**, on the caller's *declared* tier: the reject
+  is on the intent to publish. (Coverage gate T10 runs *after* the downgrade —
+  asymmetry is intentional and commented in `emit.py`.)
+- **Promotion lock = free.** Records are immutable; promoting a pending draft
+  means a fresh emit at `published`, which hits the same gate. No extra machinery.
+- `partial`/`failed` are NOT rejects — V19 invariant is *reconciliation
+  captured*, not *action succeeded*.
+- 2 pre-existing `test_tier_gate.py` tests emitted a published intervention with
+  no `realized` (legal pre-T21) — updated to pass `realized={status:applied}` so
+  they still isolate the T7 downgrade. Test-only fix, no spec/code backprop.
+- 327 gate tests green, ruff clean.
+
+## 2026-05-22 — Phase 1 audit deferred follow-ups
 - **MED** — `tests/test_hamilton.py::test_hamilton_failure_raises_exception`
   fails: legacy `provenance/run.py` `_gen_claim_id` yields `C-boom` (off-regex).
   Pre-existing, not a Phase-1 regression. Resolves at T25 when `provenance/run.py`

@@ -91,7 +91,7 @@ T17 | .  | eval harness — containerize growth_insights fixture, golden=audited
 T18 | .  | L3 pi extension (.pi/extensions/*.ts) — typed-wrapper TS ToolDefinitions (ik_claim_emit + ik_intervention_emit + ik_research_emit + ik_skill_use_emit), call L1 via pi.exec uv-run subprocess, gen TypeBox parameters from pydantic JSON Schema, gate on tool_call/tool_result hooks | C4,C5,I.emit
 T19 | x  | purity lint — no hamilton/pi import in L1 module                                       | V5
 T20 | x  | env capture — container digest + lockfile hash into run.json                           | V6,C10
-T21 | .  | intervention reconciliation — intent/realized fields, emit-time reconciliation gate, draft→published promotion lock until realized populated | V19,C12
+T21 | x  | intervention reconciliation — intent/realized fields, emit-time reconciliation gate, draft→published promotion lock until realized populated | V19,C12
 T22 | .  | research/skill_use knowledge records — captured-results snapshot persist, cites-edge requirement on dependent published claim/intervention | V20,I.cites
 T23 | .  | post-hoc utility verdict — append-only useful/not_useful event on research/skill_use records | V21,I.events
 T24 | .  | Evidence intervention page — render per-intervention from intervention records (baseline/realized/delta/critic), replacing the initiatives_log.jsonl hand-edit | C12,I.evidence

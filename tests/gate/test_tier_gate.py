@@ -192,11 +192,16 @@ class TestTierGateDowngrade:
         assert "tier_downgrade_reason" not in rec
 
     def test_intervention_published_payload_source_downgraded(self, run_dir, state):
-        """Intervention records also subject to tier gate (C7)."""
+        """Intervention records also subject to tier gate (C7).
+
+        realized is supplied so the T21/V19 reconciliation gate passes — this
+        test isolates the T7 payload-source downgrade.
+        """
         _write_run_json(run_dir, FULL_FP_SET)
         ref = ik_intervention_emit(
             "INT-001",
             {"description": "send email"},
+            realized={"status": "applied"},
             tier="published",
             run_state=state,
             run_dir=run_dir,
@@ -211,6 +216,7 @@ class TestTierGateDowngrade:
         ref = ik_intervention_emit(
             "INT-001",
             {"description": "send email"},
+            realized={"status": "applied"},
             tier="published",
             run_state=state,
             run_dir=run_dir,
