@@ -42,7 +42,7 @@ class CheckResult:
 # ---------------------------------------------------------------------------
 
 
-def ik_run_check(script: str) -> CheckResult:
+def ik_run_check(script: str, *, timeout: float = 30.0) -> CheckResult:
     """Run a validator script and return a structured CheckResult.
 
     The runner is generic: it executes `script` as a Python subprocess using
@@ -56,7 +56,9 @@ def ik_run_check(script: str) -> CheckResult:
     rather than raising, so callers get a consistent interface.
 
     Args:
-        script: absolute or relative path to the Python validator script.
+        script:  absolute or relative path to the Python validator script.
+        timeout: max seconds the validator may run before it is killed and a
+                 failed CheckResult is returned (default 30s).
 
     Returns:
         CheckResult with pass/fail + captured output.
@@ -69,6 +71,15 @@ def ik_run_check(script: str) -> CheckResult:
             [sys.executable, script],
             capture_output=True,
             text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return CheckResult(
+            passed=False,
+            exit_code=-1,
+            details=f"Validator script timed out after {timeout}s: {script!r}",
+            stdout="",
+            stderr="",
         )
     except FileNotFoundError:
         # Interpreter found but script file missing — or interpreter not found.

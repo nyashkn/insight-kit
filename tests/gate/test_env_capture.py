@@ -186,20 +186,8 @@ class TestEnvFingerprintInRunJson:
         assert env1.env_fingerprint == env2.env_fingerprint
 
 
-# ---------------------------------------------------------------------------
-# C1/V5 — env.py must not import hamilton or pi
-# ---------------------------------------------------------------------------
-
-class TestEnvModuleImportPurity:
-    def test_env_module_imports_no_hamilton(self):
-        """env.py must not import hamilton (C1/V5)."""
-        import sys
-        # Verify no hamilton module was imported as a side effect
-        hamilton_keys = [k for k in sys.modules if "hamilton" in k.lower()]
-        assert hamilton_keys == [], f"env.py imported hamilton modules: {hamilton_keys}"
-
-    def test_env_module_imports_no_pi(self):
-        """env.py must not import pi package (C1/V5)."""
-        import sys
-        pi_keys = [k for k in sys.modules if k == "pi" or k.startswith("pi.")]
-        assert pi_keys == [], f"env.py imported pi modules: {pi_keys}"
+# C1/V5 import purity for gate modules (including env.py) is verified by
+# tests/gate/test_purity.py — an AST scan plus a subprocess-isolated sys.modules
+# probe. An in-process sys.modules check previously lived here; it was removed
+# because it false-positived whenever an earlier-collected test imported
+# hamilton into the shared pytest process (Phase 1 audit, HIGH, 2026-05-22).
