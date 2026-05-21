@@ -69,9 +69,9 @@ class RunState:
     """
 
     records: list[RecordRef] = field(default_factory=list)
-    rejectionCount: int = 0  # noqa: N815
-    critiqueRounds: int = 0  # noqa: N815
-    completedAt: str | None = None  # noqa: N815
+    rejectionCount: int = 0  # noqa: N815  camelCase = cross-language on-disk contract — do not snake_case
+    critiqueRounds: int = 0  # noqa: N815  camelCase = cross-language on-disk contract — do not snake_case
+    completedAt: str | None = None  # noqa: N815  camelCase = cross-language on-disk contract — do not snake_case
     run_dir: Path | None = None
 
     def record_ids(self) -> list[str]:
@@ -123,7 +123,7 @@ class RunState:
 # ---------------------------------------------------------------------------
 
 
-def finalizeRun(  # noqa: N802
+def finalizeRun(  # noqa: N802  camelCase = cross-language on-disk contract — do not snake_case
     run_state: RunState,
     *,
     assert_manifest: bool = True,

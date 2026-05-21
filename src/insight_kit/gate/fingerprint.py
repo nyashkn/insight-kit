@@ -18,25 +18,46 @@ from __future__ import annotations
 
 import hashlib
 import json
+import unicodedata
 from typing import Any
 
 
 def _canonical_default(obj: Any) -> Any:
-    """JSON serialization for non-standard types.
+    """JSON serialization fallback for non-standard scalar types.
 
-    floats already handled natively by json.dumps with ensure_ascii=True.
-    This fallback handles objects that implement __float__ or __str__.
+    Plain Python floats are handled by the stdlib JSON encoder directly and never
+    reach this function.  This fallback covers types that wrap a numeric value
+    but are not natively JSON-serializable — specifically Decimal and numpy scalar
+    types that implement __float__.  All other types raise TypeError.
     """
     if hasattr(obj, "__float__"):
-        # Pin float repr: use repr() which is deterministic in CPython 3.11+
-        return float(repr(float(obj)))
+        # Decimal / numpy scalar: coerce to Python float for deterministic repr.
+        return float(obj)
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable: {obj!r}")
+
+
+def _nfc(s: str) -> str:
+    """NFC-normalize a unicode string so NFC and NFD forms fingerprint identically."""
+    return unicodedata.normalize("NFC", s)
+
+
+def _nfc_normalize(data: Any) -> Any:
+    """Recursively NFC-normalize all strings in a JSON-compatible structure."""
+    if isinstance(data, str):
+        return _nfc(data)
+    if isinstance(data, dict):
+        return {_nfc(k): _nfc_normalize(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_nfc_normalize(item) for item in data]
+    return data
 
 
 def _canonical_dumps(data: Any) -> bytes:
     """Produce canonical UTF-8 JSON bytes.
 
     Rules:
+      - Unicode strings NFC-normalized before serialization so that NFC and NFD
+        representations of the same logical string produce identical bytes.
       - Keys sorted recursively (sort_keys=True propagates via json module).
       - No separators with trailing spaces (separators=(',', ':')).
       - ensure_ascii=False — preserve unicode as-is for round-trip fidelity.
@@ -44,7 +65,7 @@ def _canonical_dumps(data: Any) -> bytes:
         deterministic in CPython 3.11+ (IEEE 754 shortest representation).
     """
     return json.dumps(
-        data,
+        _nfc_normalize(data),
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,

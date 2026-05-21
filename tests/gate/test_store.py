@@ -199,8 +199,9 @@ class TestReindex:
         index_path(run_dir).unlink(missing_ok=True)
         claims_index_path(run_dir).unlink(missing_ok=True)
 
-        count = reindex(run_dir)
+        count, skipped = reindex(run_dir)
         assert count == 2
+        assert skipped == []
 
         rows = [json.loads(ln) for ln in index_path(run_dir).read_text().splitlines() if ln.strip()]
         assert len(rows) == 2
@@ -229,8 +230,9 @@ class TestReindex:
 
     def test_reindex_empty_run_dir(self, tmp_path):
         empty = tmp_path / "empty_run"
-        count = reindex(empty)
+        count, skipped = reindex(empty)
         assert count == 0
+        assert skipped == []
         assert index_path(empty).exists()
 
     def test_reindex_overwrites_stale_index(self, run_dir):
@@ -247,8 +249,9 @@ class TestReindex:
     def test_reindex_returns_count(self, run_dir):
         for i in range(3):
             write_record(run_dir, f"rec00{i}", _claim_dict(f"TEST-D-00{i}"))
-        count = reindex(run_dir)
+        count, skipped = reindex(run_dir)
         assert count == 3
+        assert skipped == []
 
 
 # ---------------------------------------------------------------------------

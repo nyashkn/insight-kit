@@ -16,9 +16,12 @@ Cites: V3, V7, I.store, I.events.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Run-dir resolution
@@ -214,12 +217,12 @@ def append_event(
 # ---------------------------------------------------------------------------
 
 
-def reindex(run_dir: Path) -> int:
+def reindex(run_dir: Path) -> tuple[int, list[str]]:
     """Rebuild records.jsonl (and claims.jsonl) from the record.json set.
 
     Scans records/*/record.json, sorts by record_id for deterministic output.
     Overwrites the existing index files.
-    Returns the number of records indexed.
+    Returns (indexed_count, skipped_record_ids) so corruption is detectable.
 
     Invariant V7: records.jsonl must be regenerable from record.json set.
     """
@@ -228,6 +231,7 @@ def reindex(run_dir: Path) -> int:
 
     rows: list[dict[str, Any]] = []
     claim_rows: list[dict[str, Any]] = []
+    skipped: list[str] = []
 
     if records_root.exists():
         record_ids = sorted(
@@ -241,7 +245,11 @@ def reindex(run_dir: Path) -> int:
                 if rec.get("record_type") == "claim":
                     claim_rows.append(_claims_row(rec, rid))
             except Exception:
-                continue  # corrupt record — skip, don't crash reindex
+                skipped.append(rid)
+                log.warning(
+                    "reindex: skipping corrupt record",
+                    extra={"record_id": rid, "run_dir": str(run_dir)},
+                )
 
     # Overwrite records.jsonl
     idx = index_path(run_dir)
@@ -258,4 +266,4 @@ def reindex(run_dir: Path) -> int:
             f.write(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
             f.write("\n")
 
-    return len(rows)
+    return len(rows), skipped
