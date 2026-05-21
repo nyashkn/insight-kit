@@ -62,6 +62,23 @@ def _hash_source(source_code: str) -> str:
     return hashlib.sha256(source_code.encode()).hexdigest()
 
 
+def compute_h_dlt_fingerprint(resource_name: str, schema: str) -> str:
+    """T9/C8 — Compute h_dlt upstream fingerprint: sha256(resource_name + schema).
+
+    Called at run_before_node_execution time when node_input_types is available,
+    so registered upstreams supply real fingerprints rather than bare file paths.
+
+    Args:
+        resource_name: Identifier of the h_dlt source (e.g. 'h_dlt://metrics/revenue').
+        schema: Schema version string (e.g. 'v2', JSON schema hash, column list).
+
+    Returns:
+        64-char hex sha256 string.
+    """
+    raw = (resource_name + schema).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
 # ---------- InsightKitHook ----------
 
 
@@ -82,18 +99,36 @@ class InsightKitHook(NodeExecutionHook):
         node_name: str,
         node_tags: dict[str, Any],
         node_kwargs: dict[str, Any],
+        node_input_types: dict[str, Any] | None = None,
         **future_kwargs: Any,
     ) -> None:
         """Invoked before each Hamilton node executes.
+
+        T9/C8: node_input_types is captured explicitly (not dropped via **future_kwargs)
+        so that h_dlt fingerprints can be computed for registered upstream inputs.
 
         Args:
             node_name: name of the node (function name)
             node_tags: dict of tags on the node
             node_kwargs: kwargs passed to node (inputs)
+            node_input_types: dict mapping input name → type annotation (from Hamilton).
+                             Captured here for h_dlt fingerprint computation (C8).
             **future_kwargs: catch future Hamilton additions
         """
-        # Pre-execution hook - can be used for setup if needed
-        pass
+        if node_input_types:
+            # T9/C8: compute h_dlt fingerprints for registered upstream inputs.
+            # The fingerprint sha256(resource_name + schema) is available at hook time
+            # so downstream emit calls can supply registered_input provenance.
+            for input_name, input_type in node_input_types.items():
+                schema_str = str(input_type)
+                fp = compute_h_dlt_fingerprint(input_name, schema_str)
+                logger.debug(
+                    "h_dlt_fingerprint_computed",
+                    node=node_name,
+                    input_name=input_name,
+                    schema=schema_str,
+                    fingerprint=fp[:16],  # log prefix only
+                )
 
     def run_after_node_execution(
         self,

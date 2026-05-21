@@ -119,6 +119,60 @@ def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
         )
 
 
+_PARQUET_EXTENSIONS: tuple[bytes, ...] = (b".pq", b".parquet")
+_PARQUET_STR_EXTENSIONS: tuple[str, ...] = (".pq", ".parquet")
+
+
+def _check_raw_parquet_path(input_data: "bytes | dict[str, Any] | None") -> None:
+    """T9/V13 — Reject raw agent-supplied parquet file paths as inputs.
+
+    Raw file paths are detectable as bytes that look like a file system path
+    ending in .pq / .parquet, or a dict with a path_ref value ending in those
+    extensions. These are NOT registered upstream fingerprints and must be
+    rejected so the gate enforces real input provenance (V13, V22).
+
+    Raises LayerAValidationError(rule_id='raw-parquet-path') on detection.
+    """
+    if input_data is None:
+        return
+
+    if isinstance(input_data, (bytes, bytearray)):
+        stripped = input_data.strip()
+        if any(stripped.endswith(ext) for ext in _PARQUET_EXTENSIONS):
+            raise LayerAValidationError(
+                rule_id="raw-parquet-path",
+                message=(
+                    f"input_data appears to be a raw file path: {stripped!r}. "
+                    "Raw agent-supplied parquet paths are rejected at emit (V13). "
+                    "Every input must carry a fingerprint from a registered upstream "
+                    "(h_dlt source or @feature node), not a bare file path."
+                ),
+                suggestion=(
+                    "Pass the actual file contents as bytes, or use a registered upstream "
+                    "fingerprint dict with 'upstream_fingerprint' key. "
+                    "Do not pass a file path string as input_data."
+                ),
+            )
+
+    if isinstance(input_data, dict):
+        for val in input_data.values():
+            if isinstance(val, str) and any(
+                val.strip().endswith(ext) for ext in _PARQUET_STR_EXTENSIONS
+            ):
+                raise LayerAValidationError(
+                    rule_id="raw-parquet-path",
+                    message=(
+                        f"input_data dict contains a raw parquet file path: {val!r}. "
+                        "Raw agent-supplied parquet paths are rejected at emit (V13). "
+                        "Use a registered upstream fingerprint instead."
+                    ),
+                    suggestion=(
+                        "Replace the path_ref with an 'upstream_fingerprint' from a "
+                        "registered h_dlt source or @feature node."
+                    ),
+                )
+
+
 _REQUIRED_FP_KEYS: frozenset[str] = frozenset(
     {"data_fingerprint", "code_fingerprint", "agent_version", "env_fingerprint"}
 )
@@ -234,6 +288,15 @@ def _record_emit(
     except LayerAValidationError:
         run_state.rejectionCount += 1
         raise  # re-raise unchanged — caller sees the structured ValidationError
+
+    # --- Step 2c: T9/V13 input-provenance check ---
+    # Reject raw parquet file paths passed as input_data (V13, V22, C8).
+    # Must be BEFORE storage (zero partial write) and before fingerprinting.
+    try:
+        _check_raw_parquet_path(input_data)
+    except LayerAValidationError:
+        run_state.rejectionCount += 1
+        raise
 
     # --- Steps 3-5: Fingerprint ---
     record_dict = record.model_dump(mode="json")
