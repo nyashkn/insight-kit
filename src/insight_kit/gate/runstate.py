@@ -1,16 +1,19 @@
 """T5 — RunState accumulator + idempotent finalizeRun + manifest_complete assert.
+T12 — critique severity gate + critiqueRounds counter (V16).
+T13 — published-tier fail-closed hooks (V17).
 
 RunState tracks all records emitted within a run session, rejection count,
 and critique rounds. finalizeRun is idempotent — completedAt guard ensures
 double-calls (agent_end + session_shutdown) are safe.
 
-Cites: V10, V17, I.run.
+Cites: V10, V16, V17, I.run.
 """
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +53,148 @@ class RecordRef:
 
 class ManifestError(Exception):
     """Raised when records.jsonl row count != RunState.records length (V17)."""
+
+
+# ---------------------------------------------------------------------------
+# T13 — PublishedRunError: raised when published-tier finalize fails closed
+# ---------------------------------------------------------------------------
+
+
+class PublishedRunError(Exception):
+    """Raised when a published run fails finalization (V17 — fail closed)."""
+
+
+# ---------------------------------------------------------------------------
+# T12 — Critique severity gate (V16)
+# ---------------------------------------------------------------------------
+
+_CRITIQUE_ROUNDS_CAP = 3
+"""Cap on critiqueRounds before downgrade path activates (V16)."""
+
+# Tiered record types that are subject to the critique gate
+_GATED_RECORD_TYPES = frozenset({"claim", "intervention"})
+
+# Audience tags that trigger the gate (V16: published/audience:board)
+_GATED_AUDIENCES = frozenset({"board"})
+
+
+class CritiqueSeverity(IntEnum):
+    """Ordered severity levels for critique records.
+
+    Integer ordering allows `>= high` comparisons (V16).
+    """
+
+    low = 1
+    medium = 2
+    high = 3
+    critical = 4
+
+
+@dataclass
+class CritiqueState:
+    """Immutable snapshot of a single critique.
+
+    status:   'open' | 'resolved'.
+    severity: CritiqueSeverity.
+    reason:   free-text explanation.
+    """
+
+    status: str
+    severity: CritiqueSeverity
+    reason: str
+
+    @classmethod
+    def open(cls, *, severity: str | CritiqueSeverity, reason: str) -> CritiqueState:
+        """Factory for an open critique."""
+        if isinstance(severity, str):
+            severity = CritiqueSeverity[severity]
+        return cls(status="open", severity=severity, reason=reason)
+
+    def resolve(self) -> CritiqueState:
+        """Return a new CritiqueState with status='resolved'."""
+        return CritiqueState(status="resolved", severity=self.severity, reason=self.reason)
+
+
+class CritiqueGateError(Exception):
+    """Raised when an open critique of severity >= high blocks a published/board record.
+
+    Callers MUST catch this and force the record tier to 'draft' (V16).
+    """
+
+
+def _is_gated_tier(tier: str | None, audience: str | None) -> bool:
+    """Return True if this tier/audience combination is subject to the critique gate.
+
+    The gate applies to:
+      - tier == 'published'  (explicit published tier)
+      - audience == 'board'  (regardless of tier — V16: published/audience:board)
+    """
+    if tier == "published":
+        return True
+    if audience in _GATED_AUDIENCES:
+        return True
+    return False
+
+
+def apply_critique(
+    *,
+    run_state: RunState,
+    record_id: str,
+    record_type: str,
+    tier: str | None,
+    audience: str | None,
+    critique: CritiqueState,
+) -> dict[str, Any]:
+    """Apply a critique to a record and enforce the severity gate (V16).
+
+    Increments `run_state.critiqueRounds` on every call.
+
+    Gate logic:
+      - If critique.status != 'open' → no gate check needed. Return passthrough.
+      - If record_type not in {claim, intervention} → no gate (untiered records).
+      - If not a gated tier/audience → no gate.
+      - If severity < high → no gate.
+      - If critiqueRounds >= cap (3) → downgrade path: return {"downgraded": True, "tier": "draft"}.
+      - Otherwise → raise CritiqueGateError (caller MUST downgrade tier).
+
+    Returns a dict:
+      - Normal pass: {"downgraded": False, "tier": tier}
+      - Downgrade at cap: {"downgraded": True, "tier": "draft"}
+
+    Raises CritiqueGateError when severity gate fires (below cap).
+    """
+    run_state.critiqueRounds += 1
+
+    # Gate only applies to tiered record types
+    if record_type not in _GATED_RECORD_TYPES:
+        return {"downgraded": False, "tier": tier}
+
+    # Gate only fires on open critiques
+    if critique.status != "open":
+        return {"downgraded": False, "tier": tier}
+
+    # Gate only fires on gated tiers/audiences
+    if not _is_gated_tier(tier, audience):
+        return {"downgraded": False, "tier": tier}
+
+    # Gate only fires on severity >= high
+    if critique.severity < CritiqueSeverity.high:
+        return {"downgraded": False, "tier": tier}
+
+    # Cap check: if rounds already at cap, downgrade instead of raising
+    # Note: critiqueRounds was already incremented above, so cap check
+    # uses the pre-increment count, meaning: if we were AT cap before this
+    # call, we downgrade. Cap is the threshold for switching from raise to downgrade.
+    # V16: "cap 3 then downgrade" — after 3 failed rounds, switch to downgrade mode.
+    pre_increment_rounds = run_state.critiqueRounds - 1
+    if pre_increment_rounds >= _CRITIQUE_ROUNDS_CAP:
+        return {"downgraded": True, "tier": "draft"}
+
+    raise CritiqueGateError(
+        f"Open critique of severity={critique.severity.name!r} on record "
+        f"{record_id!r} (type={record_type!r}, tier={tier!r}, audience={audience!r}) "
+        f"blocks published/board render. Force tier to 'draft' before emitting. (V16)"
+    )
 
 
 # ---------------------------------------------------------------------------
