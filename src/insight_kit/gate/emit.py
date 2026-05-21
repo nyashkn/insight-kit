@@ -2,10 +2,13 @@
 
 Pipeline for every emit:
   1. Pydantic-validate payload against RecordSchema (discriminated union).
-  2. Run applicable Layer-A validation/ guards (claim_id format, duplicate-in-run).
+  2. Run applicable Layer-A validation/ guards (claim_id format, duplicate-in-run,
+     T6 supersedes existence).
   3. On reject → raise, ZERO partial write, increment RunState.rejectionCount.
   4. Compute record_fingerprint + data_fingerprint.
   5. Inject fingerprints into the record dict.
+  5b. T7 tier gate: if tier==published but fingerprint set incomplete or
+      data_fingerprint_source==payload → downgrade to draft + record reason (V6,V22,C7).
   6. Write records/{id}/record.json (immutable, C3).
   7. Append projection row to records.jsonl.
   8. Append claim projection row to claims.jsonl (claim records only).
@@ -17,10 +20,11 @@ Typed wrappers:
   ik_research_emit
   ik_skill_use_emit
 
-Cites: V1, V2, I.emit.
+Cites: V1, V2, V3, V6, V22, C7, I.emit.
 """
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -115,6 +119,63 @@ def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
         )
 
 
+_REQUIRED_FP_KEYS: frozenset[str] = frozenset(
+    {"data_fingerprint", "code_fingerprint", "agent_version", "env_fingerprint"}
+)
+
+
+def _apply_tier_gate(
+    record_dict: dict[str, Any],
+    run_dir: Path,
+) -> None:
+    """T7/V6/V22/C7 — Published tier gate: downgrade to draft if fingerprints incomplete.
+
+    A published-tier claim or intervention requires ALL of:
+      - data_fingerprint, code_fingerprint, agent_version, env_fingerprint present in run.json
+      - data_fingerprint_source == "registered_input"
+
+    If either condition fails, the tier is downgraded to "draft" and the reason is
+    stored in "tier_downgrade_reason". This is NOT a rejection — the record still emits.
+
+    Applies only to record types with tier (claim, intervention).
+    Draft records and untiered records (research, skill_use) are not affected.
+    """
+    if record_dict.get("tier") != "published":
+        return  # only applies to published
+    if record_dict.get("record_type") not in ("claim", "intervention"):
+        return  # only tiered types
+
+    reasons: list[str] = []
+
+    # Check data_fingerprint_source (V22)
+    if record_dict.get("data_fingerprint_source") != "registered_input":
+        reasons.append(
+            "data_fingerprint_source is 'payload' (self-derived) — "
+            "published-tier requires registered_input (V22)"
+        )
+
+    # Check run.json has full fingerprint set (V6)
+    run_json_path = run_dir / "run.json"
+    if not run_json_path.exists():
+        reasons.append(
+            "run.json not found — published-tier requires full fingerprint set in run.json (V6)"
+        )
+    else:
+        try:
+            run_meta = json.loads(run_json_path.read_text(encoding="utf-8"))
+        except Exception:
+            run_meta = {}
+        missing = _REQUIRED_FP_KEYS - set(run_meta.keys())
+        if missing:
+            reasons.append(
+                f"run.json missing required fingerprint keys: {sorted(missing)} (V6)"
+            )
+
+    if reasons:
+        record_dict["tier"] = "draft"
+        record_dict["tier_downgrade_reason"] = "; ".join(reasons)
+
+
 def _claim_ids_in_run(run_state: RunState) -> set[str]:
     """Extract claim_ids from RunState.records metadata.
 
@@ -179,7 +240,7 @@ def _record_emit(
 
     # V22 — data_fingerprint_source honesty: distinguish real input provenance from
     # self-derived fallback. "payload" = fallback over record's own fields; NOT input
-    # provenance. T7 will reject published-tier records with source == "payload".
+    # provenance. T7 checks the source, never mere presence of data_fingerprint.
     if input_data is not None:
         dfp = _data_fingerprint(input_data)
         record_dict["data_fingerprint_source"] = "registered_input"
@@ -188,7 +249,13 @@ def _record_emit(
         record_dict["data_fingerprint_source"] = "payload"
     record_dict["data_fingerprint"] = dfp
 
-    # record_fingerprint: sha256 of the canonical record dict (with data_fingerprint embedded)
+    # --- Step 5b: T7 Tier gate (V6, V22, C7) ---
+    # Must run AFTER data_fingerprint_source is set, BEFORE record_fingerprint.
+    # Downgrade mutates record_dict["tier"] and adds "tier_downgrade_reason" if needed.
+    _apply_tier_gate(record_dict, resolved_dir)
+
+    # record_fingerprint: sha256 of the canonical record dict (includes tier + downgrade reason
+    # so a downgraded record has a different fingerprint than the same record at published).
     rfp = _record_fingerprint(record_dict)
     record_dict["record_fingerprint"] = rfp
 

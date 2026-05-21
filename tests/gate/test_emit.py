@@ -291,11 +291,25 @@ class TestIkClaimEmit:
         assert rec["fields"]["revenue"]["value"] == 99
 
     def test_tier_published(self, run_dir, state):
+        # T7: published tier requires full fingerprint set in run.json + registered_input.
+        # Write a run.json with the full set so the tier gate passes.
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "run.json").write_text(
+            json.dumps({
+                "data_fingerprint": "abc",
+                "code_fingerprint": "def",
+                "agent_version": "1.0.0",
+                "env_fingerprint": "ghi",
+            }),
+            encoding="utf-8",
+        )
         ref = ik_claim_emit(
             "TEST-D-001",
             {"x": 1},
             tier="published",
-            run_state=state, run_dir=run_dir,
+            run_state=state,
+            run_dir=run_dir,
+            input_data=b"real-inputs",  # → registered_input source
         )
         rec = json.loads(record_path(run_dir, ref.record_id).read_text())
         assert rec["tier"] == "published"
