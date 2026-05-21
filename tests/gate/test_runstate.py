@@ -22,7 +22,6 @@ from insight_kit.gate.runstate import (
 )
 from insight_kit.gate.store import index_path
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
