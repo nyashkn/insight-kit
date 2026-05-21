@@ -12,13 +12,12 @@ from __future__ import annotations
 import pytest
 
 from insight_kit.gate.runstate import (
+    CritiqueGateError,
     CritiqueSeverity,
     CritiqueState,
     RunState,
     apply_critique,
-    CritiqueGateError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

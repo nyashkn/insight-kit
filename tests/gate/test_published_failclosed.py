@@ -8,22 +8,20 @@ mismatch blocks published finalize.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_claim_emit, ik_intervention_emit
+from insight_kit.gate.emit import ik_claim_emit
 from insight_kit.gate.runstate import (
     ManifestError,
     PublishedRunError,
     RecordRef,
     RunState,
-    finalizeRun,
     finalize_published_run,
+    finalizeRun,
 )
 from insight_kit.gate.store import index_path
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
