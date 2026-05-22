@@ -341,3 +341,42 @@ Opus review of commit `df671b2` found four issues; all fixed in this session:
 
 - **Verification**: `uv run pytest` → **546 passed, 1 deselected, 0 failed**.
   `uv run ruff check src tests` → clean.
+
+## 2026-05-22 — post-SPEC infra: pi launch wrapper + project settings
+
+- **/ck:build is complete** (T1-T25; T15/T24 deferred to the Evidence-SDK loop).
+  This block is post-SPEC infra — wiring pi to model providers — not a §T task.
+- **opencode-go is a built-in pi provider** — no `pi.registerProvider` needed.
+  Built-in: `opencode-go` (baseUrl `https://opencode.ai/zen/go/v1`, api
+  `openai-completions`), `openrouter`, and `anthropic` (Claude Pro/Max
+  subscription). Swapping opencode-go ↔ openrouter on the same models is a
+  model-id change, zero code.
+- **Provider auth = env vars, Infisical-injected, never committed.** From
+  `pi-ai/dist/env-api-keys.js` `getApiKeyEnvVars`: `opencode-go` →
+  `OPENCODE_API_KEY`, `openrouter` → `OPENROUTER_API_KEY`, `anthropic` →
+  `ANTHROPIC_OAUTH_TOKEN` (precedence) | `ANTHROPIC_API_KEY`. **pi does NOT read
+  `CLAUDE_CODE_OAUTH_TOKEN`** — it reads `ANTHROPIC_OAUTH_TOKEN`. The token is
+  stored in Infisical as `CLAUDE_CODE_OAUTH_TOKEN`; `pi-run.sh` aliases it to
+  `ANTHROPIC_OAUTH_TOKEN` at launch (`user:ccr_inference` is the inference
+  scope pi needs).
+- **`scripts/pi-run.sh`** — launch wrapper: `infisical run --projectId
+  <opencode_go-project> --env prod -- pi "$@"`. `infisical run` injects every
+  secret in that project/env into pi's process env only — add a provider key in
+  Infisical, no wrapper edit. Container path: `INFISICAL_CLIENT_ID` +
+  `INFISICAL_CLIENT_SECRET` (scoped Machine Identity) exchanged for a
+  short-lived token via `INFISICAL_TOKEN` env (never on argv). Local path: a
+  prior `infisical login` session. `bun run pi -- <args>` registered.
+  shellcheck clean.
+- **`.pi/settings.json`** — `defaultProvider: opencode-go`, `defaultModel:
+  deepseek-v4-pro` (the self-improvement-loop model; `deepseek-v4-flash` is the
+  cheap per-call override). `warnings.anthropicExtraUsage: true` kept on —
+  Anthropic subscription use is billed per token as extra usage.
+- **Single-project layout (done).** All three providers' creds live in one
+  Infisical project — `kn-personal-dev` (`fe4ca4e9-…`/prod): `OPENCODE_API_KEY`,
+  `OPENROUTER_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`. `pi-run.sh` aliases the last
+  to `ANTHROPIC_OAUTH_TOKEN`, the name pi reads. One `infisical run` covers all
+  three providers.
+- **Open, pending user input**: pi e2e test (delegated to a sub-agent —
+  CI-safe deterministic-fake-model design); scoped read-only Machine Identity
+  for the loop containers; Signet-style monorepo restructure (needs the
+  file-move map).

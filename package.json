@@ -12,12 +12,14 @@
 		"format": "biome format --write .",
 		"typecheck": "bun run --filter '*' typecheck",
 		"test": "bun run --filter '*' test",
+		"pi": "bash scripts/pi-run.sh",
 		"pi:gen-schema": "bun run scripts/gen-pi-schema.ts",
 		"pi:typecheck": "tsc -p .pi/tsconfig.json",
 		"pi:test": "bun test ./.pi/lib/ ./.pi/test/"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0",
+		"@earendil-works/pi-ai": "0.75.4",
 		"@earendil-works/pi-coding-agent": "0.75.4",
 		"@types/bun": "^1.2.0",
 		"@types/node": "^24.5.2",
