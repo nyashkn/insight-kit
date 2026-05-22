@@ -171,14 +171,21 @@ class TestRegisteredFingerprintAccepted:
 class TestInsightKitHookNodeInputTypes:
     """C8 — run_before_node_execution captures node_input_types + computes h_dlt fp."""
 
-    def _make_hook(self):
-        """Construct an InsightKitHook with a mock Run (adapter.py is in scope)."""
-        from unittest.mock import MagicMock
+    def _make_hook(self, tmp_path: Path | None = None):
+        """Construct a gate-backed InsightKitHook (adapter.py is in scope).
 
+        T25 cutover: InsightKitHook is wired onto the gate — it takes a RunState
+        + run_dir, not a legacy Run. These C8 tests only exercise
+        run_before_node_execution (h_dlt fingerprint capture), which touches
+        neither, so a bare RunState + a throwaway dir suffice.
+        """
+        import tempfile
+
+        from insight_kit.gate.runstate import RunState
         from insight_kit.hamilton.adapter import InsightKitHook
 
-        mock_run = MagicMock()
-        return InsightKitHook(mock_run)
+        run_dir = Path(tmp_path) if tmp_path is not None else Path(tempfile.mkdtemp())
+        return InsightKitHook(RunState(run_dir=run_dir), run_dir)
 
     def test_node_input_types_captured(self):
         """run_before_node_execution must capture node_input_types from kwargs."""

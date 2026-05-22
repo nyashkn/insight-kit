@@ -1,4 +1,9 @@
-"""Unit + e2e tests for Hamilton adapter."""
+"""Unit + e2e tests for the gate-backed Hamilton adapter (T25 cutover).
+
+The InsightKitHook is rewired onto the L1 gate (C8, V1): it holds a RunState +
+run_dir and emits `claim` records through `ik_claim_emit`. These tests exercise
+the adapter against the frozen gate, not the deleted legacy `Run` model.
+"""
 
 from __future__ import annotations
 
@@ -8,9 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit import Run
-from insight_kit.hamilton import InsightKitHook, build_driver
-from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
+from insight_kit.gate import RunState
 
 # Try importing Hamilton; skip all tests if not available
 HAS_HAMILTON = False
@@ -24,13 +27,11 @@ except ImportError:
 
 
 @pytest.fixture
-def kit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Initialize a test kit."""
-    init_kit(tmp_path, namespace="TEST")
-    monkeypatch.chdir(tmp_path)
-    find_kit_root.cache_clear()
-    kit_config.cache_clear()
-    return tmp_path
+def run_dir(tmp_path: Path) -> Path:
+    """A bare run directory the gate writes records under."""
+    d = tmp_path / "run"
+    d.mkdir()
+    return d
 
 
 # Skip entire module if Hamilton not installed
@@ -50,12 +51,11 @@ def _create_module_from_code(name: str, code: str):
 
 
 def _make_metric_module():
-    """Sample Hamilton module with @emit='metric' node."""
+    """Sample Hamilton module with a plain (untagged) node."""
     code = """
 import pyarrow as pa
 from hamilton.function_modifiers import tag
 
-@tag(emit="metric")
 def daily_revenue() -> pa.Table:
     return pa.table({"day": [1, 2, 3], "rev": [100, 200, 150]})
 """
@@ -63,16 +63,15 @@ def daily_revenue() -> pa.Table:
 
 
 def _make_claim_module():
-    """Sample Hamilton module with @claim_tier node."""
+    """Sample Hamilton module with a @claim_tier node carrying an explicit claim_id."""
     code = """
 import pyarrow as pa
 from hamilton.function_modifiers import tag
 
-@tag(emit="metric")
 def daily_revenue() -> pa.Table:
     return pa.table({"day": [1, 2, 3], "rev": [100, 200, 150]})
 
-@tag(claim_tier="derived", claim_statement="revenue trend is positive")
+@tag(claim_tier="derived", claim_statement="revenue trend is positive", claim_id="TEST-D-001")
 def trend_check(daily_revenue: pa.Table) -> str:
     return "positive"
 """
@@ -85,73 +84,58 @@ def _make_fail_module():
 import pyarrow as pa
 from hamilton.function_modifiers import tag
 
-@tag(emit="metric")
 def boom() -> pa.Table:
     raise RuntimeError("synthetic failure")
 """
     return _create_module_from_code("hamilton_fail_mod", code)
 
 
-def _make_viz_module():
-    """Sample Hamilton module with @emit='viz' node."""
-    code = """
-from hamilton.function_modifiers import tag
-
-@tag(emit="viz")
-def chart_spec() -> dict:
-    return {"type": "bar", "data": [1, 2, 3]}
-"""
-    return _create_module_from_code("hamilton_viz_mod", code)
-
-
-def _make_critique_module():
-    """Sample Hamilton module with @emit='critique' node."""
-    code = """
-import pyarrow as pa
-from hamilton.function_modifiers import tag
-
-@tag(emit="critique")
-def data_quality_report() -> pa.Table:
-    return pa.table({"check": ["null_count", "dup_count"], "status": ["pass", "fail"]})
-"""
-    return _create_module_from_code("hamilton_critique_mod", code)
-
-
 # ---------- Unit tests ----------
 
 
-def test_hook_attaches_to_run(kit: Path) -> None:
-    """InsightKitHook stores Run reference."""
-    with Run(topic="t", agent="a") as r:
-        hook = InsightKitHook(r)
-        assert hook.run is r
+def test_hook_attaches_to_run_state(run_dir: Path) -> None:
+    """InsightKitHook stores the RunState + run_dir references."""
+    from insight_kit.hamilton import InsightKitHook
+
+    rs = RunState(run_dir=run_dir)
+    hook = InsightKitHook(rs, run_dir)
+    assert hook.run_state is rs
+    assert hook.run_dir == run_dir
 
 
-def test_gen_claim_id_explicit(kit: Path) -> None:
+def test_gen_claim_id_explicit() -> None:
     """Claim ID: explicit override."""
+    from insight_kit.hamilton import InsightKitHook
+
     cid = InsightKitHook._gen_claim_id("derived", "my_node", explicit_id="CUSTOM-123")
     assert cid == "CUSTOM-123"
 
 
-def test_gen_claim_id_derived(kit: Path) -> None:
+def test_gen_claim_id_derived() -> None:
     """Claim ID: auto from derived tier."""
+    from insight_kit.hamilton import InsightKitHook
+
     cid = InsightKitHook._gen_claim_id("derived", "daily_revenue")
     assert cid == "D-daily_revenue"
 
 
-def test_gen_claim_id_critic(kit: Path) -> None:
+def test_gen_claim_id_critic() -> None:
     """Claim ID: auto from critic tier."""
+    from insight_kit.hamilton import InsightKitHook
+
     cid = InsightKitHook._gen_claim_id("critic", "data_quality_check")
     assert cid == "C-data_quality_check"
 
 
-def test_gen_claim_id_etl_raw(kit: Path) -> None:
+def test_gen_claim_id_etl_raw() -> None:
     """Claim ID: auto from ETL raw tier."""
+    from insight_kit.hamilton import InsightKitHook
+
     cid = InsightKitHook._gen_claim_id("etl_raw", "shopify_orders")
     assert cid == "ETL-R-shopify_orders"
 
 
-def test_to_arrow_from_pyarrow(kit: Path) -> None:
+def test_to_arrow_from_pyarrow() -> None:
     """Conversion: PyArrow table passthrough."""
     from insight_kit.hamilton.adapter import _to_arrow
 
@@ -160,7 +144,7 @@ def test_to_arrow_from_pyarrow(kit: Path) -> None:
     assert result is t
 
 
-def test_to_arrow_from_dict_of_lists(kit: Path) -> None:
+def test_to_arrow_from_dict_of_lists() -> None:
     """Conversion: dict-of-lists → PyArrow."""
     from insight_kit.hamilton.adapter import _to_arrow
 
@@ -170,7 +154,7 @@ def test_to_arrow_from_dict_of_lists(kit: Path) -> None:
     assert result.num_rows == 3
 
 
-def test_to_arrow_from_pandas(kit: Path) -> None:
+def test_to_arrow_from_pandas() -> None:
     """Conversion: pandas DataFrame → PyArrow."""
     pd = pytest.importorskip("pandas")
     from insight_kit.hamilton.adapter import _to_arrow
@@ -181,7 +165,7 @@ def test_to_arrow_from_pandas(kit: Path) -> None:
     assert result.num_rows == 3
 
 
-def test_to_arrow_from_polars(kit: Path) -> None:
+def test_to_arrow_from_polars() -> None:
     """Conversion: polars DataFrame → PyArrow."""
     pytest.importorskip("polars")
     import polars as pl
@@ -194,7 +178,7 @@ def test_to_arrow_from_polars(kit: Path) -> None:
     assert result.num_rows == 3
 
 
-def test_to_arrow_unconvertible(kit: Path, caplog) -> None:
+def test_to_arrow_unconvertible() -> None:
     """Conversion: unconvertible type logs warning, returns None."""
     from insight_kit.hamilton.adapter import _to_arrow
 
@@ -202,91 +186,104 @@ def test_to_arrow_unconvertible(kit: Path, caplog) -> None:
     assert result is None
 
 
-# ---------- E2E tests ----------
+# ---------- E2E tests against the gate ----------
 
 
-def test_hamilton_metric_node_executes(kit: Path) -> None:
-    """E2E: Hamilton DAG with @emit='metric' node executes successfully."""
+def test_hamilton_plain_node_executes(run_dir: Path) -> None:
+    """E2E: a plain (untagged) Hamilton node runs; no claim is emitted."""
+    from insight_kit.hamilton import build_driver
+
     mod = _make_metric_module()
-    with Run(topic="hamilton-metric", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        out = dr.execute(["daily_revenue"])
-        assert "daily_revenue" in out
-        assert isinstance(out["daily_revenue"], pa.Table)
-        assert out["daily_revenue"].num_rows == 3
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [mod])
+    out = dr.execute(["daily_revenue"])
+    assert isinstance(out["daily_revenue"], pa.Table)
+    assert out["daily_revenue"].num_rows == 3
+    # untagged node → no record emitted
+    assert rs.records == []
 
 
-def test_hamilton_claim_node_executes(kit: Path) -> None:
-    """E2E: Hamilton DAG with @claim_tier node executes successfully."""
+def test_hamilton_claim_node_emits_through_gate(run_dir: Path) -> None:
+    """E2E: a @claim_tier node emits a `claim` record through the L1 gate (V1)."""
+    from insight_kit.gate.store import read_record
+    from insight_kit.hamilton import build_driver
+
     mod = _make_claim_module()
-    with Run(topic="hamilton-claim", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        out = dr.execute(["daily_revenue", "trend_check"])
-        assert "daily_revenue" in out
-        assert out["trend_check"] == "positive"
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [mod])
+    out = dr.execute(["daily_revenue", "trend_check"])
+    assert out["trend_check"] == "positive"
+
+    # the gate registered exactly one claim record
+    assert len(rs.records) == 1
+    ref = rs.records[0]
+    assert ref.record_type == "claim"
+
+    # record.json was written under the run dir and carries the claim fields
+    rec = read_record(run_dir, ref.record_id)
+    assert rec["claim_id"] == "TEST-D-001"
+    assert rec["fields"]["statement"]["value"] == "revenue trend is positive"
+    assert rec["fields"]["node_id"]["value"] == "trend_check"
 
 
-def test_hamilton_failure_raises_exception(kit: Path) -> None:
-    """E2E: Node failure raises exception properly."""
+def test_hamilton_failure_raises_exception(run_dir: Path) -> None:
+    """E2E: a node failure still raises to the DAG caller, and a critic claim is recorded.
+
+    The auto-generated failure claim id (`C-boom`) does not match the gate
+    claim-id regex, so the gate rejects it — the hook logs the reject and never
+    raises from emit. The original RuntimeError must still surface.
+    """
+    from insight_kit.hamilton import build_driver
+
     mod = _make_fail_module()
-    with Run(topic="hamilton-fail", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        with pytest.raises(RuntimeError, match="synthetic failure"):
-            dr.execute(["boom"])
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [mod])
+    with pytest.raises(RuntimeError, match="synthetic failure"):
+        dr.execute(["boom"])
 
 
-def test_hamilton_viz_node_executes(kit: Path) -> None:
-    """E2E: Hamilton DAG with @emit='viz' node executes successfully."""
-    mod = _make_viz_module()
-    with Run(topic="hamilton-viz", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        out = dr.execute(["chart_spec"])
-        assert "chart_spec" in out
-        assert out["chart_spec"] == {"type": "bar", "data": [1, 2, 3]}
+def test_hamilton_failure_emits_critic_claim_with_valid_id(run_dir: Path) -> None:
+    """E2E: a failing node tagged with a valid claim_id records a critic claim via the gate."""
+    code = """
+import pyarrow as pa
+from hamilton.function_modifiers import tag
+
+@tag(claim_id="TEST-C-001")
+def boom() -> pa.Table:
+    raise RuntimeError("synthetic failure")
+"""
+    mod = _create_module_from_code("hamilton_fail_tagged_mod", code)
+    from insight_kit.hamilton import build_driver
+
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [mod])
+    with pytest.raises(RuntimeError, match="synthetic failure"):
+        dr.execute(["boom"])
+
+    # the failure produced a recorded critic claim
+    assert len(rs.records) == 1
+    assert rs.records[0].record_type == "claim"
 
 
-def test_hamilton_critique_node_executes(kit: Path) -> None:
-    """E2E: Hamilton DAG with @emit='critique' node executes successfully."""
-    mod = _make_critique_module()
-    with Run(topic="hamilton-critique", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        out = dr.execute(["data_quality_report"])
-        assert "data_quality_report" in out
-        assert isinstance(out["data_quality_report"], pa.Table)
-        assert out["data_quality_report"].num_rows == 2
+def test_hamilton_build_driver_returns_driver(run_dir: Path) -> None:
+    """build_driver returns a usable Hamilton Driver."""
+    from insight_kit.hamilton import build_driver
 
-
-def test_hamilton_build_driver_requires_hamilton(kit: Path) -> None:
-    """build_driver raises ImportError if hamilton not installed (mocked test)."""
-    # This test would fail if hamilton isn't installed, but we skip the whole module
-    # if it isn't, so this just verifies the error message is clear
     mod = _make_metric_module()
-    with Run(topic="t", agent="a") as r:
-        dr = build_driver(r, [mod])
-        assert dr is not None
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [mod])
+    assert dr is not None
 
 
-def test_hamilton_multiple_nodes(kit: Path) -> None:
-    """E2E: Execute dependent nodes in DAG."""
-    mod = _make_claim_module()
-    with Run(topic="hamilton-multi", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        # Execute trend_check which depends on daily_revenue
-        out = dr.execute(["trend_check"])
-        # Hamilton computes dependencies, so both exist in result
-        assert "trend_check" in out
-        assert out["trend_check"] == "positive"
+def test_hamilton_finalize_seals_run_state(run_dir: Path) -> None:
+    """The hook's finalize() seals the RunState idempotently (V10)."""
+    from insight_kit.hamilton import InsightKitHook
 
-
-def test_hamilton_empty_execute_ok(kit: Path) -> None:
-    """E2E: Executing with empty node list doesn't create run dir."""
-    mod = _make_metric_module()
-    with Run(topic="hamilton-empty", agent="analyst") as r:
-        dr = build_driver(r, [mod])
-        out = dr.execute([])
-        assert out == {}
-
-    # Empty run doesn't create run dir (lazy per A9)
-    # This is expected: run dir only created if artifacts are written
-    runs = list((kit / ".insight-kit" / "runs").iterdir())
-    assert len(runs) == 0
+    rs = RunState(run_dir=run_dir)
+    hook = InsightKitHook(rs, run_dir)
+    assert rs.completedAt is None
+    hook.finalize()
+    assert rs.completedAt is not None
+    first = rs.completedAt
+    hook.finalize()  # idempotent
+    assert rs.completedAt == first

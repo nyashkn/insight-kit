@@ -242,3 +242,72 @@ Fixed now:
   green; `tsc -p .pi/tsconfig.json` exit 0. Pre-existing legacy failure
   `test_hamilton.py::test_hamilton_failure_raises_exception` (legacy
   `Run.claim` path) is untouched by T18 — T25 rewrites that test at cutover.
+
+## 2026-05-22 — T25 cutover: rewire callers onto the gate, delete legacy provenance (C8, C13, V1)
+
+- **Goal**: retire the legacy page-D provenance model (`Run` + `Claim`,
+  jsonl-line storage, V7/RT2-rejected) and rewire every caller onto the frozen
+  L1 gate. The gate (`src/insight_kit/gate/`, T1-T24) was not touched.
+- **Deleted (C13)** — referenceable via git history only:
+  - `src/insight_kit/provenance/run.py` (legacy `Run` context manager).
+  - `src/insight_kit/provenance/claim.py` (legacy `Claim` dataclass).
+- **Kept + reused (C13)**: `provenance/root.py` (kit-root discovery —
+  `find_kit_root`, `init_kit`, `kit_config`, `bootstrap_*`, and the standalone
+  `check_kit_version_drift` the legacy `Run.__init__` drift guard moved into),
+  `validation/`, `errors.py`, `config/`.
+- **Source rewired**:
+  - `hamilton/adapter.py` — `InsightKitHook` now holds a `RunState` + `run_dir`
+    and emits `claim` records via `ik_claim_emit` (was `Run.claim` /
+    `Run.emit_metric`). `__init__(run_state, run_dir)` (was `__init__(run)`);
+    `build_driver(run_state, run_dir, modules)`. A `@claim_tier` node and a node
+    failure both produce a gate `claim`; the node failure still re-raises so the
+    Hamilton DAG surfaces the error. The legacy `metric`/`critique`/`viz` emit
+    tags have no gate record-type equivalent (gate is `claim|intervention|
+    research|skill_use`) and were dropped — see "needs a decision" below. Local
+    `_slug` copy retained (legacy module deleted). C1/V5 intact: gate imports no
+    `hamilton`; the adapter imports the gate.
+  - `insight_kit/__init__.py` — dropped `Run`/`Claim`/`ClaimTier`/`Confidence`
+    exports; now lazily re-exports the gate surface (`ik_claim_emit`,
+    `ik_intervention_emit`, `ik_research_emit`, `ik_skill_use_emit`, `RunState`,
+    `finalizeRun`) + kept `find_kit_root`/`kit_config`.
+  - `provenance/__init__.py` — no longer exports the deleted `Run`/`Claim`; now
+    exports only the kept `root.py` surface.
+  - `hamilton/__init__.py`, `validation/__init__.py` — docstrings + the
+    `TYPE_CHECKING` `Run` import updated off the legacy model.
+  - `cli/__main__.py` + `agents/` — inspected: neither imported
+    `provenance.run`/`provenance.claim` or `Run`/`Claim`. The `ik` CLI uses only
+    kept `root.py` + `validation`. No rewire needed.
+- **Tests deleted** (pure legacy-storage coverage, no gate equivalent):
+  `test_run.py`, `test_claim.py`, `test_run_backcompat.py`, `test_e2e.py`,
+  `test_smoke.py`, `test_cli.py`, `test_ingest_convenience.py`,
+  `test_ingest_external.py`, `test_ingest_skill.py` (9 files).
+- **Tests rewritten** (behaviour still matters):
+  - `test_hamilton.py` — exercises the gate-backed `InsightKitHook`: claim
+    records land via the gate, the failure path still raises, `finalize()`
+    seals the `RunState`.
+  - `test_validation.py` — dropped the legacy `Run`-integration tests; all
+    direct `check_*` guard tests kept (the `validation/` module is unchanged);
+    `input_claims`/`ValidationError`-attr tests converted to direct calls.
+  - `test_root.py` — the 3 `Run(kit_start=...)` U-18 tests rewritten to call
+    `find_kit_root(start)` directly. The legacy-only `INSIGHT_KIT_ROOT` env var
+    (a `Run` feature, not in `root.py`) is dropped.
+  - `test_bootstrap_secrets.py` — the 4 kit_version-drift tests rewritten to
+    call the kept `check_kit_version_drift()` (the guard moved from the deleted
+    `Run.__init__` to `root.py`).
+  - `tests/gate/test_input_provenance.py` — minimal: the `_make_hook()` helper
+    updated to the new `InsightKitHook(RunState, run_dir)` signature. The T25
+    cutover *necessarily* changes that signature (the `Run` type is gone), so a
+    gate test that constructs the adapter with the legacy single-arg form had
+    to follow. Only the 2-line construction helper changed; no gate coverage
+    altered. Flagged below.
+- **Verification**: `uv run pytest` → **542 passed, 0 failed, 1 deselected**
+  (baseline pre-cutover was 629 passed / 1 failed — the drop is the 9 deleted
+  legacy-storage test files; the 1 pre-existing failure
+  `test_hamilton.py::test_hamilton_failure_raises_exception` is now green
+  against the gate-backed adapter). `uv run ruff check src tests` → clean.
+- **Needs a /ck:spec decision** (not edited here — §V/§B are `/ck:spec`-owned):
+  the gate has four record types (`claim|intervention|research|skill_use`); the
+  legacy Hamilton adapter also emitted `metric`/`critique`/`viz` via `@tag(emit=
+  ...)`. The cutover dropped those tag paths — mapping them to `claim` records
+  would invent semantics. If Hamilton nodes are still expected to emit non-claim
+  artifacts, that is an unresolved spec gap for §I/§T to address.

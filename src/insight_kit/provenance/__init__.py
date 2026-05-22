@@ -1,15 +1,25 @@
-"""Provenance primitives — Run, Claim, Manifest, Agent."""
+"""Provenance primitives — kit-root discovery + config.
 
-from insight_kit.provenance.claim import Claim, ClaimTier, Confidence
-from insight_kit.provenance.root import find_kit_root, kit_config
-from insight_kit.provenance.run import Run, latest_completed
+T25 cutover (C13): the legacy page-D model — `Run` (`provenance/run.py`) and the
+`Claim` dataclass (`provenance/claim.py`) — is deleted. Records now enter through
+the L1 gate (`insight_kit.gate`); see SPEC §C13. Kit-root discovery (`root.py`)
+is kept + reused.
+"""
+
+from insight_kit.provenance.root import (
+    bootstrap_is_stale,
+    bootstrap_marker,
+    check_kit_version_drift,
+    find_kit_root,
+    init_kit,
+    kit_config,
+)
 
 __all__ = [
-    "Claim",
-    "ClaimTier",
-    "Confidence",
-    "Run",
+    "bootstrap_is_stale",
+    "bootstrap_marker",
+    "check_kit_version_drift",
     "find_kit_root",
+    "init_kit",
     "kit_config",
-    "latest_completed",
 ]

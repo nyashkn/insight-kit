@@ -1,19 +1,41 @@
-"""InsightKitHook — Hamilton NodeExecutionHook adapter for Run provenance."""
+"""InsightKitHook — Hamilton NodeExecutionHook adapter wired onto the L1 gate.
+
+T25 cutover (C8, C13, V1): the adapter no longer drives the legacy `Run` /
+`Run.claim` path — that module is deleted. The hook now holds a `RunState` and
+emits records through the frozen L1 gate (`ik_claim_emit`, I.emit). The L1 gate
+imports no `hamilton` (C1/V5); this adapter — insight-kit's own code — may
+import the gate.
+
+A Hamilton @node tagged with `claim_tier` (or a failing node) produces a
+`claim` record through the gate. A node failure additionally re-raises so the
+Hamilton DAG still surfaces the error to the caller.
+"""
 
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
 import structlog
 from hamilton.lifecycle import NodeExecutionHook
 
-from insight_kit.provenance.run import Run, _slug
+from insight_kit.gate import RunState, finalizeRun, ik_claim_emit
+from insight_kit.validation import ValidationError
 
 logger = structlog.get_logger("insight_kit.hamilton")
 
 
-# ---------- type conversion helpers ----------
+# ---------- helpers ----------
+
+
+def _slug(s: str) -> str:
+    """Lowercase, replace non-alphanumeric runs with underscores, strip edges.
+
+    Local copy of the legacy provenance `_slug` (the legacy module is deleted at
+    T25 cutover); the adapter still needs it to build claim ids from node names.
+    """
+    return "".join(c if c.isalnum() or c in "-_" else "_" for c in s.lower()).strip("_")
 
 
 def _to_arrow(result: Any) -> Any | None:
@@ -83,15 +105,55 @@ def compute_h_dlt_fingerprint(resource_name: str, schema: str) -> str:
 
 
 class InsightKitHook(NodeExecutionHook):
-    """Hamilton NodeExecutionHook adapter binding @node lifecycle to Run provenance."""
+    """Hamilton NodeExecutionHook adapter binding @node lifecycle to the L1 gate.
 
-    def __init__(self, run: Run) -> None:
-        """Init hook with a Run context.
+    The hook holds a `RunState` accumulator and a run directory. Every claim a
+    tagged node produces is funnelled through `ik_claim_emit` — the same frozen
+    gate every other writer uses (V1). Call `finalize()` once the DAG run is
+    complete to seal the RunState (V10).
+    """
+
+    def __init__(self, run_state: RunState, run_dir: Path | str) -> None:
+        """Init the hook with a gate RunState + run directory.
 
         Args:
-            run: Active Run context manager
+            run_state: gate RunState accumulator; records emitted by tagged nodes
+                       are registered here.
+            run_dir:   run directory the gate writes records under.
         """
-        self.run = run
+        self.run_state = run_state
+        self.run_dir = Path(run_dir)
+
+    # ---------- gate emit ----------
+
+    def _emit_claim(self, claim_id: str, statement: str, *, tier: str, node_name: str) -> None:
+        """Emit a claim record through the L1 gate (I.emit, V1).
+
+        The Hamilton notion of a claim (a statement + a node-derived tier) maps
+        onto a gate `claim` record: the statement and the originating node are
+        carried as claim fields. Gate rejects (e.g. claim-id-format) are logged,
+        never raised — a node-level emit failure must not abort the DAG.
+        """
+        try:
+            ik_claim_emit(
+                claim_id,
+                {
+                    "statement": statement,
+                    "node_id": node_name,
+                    "claim_tier": tier,
+                },
+                run_state=self.run_state,
+                run_dir=self.run_dir,
+            )
+            logger.info("claim.emitted", claim_id=claim_id, node=node_name, tier=tier)
+        except ValidationError as e:
+            logger.error("claim.emit_rejected", claim_id=claim_id, node=node_name, error=str(e))
+        except Exception as e:
+            logger.error("claim.emit_failed", claim_id=claim_id, node=node_name, error=str(e))
+
+    def finalize(self) -> RunState:
+        """Seal the RunState once the DAG run is complete (V10, idempotent)."""
+        return finalizeRun(self.run_state, assert_manifest=False)
 
     def run_before_node_execution(
         self,
@@ -160,20 +222,19 @@ class InsightKitHook(NodeExecutionHook):
         """
         logger.debug("node_executed", node=node_name, tags=node_tags, success=success)
 
-        # Handle failure: emit critic-tier claim documenting the failure
+        # Handle failure: emit a claim record documenting the failure, then let
+        # Hamilton re-raise the original error to the DAG caller.
         if not success and error is not None:
             claim_id = self._gen_claim_id(
                 "critic",
                 node_name,
                 node_tags.get("claim_id"),
             )
-            self.run.claim(
-                claim_id=claim_id,
-                statement=f"Node {node_name} failed during execution: {type(error).__name__}",
+            self._emit_claim(
+                claim_id,
+                f"Node {node_name} failed during execution: {type(error).__name__}: {error}",
                 tier="critic",
-                node_id=node_name,
-                confidence="high",
-                caveats=[str(error)],
+                node_name=node_name,
             )
             logger.info(
                 "node.failure.claim",
@@ -183,79 +244,19 @@ class InsightKitHook(NodeExecutionHook):
             )
             return
 
-        # On success: check for emit/claim tags
         if not success:
             return
 
-        # Emit metric if tagged
-        if node_tags.get("emit") == "metric":
-            self._emit_metric_from_node(node_name, result, node_tags)
-
-        # Emit critique if tagged
-        if node_tags.get("emit") == "critique":
-            self._emit_critique_from_node(node_name, result, node_tags)
-
-        # Emit viz if tagged
-        if node_tags.get("emit") == "viz":
-            self._emit_viz_from_node(node_name, result, node_tags)
-
-        # Emit claim if tagged
+        # On success: emit a claim record for nodes tagged with claim_tier.
         if node_tags.get("claim_tier"):
             self._emit_claim_from_node(node_name, result, node_tags)
 
     # ---------- emit methods ----------
 
-    def _emit_metric_from_node(
-        self, node_name: str, result: Any, node_tags: dict[str, Any]
-    ) -> None:
-        """Emit result as metric if convertible to arrow."""
-        arrow_result = _to_arrow(result)
-        if arrow_result is None:
-            logger.warning("metric_emit.skip_unconvertible", node=node_name)
-            return
-
-        layer = node_tags.get("layer", "metrics")
-        try:
-            self.run.emit_metric(arrow_result, name=node_name, duckdb_view=None)
-            logger.info("metric.emitted", node=node_name, layer=layer)
-        except Exception as e:
-            logger.error("metric.emit_failed", node=node_name, error=str(e))
-
-    def _emit_critique_from_node(
-        self, node_name: str, result: Any, node_tags: dict[str, Any]
-    ) -> None:
-        """Emit result as critique if convertible."""
-        arrow_result = _to_arrow(result)
-        if arrow_result is None:
-            logger.warning("critique_emit.skip_unconvertible", node=node_name)
-            return
-
-        try:
-            self.run.emit_critique(arrow_result, name=node_name)
-            logger.info("critique.emitted", node=node_name)
-        except Exception as e:
-            logger.error("critique.emit_failed", node=node_name, error=str(e))
-
-    def _emit_viz_from_node(self, node_name: str, result: Any, node_tags: dict[str, Any]) -> None:
-        """Emit result as viz (assume JSON-serializable spec)."""
-        if not isinstance(result, (dict, list)):
-            logger.warning(
-                "viz.emit_skip.not_json",
-                node=node_name,
-                type=type(result).__name__,
-            )
-            return
-
-        try:
-            self.run.emit_viz(result, name=node_name)
-            logger.info("viz.emitted", node=node_name)
-        except Exception as e:
-            logger.error("viz.emit_failed", node=node_name, error=str(e))
-
     def _emit_claim_from_node(
         self, node_name: str, result: Any, node_tags: dict[str, Any]
     ) -> None:
-        """Emit a structured claim based on @tag(claim_tier=...)."""
+        """Emit a structured claim record based on @tag(claim_tier=...)."""
         claim_tier = node_tags.get("claim_tier", "derived")
         claim_statement = node_tags.get("claim_statement")
         claim_id = self._gen_claim_id(
@@ -268,17 +269,7 @@ class InsightKitHook(NodeExecutionHook):
             logger.warning("claim.skip_no_statement", node=node_name, claim_id=claim_id)
             return
 
-        try:
-            self.run.claim(
-                claim_id=claim_id,
-                statement=claim_statement,
-                tier=claim_tier,  # type: ignore[arg-type]
-                node_id=node_name,
-                confidence=node_tags.get("confidence", "medium"),  # type: ignore[arg-type]
-            )
-            logger.info("claim.emitted", claim_id=claim_id, node=node_name, tier=claim_tier)
-        except Exception as e:
-            logger.error("claim.emit_failed", claim_id=claim_id, error=str(e))
+        self._emit_claim(claim_id, claim_statement, tier=claim_tier, node_name=node_name)
 
     # ---------- claim id generation ----------
 
@@ -311,25 +302,26 @@ class InsightKitHook(NodeExecutionHook):
 # ---------- driver builder ----------
 
 
-def build_driver(run: Run, modules: list[Any]) -> Any:
-    """Construct a Hamilton Driver with InsightKitHook adapter.
+def build_driver(run_state: RunState, run_dir: Path | str, modules: list[Any]) -> Any:
+    """Construct a Hamilton Driver with a gate-backed InsightKitHook adapter.
 
     Args:
-        run: Active Run context
-        modules: Hamilton modules (can be list of Python modules or module objects)
+        run_state: gate RunState accumulator the hook emits records into.
+        run_dir:   run directory the gate writes records under.
+        modules:   Hamilton modules (list of Python modules or module objects).
 
     Returns:
-        hamilton.driver.Driver instance ready to execute
+        hamilton.driver.Driver instance ready to execute.
 
     Example:
         from hamilton import driver
-        from insight_kit import Run
+        from insight_kit.gate import RunState
         from insight_kit.hamilton import build_driver
         import my_hamilton_module
 
-        with Run(topic="analytics", agent="analyst") as r:
-            dr = build_driver(r, [my_hamilton_module])
-            result = dr.execute(["my_node"])
+        run_state = RunState(run_dir=run_dir)
+        dr = build_driver(run_state, run_dir, [my_hamilton_module])
+        result = dr.execute(["my_node"])
     """
     try:
         from hamilton import driver
@@ -338,8 +330,12 @@ def build_driver(run: Run, modules: list[Any]) -> Any:
             "Hamilton not installed. Install with: pip install sf-hamilton[visualization,caching]>=1.83"
         ) from e
 
-    # Build driver with InsightKit hook attached
-    builder = driver.Builder().with_modules(*modules).with_adapters(InsightKitHook(run))
+    # Build driver with the gate-backed InsightKit hook attached
+    builder = (
+        driver.Builder()
+        .with_modules(*modules)
+        .with_adapters(InsightKitHook(run_state, run_dir))
+    )
 
     dr = builder.build()
     logger.info("driver.built", modules_count=len(modules))

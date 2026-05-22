@@ -95,7 +95,7 @@ T21 | x  | intervention reconciliation — intent/realized fields, emit-time rec
 T22 | x  | research/skill_use knowledge records — captured-results snapshot persist, cites-edge requirement on dependent published claim/intervention | V20,I.cites
 T23 | x  | post-hoc utility verdict — append-only useful/not_useful event on research/skill_use records | V21,I.events
 T24 | .  | Evidence intervention page — render per-intervention from intervention records (baseline/realized/delta/critic), replacing the initiatives_log.jsonl hand-edit | C12,I.evidence
-T25 | .  | cutover — rewire InsightKitHook adapter + cli + agents + insight_kit/__init__ exports onto the gate; delete provenance/run.py + provenance/claim.py; delete/rewrite obsolete tests; full uv run pytest green | C8,C13,V1
+T25 | x  | cutover — rewire InsightKitHook adapter + cli + agents + insight_kit/__init__ exports onto the gate; delete provenance/run.py + provenance/claim.py; delete/rewrite obsolete tests; full uv run pytest green | C8,C13,V1
 ```
 
 ## §R — risks (2026-05-21 opus red-team of the 3-layer design)

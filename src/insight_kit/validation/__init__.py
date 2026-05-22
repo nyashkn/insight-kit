@@ -1,19 +1,16 @@
 """Layer-A real-time validation guards.
 
-Fires at emit time (Run.claim, Run.ingest_external). Raises ValidationError
-with rule_id + suggestion so the calling agent can self-correct in the same Run.
+Fires at emit time through the L1 gate (`insight_kit.gate`). Raises
+ValidationError with rule_id + suggestion so the calling agent can self-correct
+within the same run.
 """
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import yaml
-
-if TYPE_CHECKING:
-    from insight_kit.provenance.run import Run as Run
 
 # ---------- error class ----------
 

@@ -174,3 +174,65 @@ def bootstrap_is_stale(kit_root: Path, current_version: str) -> bool:
             return (-1, -1)
 
     return _maj_min(marker_ver) != _maj_min(current_version)
+
+
+def check_kit_version_drift(start: Path | None = None) -> None:
+    """Compare config.yaml kit_version against the installed insight_kit.__version__.
+
+    Raises ConfigError on a major-version mismatch (migration required).
+    Emits a DeprecationWarning on a minor mismatch, a UserWarning when kit_version
+    is absent, and is silent on a patch-only difference.
+
+    Cutover note (T25): this kit-config guard previously lived inline in the
+    legacy ``Run.__init__``. The legacy ``Run`` is deleted (C13); the guard is a
+    pure config check and belongs with kit-root discovery, so it moved here.
+    Gate callers wiring up a RunState should invoke this once at run start.
+    """
+    import warnings
+
+    from insight_kit import __version__ as current
+    from insight_kit.errors import ConfigError
+
+    cfg = kit_config(start)
+    cfg_ver: str | None = cfg.get("kit_version")
+
+    if not cfg_ver:
+        warnings.warn(
+            "kit_version absent from config.yaml; pre-0.1.0 kit. "
+            "Re-run init_kit to stamp.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return
+
+    def _parts(v: str) -> tuple[int, int]:
+        """Return (major, minor) parsed from a semver-ish string."""
+        clean = v.lstrip("v")
+        pieces = clean.split(".", 2)
+        try:
+            major = int(pieces[0]) if len(pieces) > 0 else 0
+            minor = (
+                int(pieces[1].split("a")[0].split("b")[0].split("rc")[0])
+                if len(pieces) > 1
+                else 0
+            )
+        except ValueError:
+            major, minor = 0, 0
+        return major, minor
+
+    cfg_maj, cfg_min = _parts(cfg_ver)
+    cur_maj, cur_min = _parts(current)
+
+    if cfg_maj != cur_maj:
+        raise ConfigError(
+            f"kit_version major mismatch: kit was init'd with {cfg_ver}, "
+            f"current insight_kit is {current}. Migration required."
+        )
+    if cfg_min != cur_min:
+        warnings.warn(
+            f"kit_version minor mismatch: config has {cfg_ver}, "
+            f"current insight_kit is {current}. Consider re-running init_kit.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    # patch-only difference: silent

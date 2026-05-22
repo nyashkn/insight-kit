@@ -1,11 +1,14 @@
 """Tests for Layer-A real-time validation guards.
 
-~20 tests covering:
-- claim-id-format       (5 tests)
-- claim-id-namespace    (4 tests)
-- critic-requires-edge  (4 tests)
-- external-requires-caveats (4 tests)
-- integration via Run   (3 tests)
+T25 cutover: the legacy `Run`-integration tests are dropped — `Run` is deleted
+(C13). These tests now exercise the `check_*` guard functions directly; the
+`validation/` module is kept + reused unchanged (C13). The guards' wiring into
+the L1 gate is covered by tests/gate/test_layer_a_wiring.py.
+
+Covers: claim-id-format, claim-id-namespace, critic-requires-edge,
+external-requires-caveats, input-claims-referential-integrity,
+claim-id-globally-unique, supersedes-already-deprecated,
+citation-referential-integrity, claim-id-duplicate-in-run, metric-id-off-glossary.
 """
 from __future__ import annotations
 
@@ -13,7 +16,6 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit import Run
 from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
 from insight_kit.validation import (
     ValidationError,
@@ -169,76 +171,19 @@ def test_external_caveats_multiple_values():
     check_external_caveats(["external_source", "non_audited", "stale_data"])  # must not raise
 
 
-# ---------- integration: Run-level (3 tests) ----------
+# ---------- ValidationError attribute surface ----------
 
 
-def test_run_claim_raises_on_bad_format(kit: Path):
-    """Run.claim raises ValidationError when claim_id doesn't match regex."""
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(claim_id="bad_id", statement="should fail")
-    assert exc_info.value.rule_id == "claim-id-format"
-
-
-def test_run_ingest_external_raises_on_empty_caveats(kit: Path):
-    """Run.ingest_external raises ValidationError when caveats=[] is passed."""
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.ingest_external(
-                kind="search",
-                source_id="test-query",
-                content="some content",
-                caveats=[],  # explicitly empty — must raise
-            )
-    assert exc_info.value.rule_id == "external-requires-caveats"
-
-
-def test_validation_error_attrs_accessible(kit: Path):
+def test_validation_error_attrs_accessible():
     """ValidationError exposes rule_id and suggestion as attributes."""
     with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(claim_id="OTHER-D-001", statement="wrong namespace")
+        check_claim_id_namespace("OTHER-D-001", "TEST")
     err = exc_info.value
     assert isinstance(err, ValidationError)
     assert isinstance(err, ValueError)
     assert err.rule_id == "claim-id-namespace"
     assert err.suggestion is not None
     assert "TEST" in err.suggestion
-
-
-def test_run_ingest_external_default_caveats(kit: Path):
-    """Run.ingest_external with no caveats arg defaults to ['external_source', 'non_audited']."""
-    with Run(topic="t", agent="a") as r:
-        rec = r.ingest_external(
-            kind="search",
-            source_id="test-query",
-            content="some content",
-        )
-    assert rec.default_caveats == ["external_source", "non_audited"]
-
-
-def test_run_claim_critic_no_edges_raises(kit: Path):
-    """Run.claim raises ValidationError for critic tier with no edges."""
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(
-                claim_id="TEST-C-001",
-                statement="this critic has no edges",
-                tier="critic",
-            )
-    assert exc_info.value.rule_id == "critic-requires-edge"
-
-
-def test_run_claim_critic_with_refutes_ok(kit: Path):
-    """Run.claim with critic tier and refutes passes validation."""
-    with Run(topic="t", agent="a") as r:
-        c = r.claim(
-            claim_id="TEST-C-001",
-            statement="this critic refutes something",
-            tier="critic",
-            refutes=["TEST-D-001"],
-        )
-    assert c.claim_id == "TEST-C-001"
 
 
 # ---------- Fix #8: input-claims referential integrity ----------
@@ -250,33 +195,24 @@ def test_input_claims_no_refs_passes():
 
 
 def test_input_claims_ref_in_current_run_passes(kit: Path):
-    """input_claims ref to claim in current run's already-emitted claims passes."""
-    with Run(topic="t", agent="a") as r:
-        r.claim(claim_id="TEST-D-001", statement="base claim")
-        # TEST-D-002 references TEST-D-001 which is already in current run
-        c = r.claim(
-            claim_id="TEST-D-002",
-            statement="derived from 001",
-            input_claims=["TEST-D-001"],
-        )
-    assert c.claim_id == "TEST-D-002"
+    """input_claims ref to a claim_id already known in the current run passes."""
+    check_input_claims_exist(
+        "TEST-D-002", ["TEST-D-001"], {"TEST-D-001"}, kit
+    )  # must not raise
 
 
 def test_input_claims_dangling_ref_raises(kit: Path):
     """input_claims referencing a non-existent claim_id raises ValidationError."""
     with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(
-                claim_id="TEST-D-001",
-                statement="references a ghost",
-                input_claims=["TEST-D-GHOST-999"],
-            )
+        check_input_claims_exist(
+            "TEST-D-001", ["TEST-D-GHOST-999"], set(), kit
+        )
     assert exc_info.value.rule_id == "input-claims-referential-integrity"
     assert "TEST-D-GHOST-999" in str(exc_info.value)
 
 
 def test_input_claims_ref_in_prior_run_passes(kit: Path):
-    """input_claims ref to claim_id written in a prior run's claims.jsonl passes."""
+    """input_claims ref to a claim_id written in a prior run's claims.jsonl passes."""
     import json as _json
 
     # Manually create a prior run dir with a claims.jsonl containing TEST-D-001
@@ -286,14 +222,9 @@ def test_input_claims_ref_in_prior_run_passes(kit: Path):
         _json.dumps({"claim_id": "TEST-D-001", "statement": "prior claim"}) + "\n"
     )
 
-    # Now a new run references TEST-D-001 as an input_claim — should pass
-    with Run(topic="t", agent="a") as r:
-        c = r.claim(
-            claim_id="TEST-D-002",
-            statement="references prior run claim",
-            input_claims=["TEST-D-001"],
-        )
-    assert c.claim_id == "TEST-D-002"
+    # A claim referencing TEST-D-001 (only in a prior run, not the current set)
+    # must still pass — the guard scans prior runs' claims.jsonl.
+    check_input_claims_exist("TEST-D-002", ["TEST-D-001"], set(), kit)
 
 
 # ---------- Fix #10: claim-id globally unique ----------
@@ -307,8 +238,13 @@ def test_claim_id_unique_no_runs(kit: Path):
 
 def test_claim_id_unique_single_run_no_errors(kit: Path):
     """Single run with a claim → no errors."""
-    with Run(topic="t", agent="a") as r:
-        r.claim(claim_id="TEST-D-001", statement="unique")
+    import json as _json
+
+    run_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_a_t"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "claims.jsonl").write_text(
+        _json.dumps({"claim_id": "TEST-D-001", "statement": "unique"}) + "\n"
+    )
     errors = check_claim_id_unique(kit)
     assert errors == []
 
@@ -360,24 +296,6 @@ def test_claim_id_unique_supersedes_chain_ok(kit: Path):
     assert errors == []
 
 
-def test_run_exit_raises_on_duplicate_claim_id(kit: Path):
-    """Run.__exit__ (Layer B) raises if a claim_id was already used in a prior run."""
-    import json as _json
-
-    # Inject a prior run with TEST-D-001
-    prior_dir = kit / ".insight-kit" / "runs" / "2024-01-01_0000_prior_a_t"
-    prior_dir.mkdir(parents=True, exist_ok=True)
-    (prior_dir / "claims.jsonl").write_text(
-        _json.dumps({"claim_id": "TEST-D-001", "statement": "prior"}) + "\n"
-    )
-
-    # New run uses the same claim_id without supersedes → should raise on __exit__
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(claim_id="TEST-D-001", statement="duplicate no supersedes")
-    assert exc_info.value.rule_id == "claim-id-globally-unique"
-
-
 # ---------- M5: supersedes-already-deprecated ----------
 
 
@@ -416,21 +334,6 @@ def test_supersedes_chain_already_superseded_raises(kit: Path):
     assert "TEST-D-001" in str(exc_info.value)
 
 
-def test_run_supersedes_already_deprecated_raises(kit: Path):
-    """Run.claim() raises supersedes-already-deprecated if target already has a successor."""
-    import json as _json
-
-    prior_dir = kit / ".insight-kit" / "runs" / "2024-01-02_0000_prior_a_t"
-    prior_dir.mkdir(parents=True, exist_ok=True)
-    (prior_dir / "claims.jsonl").write_text(
-        _json.dumps({"claim_id": "TEST-D-002", "statement": "replacement", "supersedes": "TEST-D-001"}) + "\n"
-    )
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(claim_id="TEST-D-003", statement="also replaces 001", supersedes="TEST-D-001")
-    assert exc_info.value.rule_id == "supersedes-already-deprecated"
-
-
 # ---------- M6: citation-referential-integrity ----------
 
 
@@ -462,17 +365,6 @@ def test_citation_unknown_id_raises(kit: Path):
     assert "DOCK-D-999" in str(exc_info.value)
 
 
-def test_run_citation_unknown_raises(kit: Path):
-    """Run.claim raises citation-referential-integrity for [[CITE: ID]] when ID not found."""
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(
-                claim_id="TEST-D-001",
-                statement="Based on [[CITE: TEST-D-999]] which is unknown.",
-            )
-    assert exc_info.value.rule_id == "citation-referential-integrity"
-
-
 # ---------- M7: claim-id-duplicate-in-run ----------
 
 
@@ -487,15 +379,6 @@ def test_duplicate_in_run_second_emit_raises():
         check_claim_id_unique_in_run("TEST-D-001", {"TEST-D-001"})
     assert exc_info.value.rule_id == "claim-id-duplicate-in-run"
     assert "TEST-D-001" in str(exc_info.value)
-
-
-def test_run_claim_duplicate_in_run_raises_immediately(kit: Path):
-    """Run.claim raises claim-id-duplicate-in-run on 2nd emit of same ID in same run."""
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.claim(claim_id="TEST-D-001", statement="first")
-            r.claim(claim_id="TEST-D-001", statement="second — must raise immediately")
-    assert exc_info.value.rule_id == "claim-id-duplicate-in-run"
 
 
 # ---------- M8: metric-id-off-glossary ----------
@@ -531,24 +414,3 @@ def test_metric_id_allowed_unknown_prefix_raises(kit_with_glossary: Path):
 def test_metric_id_no_glossary_is_permissive(kit: Path):
     """Without a project glossary.yaml, any metric name is accepted."""
     check_metric_id_allowed("weather_pressure", kit)  # must not raise — no glossary
-
-
-def test_run_emit_metric_off_glossary_raises(kit_with_glossary: Path):
-    """Run.emit_metric raises metric-id-off-glossary for unknown metric name prefix."""
-    import polars as pl
-
-    df = pl.DataFrame({"a": [1, 2, 3]})
-    with pytest.raises(ValidationError) as exc_info:
-        with Run(topic="t", agent="a") as r:
-            r.emit_metric(df, name="weather_pressure_kpa")
-    assert exc_info.value.rule_id == "metric-id-off-glossary"
-
-
-def test_run_emit_metric_known_prefix_passes(kit_with_glossary: Path):
-    """Run.emit_metric passes when name matches a glossary topic prefix."""
-    import polars as pl
-
-    df = pl.DataFrame({"a": [1, 2, 3]})
-    with Run(topic="t", agent="a") as r:
-        path = r.emit_metric(df, name="funnel_volume_b1")
-    assert path.exists()

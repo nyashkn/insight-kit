@@ -14,11 +14,11 @@ from insight_kit.errors import ConfigError
 from insight_kit.provenance.root import (
     bootstrap_is_stale,
     bootstrap_marker,
+    check_kit_version_drift,
     find_kit_root,
     init_kit,
     kit_config,
 )
-
 
 # ── bootstrap_marker round-trip ──────────────────────────────────────────────
 
@@ -128,9 +128,12 @@ def test_load_secrets_accepts_valid_keys(tmp_path: Path):
     assert result["_ALSO_VALID"] == "ok"
 
 
-# ── kit_version drift in Run.__init__ ────────────────────────────────────────
+# ── kit_version drift — check_kit_version_drift() ────────────────────────────
+# T25 cutover: this guard previously lived inline in the deleted legacy
+# Run.__init__ (C13). It is a pure config check and now lives standalone in the
+# kept provenance/root.py; gate callers invoke it once at run start.
 
-def test_run_raises_on_major_version_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_drift_raises_on_major_version_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     init_kit(tmp_path, namespace="TEST")
     monkeypatch.chdir(tmp_path)
     find_kit_root.cache_clear()
@@ -144,13 +147,11 @@ def test_run_raises_on_major_version_mismatch(tmp_path: Path, monkeypatch: pytes
     cfg_path.write_text(yaml.dump(cfg))
     kit_config.cache_clear()
 
-    from insight_kit.provenance.run import Run
-
     with pytest.raises(ConfigError, match="major mismatch"):
-        Run(topic="t", agent="a")
+        check_kit_version_drift()
 
 
-def test_run_warns_on_minor_version_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_drift_warns_on_minor_version_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     init_kit(tmp_path, namespace="TEST")
     monkeypatch.chdir(tmp_path)
     find_kit_root.cache_clear()
@@ -167,18 +168,16 @@ def test_run_warns_on_minor_version_mismatch(tmp_path: Path, monkeypatch: pytest
     cfg_path.write_text(yaml.dump(cfg))
     kit_config.cache_clear()
 
-    from insight_kit.provenance.run import Run
-
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        Run(topic="t", agent="a")
+        check_kit_version_drift()
 
     dep_warns = [w for w in caught if issubclass(w.category, DeprecationWarning)]
     assert dep_warns, "Expected a DeprecationWarning for minor mismatch"
     assert "minor mismatch" in str(dep_warns[0].message)
 
 
-def test_run_warns_on_missing_kit_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_drift_warns_on_missing_kit_version(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     init_kit(tmp_path, namespace="TEST")
     monkeypatch.chdir(tmp_path)
     find_kit_root.cache_clear()
@@ -192,18 +191,16 @@ def test_run_warns_on_missing_kit_version(tmp_path: Path, monkeypatch: pytest.Mo
     cfg_path.write_text(yaml.dump(cfg))
     kit_config.cache_clear()
 
-    from insight_kit.provenance.run import Run
-
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        Run(topic="t", agent="a")
+        check_kit_version_drift()
 
     user_warns = [w for w in caught if issubclass(w.category, UserWarning)]
     assert user_warns, "Expected a UserWarning for missing kit_version"
     assert "kit_version absent" in str(user_warns[0].message)
 
 
-def test_run_silent_on_patch_only_diff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_drift_silent_on_patch_only_diff(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     init_kit(tmp_path, namespace="TEST")
     monkeypatch.chdir(tmp_path)
     find_kit_root.cache_clear()
@@ -220,11 +217,9 @@ def test_run_silent_on_patch_only_diff(tmp_path: Path, monkeypatch: pytest.Monke
     cfg_path.write_text(yaml.dump(cfg))
     kit_config.cache_clear()
 
-    from insight_kit.provenance.run import Run
-
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        Run(topic="t", agent="a")
+        check_kit_version_drift()
 
     relevant = [
         w for w in caught
