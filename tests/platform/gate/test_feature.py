@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from insight_kit.gate import ProvisionalFeature, ik_feature_get
+from insight_kit.platform.gate import ProvisionalFeature, ik_feature_get
 
 # ---------------------------------------------------------------------------
 # Fixtures

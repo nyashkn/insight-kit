@@ -64,7 +64,7 @@ class TestRunStateAccumulation:
         assert r2.record_id in ids
 
     def test_rejection_count_incremented(self, run_dir, state):
-        from insight_kit.validation import ValidationError as LayerAValidationError
+        from insight_kit.libs.validation import ValidationError as LayerAValidationError
         try:
             ik_claim_emit("bad-id", {"x": 1}, run_state=state, run_dir=run_dir)
         except LayerAValidationError:

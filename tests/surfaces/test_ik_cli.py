@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.cli.__main__ import main as cli_main
-from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
+from insight_kit.libs.provenance.root import find_kit_root, init_kit, kit_config
+from insight_kit.surfaces.cli.__main__ import main as cli_main
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -1,6 +1,9 @@
 # insight-kit Monorepo Restructure Plan
 
-**Status:** Planning only — no files moved, renamed, or edited.
+**Status:** Executed 2026-05-22 — all 6 phases complete on `feat/agents-system-v2`
+(commits f76e524, f228b21, ee69255, 547c11b, f9764fb, + this). All 12 transient
+shims dropped; every caller on a canonical `platform/libs/integrations/surfaces`
+path; gate freeze honored (all gate edits import-path-only, 0 logic edits).
 **Branch at time of writing:** `feat/agents-system-v2`
 **Python baseline:** 546 tests passing, ruff clean.
 

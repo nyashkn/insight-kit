@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.provenance.root import find_kit_root, init_kit, kit_config
-from insight_kit.validation import (
+from insight_kit.libs.provenance.root import find_kit_root, init_kit, kit_config
+from insight_kit.libs.validation import (
     ValidationError,
     check_citation_referential_integrity,
     check_claim_id_format,

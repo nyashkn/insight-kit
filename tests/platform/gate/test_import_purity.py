@@ -11,7 +11,7 @@ import sys
 
 _PROBE = """\
 import sys
-import insight_kit.gate  # noqa: F401 — side-effect import under test
+import insight_kit.platform.gate  # noqa: F401 — side-effect import under test
 
 forbidden = [
     "insight_kit.provenance.run",
@@ -27,7 +27,7 @@ print("OK")
 
 
 def test_gate_import_does_not_pull_provenance_run_or_claim():
-    """Import insight_kit.gate in a fresh interpreter — provenance.run/.claim must stay out."""
+    """Import insight_kit.platform.gate in a fresh interpreter — provenance.run/.claim must stay out."""
     result = subprocess.run(
         [sys.executable, "-c", _PROBE],
         capture_output=True,

@@ -15,13 +15,13 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from insight_kit.libs.validation import ValidationError as LayerAValidationError
 from insight_kit.platform.gate.store import (
     append_event,
     read_record,
     record_path,
     resolve_run_dir,
 )
-from insight_kit.validation import ValidationError as LayerAValidationError
 
 UTILITY_VERDICT_EVENT: str = "utility_verdict"
 """events/*.jsonl basename for the post-hoc utility verdict log."""

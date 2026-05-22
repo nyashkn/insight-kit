@@ -1,9 +1,9 @@
 """insight-kit · L1 typed-record gate + provenance primitives.
 
 T25 cutover (C13): the legacy page-D `Run` / `Claim` model is deleted. Records
-now enter exclusively through the L1 gate (`insight_kit.gate`). The gate's
-public surface — typed emit wrappers, RunState, finalizeRun — is re-exported
-here for convenience.
+now enter exclusively through the L1 gate (`insight_kit.platform.gate`). The
+gate's public surface — typed emit wrappers, RunState, finalizeRun — is
+re-exported here for convenience.
 """
 from __future__ import annotations
 
@@ -29,7 +29,8 @@ __all__ = [
 
 if TYPE_CHECKING:
     # Type checkers see these as normal imports; at runtime they go through __getattr__.
-    from insight_kit.gate import (
+    from insight_kit.libs.provenance.root import find_kit_root, kit_config
+    from insight_kit.platform.gate import (
         RunState,
         finalizeRun,
         ik_claim_emit,
@@ -37,7 +38,6 @@ if TYPE_CHECKING:
         ik_research_emit,
         ik_skill_use_emit,
     )
-    from insight_kit.provenance.root import find_kit_root, kit_config
 
 _GATE_EXPORTS = frozenset(
     {
@@ -53,13 +53,13 @@ _GATE_EXPORTS = frozenset(
 
 def __getattr__(name: str) -> object:
     if name in _GATE_EXPORTS:
-        import insight_kit.gate as _gate
+        import insight_kit.platform.gate as _gate
 
         value = getattr(_gate, name)
         globals()[name] = value
         return value
     if name in ("find_kit_root", "kit_config"):
-        from insight_kit.provenance.root import find_kit_root, kit_config
+        from insight_kit.libs.provenance.root import find_kit_root, kit_config
 
         globals().update({"find_kit_root": find_kit_root, "kit_config": kit_config})
         return globals()[name]

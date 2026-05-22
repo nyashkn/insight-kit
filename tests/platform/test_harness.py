@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from insight_kit.harness import (
+from insight_kit.platform.harness import (
     DiffClass,
     charts_byte_identical,
     check_replay_determinism,

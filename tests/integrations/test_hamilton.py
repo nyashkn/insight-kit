@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate import RunState
+from insight_kit.platform.gate import RunState
 
 # Try importing Hamilton; skip all tests if not available
 HAS_HAMILTON = False
@@ -95,7 +95,7 @@ def boom() -> pa.Table:
 
 def test_hook_attaches_to_run_state(run_dir: Path) -> None:
     """InsightKitHook stores the RunState + run_dir references."""
-    from insight_kit.hamilton import InsightKitHook
+    from insight_kit.integrations.hamilton import InsightKitHook
 
     rs = RunState(run_dir=run_dir)
     hook = InsightKitHook(rs, run_dir)
@@ -105,7 +105,7 @@ def test_hook_attaches_to_run_state(run_dir: Path) -> None:
 
 def test_gen_claim_id_explicit() -> None:
     """Claim ID: explicit override."""
-    from insight_kit.hamilton import InsightKitHook
+    from insight_kit.integrations.hamilton import InsightKitHook
 
     cid = InsightKitHook._gen_claim_id("derived", "my_node", explicit_id="CUSTOM-123")
     assert cid == "CUSTOM-123"
@@ -113,7 +113,7 @@ def test_gen_claim_id_explicit() -> None:
 
 def test_gen_claim_id_derived() -> None:
     """Claim ID: auto from derived tier."""
-    from insight_kit.hamilton import InsightKitHook
+    from insight_kit.integrations.hamilton import InsightKitHook
 
     cid = InsightKitHook._gen_claim_id("derived", "daily_revenue")
     assert cid == "D-daily_revenue"
@@ -121,7 +121,7 @@ def test_gen_claim_id_derived() -> None:
 
 def test_gen_claim_id_critic() -> None:
     """Claim ID: auto from critic tier."""
-    from insight_kit.hamilton import InsightKitHook
+    from insight_kit.integrations.hamilton import InsightKitHook
 
     cid = InsightKitHook._gen_claim_id("critic", "data_quality_check")
     assert cid == "C-data_quality_check"
@@ -129,7 +129,7 @@ def test_gen_claim_id_critic() -> None:
 
 def test_gen_claim_id_etl_raw() -> None:
     """Claim ID: auto from ETL raw tier."""
-    from insight_kit.hamilton import InsightKitHook
+    from insight_kit.integrations.hamilton import InsightKitHook
 
     cid = InsightKitHook._gen_claim_id("etl_raw", "shopify_orders")
     assert cid == "ETL-R-shopify_orders"
@@ -191,7 +191,7 @@ def test_to_arrow_unconvertible() -> None:
 
 def test_hamilton_plain_node_executes(run_dir: Path) -> None:
     """E2E: a plain (untagged) Hamilton node runs; no claim is emitted."""
-    from insight_kit.hamilton import build_driver
+    from insight_kit.integrations.hamilton import build_driver
 
     mod = _make_metric_module()
     rs = RunState(run_dir=run_dir)
@@ -205,7 +205,7 @@ def test_hamilton_plain_node_executes(run_dir: Path) -> None:
 
 def test_hamilton_claim_node_emits_through_gate(run_dir: Path) -> None:
     """E2E: a @claim_tier node emits a `claim` record through the L1 gate (V1)."""
-    from insight_kit.hamilton import build_driver
+    from insight_kit.integrations.hamilton import build_driver
     from insight_kit.platform.gate.store import read_record
 
     mod = _make_claim_module()
@@ -238,7 +238,7 @@ def test_hamilton_failure_raises_exception(run_dir: Path) -> None:
     claim-id regex, so the gate rejects it — the hook logs the reject and never
     raises from emit. The original RuntimeError must still surface.
     """
-    from insight_kit.hamilton import build_driver
+    from insight_kit.integrations.hamilton import build_driver
 
     mod = _make_fail_module()
     rs = RunState(run_dir=run_dir)
@@ -258,7 +258,7 @@ def boom() -> pa.Table:
     raise RuntimeError("synthetic failure")
 """
     mod = _create_module_from_code("hamilton_fail_tagged_mod", code)
-    from insight_kit.hamilton import build_driver
+    from insight_kit.integrations.hamilton import build_driver
 
     rs = RunState(run_dir=run_dir)
     dr = build_driver(rs, run_dir, [mod])
@@ -280,7 +280,7 @@ def boom() -> pa.Table:
 
 def test_hamilton_build_driver_returns_driver(run_dir: Path) -> None:
     """build_driver returns a usable Hamilton Driver."""
-    from insight_kit.hamilton import build_driver
+    from insight_kit.integrations.hamilton import build_driver
 
     mod = _make_metric_module()
     rs = RunState(run_dir=run_dir)
@@ -290,7 +290,7 @@ def test_hamilton_build_driver_returns_driver(run_dir: Path) -> None:
 
 def test_hamilton_finalize_seals_run_state(run_dir: Path) -> None:
     """The hook's finalize() seals the RunState idempotently (V10)."""
-    from insight_kit.hamilton import InsightKitHook
+    from insight_kit.integrations.hamilton import InsightKitHook
 
     rs = RunState(run_dir=run_dir)
     hook = InsightKitHook(rs, run_dir)

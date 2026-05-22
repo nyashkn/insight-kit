@@ -336,8 +336,8 @@ def build_driver(run_state: RunState, run_dir: Path | str, modules: list[Any]) -
 
     Example:
         from hamilton import driver
-        from insight_kit.gate import RunState
-        from insight_kit.hamilton import build_driver
+        from insight_kit.platform.gate import RunState
+        from insight_kit.integrations.hamilton import build_driver
         import my_hamilton_module
 
         run_state = RunState(run_dir=run_dir)

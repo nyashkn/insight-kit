@@ -38,6 +38,7 @@ from typing import Any
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
+from insight_kit.libs.validation import ValidationError as LayerAValidationError
 from insight_kit.platform.gate.fingerprint import (
     data_fingerprint as _data_fingerprint,
 )
@@ -58,7 +59,6 @@ from insight_kit.platform.gate.store import (
     write_record,
     write_snapshot,
 )
-from insight_kit.validation import ValidationError as LayerAValidationError
 
 # Pydantic TypeAdapter for RecordSchema discriminated union
 _RECORD_ADAPTER: TypeAdapter[Any] = TypeAdapter(RecordSchema)
@@ -85,7 +85,7 @@ def _run_layer_a_guards(
 
     Raises LayerAValidationError on failure (V2 — no partial write).
     """
-    from insight_kit.validation import (
+    from insight_kit.libs.validation import (
         check_claim_id_format,
         check_claim_id_unique_in_run,
     )

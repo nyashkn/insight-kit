@@ -123,7 +123,7 @@ def test_check_passes_canonical(monkeypatch, tmp_path):
                 if not link.exists():
                     link.mkdir(parents=True, exist_ok=True)
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main(["agents", "check", "--config", str(CANONICAL_CONFIG)])
     assert rc == 0
@@ -139,7 +139,7 @@ def test_add_role_appends(monkeypatch, tmp_path):
     _agents_dir, config_path = make_agents_dir(tmp_path)
     _monkeypatch_claude_dirs(monkeypatch, tmp_path)
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main(["agents", "add", "analyst", "--config", str(config_path)])
     assert rc == 0
@@ -178,7 +178,7 @@ def test_add_persona_scaffold(monkeypatch, tmp_path):
     template_dir.mkdir(parents=True)
     shutil.copy2(CANONICAL_TEMPLATE, template_dir / "persona.md")
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main(["agents", "add-persona", "growth", "--config", str(config_path)])
     assert rc == 0
@@ -204,7 +204,7 @@ def test_invalid_role_rejected(monkeypatch, tmp_path):
     _agents_dir, config_path = make_agents_dir(tmp_path)
     _monkeypatch_claude_dirs(monkeypatch, tmp_path)
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main(["agents", "add", "foo", "--config", str(config_path)])
     assert rc != 0
@@ -224,7 +224,7 @@ def test_bootstrap_dry_run(monkeypatch, tmp_path):
     def _stub_clone(**kwargs):
         return 0
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main([
         "agents", "bootstrap", "--dry-run", "--config", str(config_path)
@@ -251,7 +251,7 @@ def test_check_exits_1_on_missing_council(monkeypatch, tmp_path):
     _monkeypatch_claude_dirs(monkeypatch, tmp_path)
     # Don't seed any council files → check should fail
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main(["agents", "check", "--config", str(config_path)])
     assert rc == 1
@@ -270,7 +270,7 @@ def test_pull_council_network(monkeypatch, tmp_path):
 
     _monkeypatch_claude_dirs(monkeypatch, tmp_path)
 
-    from insight_kit.cli.__main__ import main
+    from insight_kit.surfaces.cli.__main__ import main
 
     rc = main(["agents", "pull-council", "--config", str(CANONICAL_CONFIG)])
     assert rc == 0

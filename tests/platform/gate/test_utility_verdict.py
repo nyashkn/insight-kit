@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from insight_kit.libs.validation import ValidationError as LayerAValidationError
 from insight_kit.platform.gate.emit import (
     ik_claim_emit,
     ik_intervention_emit,
@@ -24,7 +25,6 @@ from insight_kit.platform.gate.verdict import (
     UtilityVerdict,
     ik_utility_verdict,
 )
-from insight_kit.validation import ValidationError as LayerAValidationError
 
 # ---------------------------------------------------------------------------
 # Fixtures

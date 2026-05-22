@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 
 import insight_kit
-from insight_kit.config import load_secrets
-from insight_kit.errors import ConfigError
-from insight_kit.provenance.root import (
+from insight_kit.libs.config import load_secrets
+from insight_kit.libs.errors import ConfigError
+from insight_kit.libs.provenance.root import (
     bootstrap_is_stale,
     bootstrap_marker,
     check_kit_version_drift,

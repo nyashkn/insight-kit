@@ -38,7 +38,7 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 
 def cmd_annotate(args: argparse.Namespace) -> int:
-    from insight_kit.annotations import annotate
+    from insight_kit.surfaces.annotations import annotate
 
     rec = annotate(
         claim_id=args.claim_id,
@@ -72,7 +72,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_annotations(args: argparse.Namespace) -> int:
-    from insight_kit.annotations import iter_annotations
+    from insight_kit.surfaces.annotations import iter_annotations
 
     n = 0
     acted = 0

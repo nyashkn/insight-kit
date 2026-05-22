@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import textwrap
 
-from insight_kit.gate import CheckResult, ik_run_check
+from insight_kit.platform.gate import CheckResult, ik_run_check
 
 # ---------------------------------------------------------------------------
 # CheckResult dataclass tests
