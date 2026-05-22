@@ -6,17 +6,17 @@
  * turns `insight_kit.gate.cli export-schema` JSON into a committed TS module the
  * pi extension wraps as TypeBox `parameters`. Never hand-edit the generated file.
  *
- * Run: `bun run scripts/gen-pi-schema.ts`
+ * Run: `bun run deploy/scripts/gen-pi-schema.ts`
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const repoRoot = join(import.meta.dir, "..");
+const repoRoot = join(import.meta.dir, "../..");
 
 const raw = execFileSync(
 	"uv",
-	["run", "python", "-m", "insight_kit.gate.cli", "export-schema"],
+	["run", "python", "-m", "insight_kit.platform.gate.cli", "export-schema"],
 	{ cwd: repoRoot, encoding: "utf-8" },
 );
 

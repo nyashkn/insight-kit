@@ -12,8 +12,8 @@
 		"format": "biome format --write .",
 		"typecheck": "bun run --filter '*' typecheck",
 		"test": "bun run --filter '*' test",
-		"pi": "bash scripts/pi-run.sh",
-		"pi:gen-schema": "bun run scripts/gen-pi-schema.ts",
+		"pi": "bash deploy/scripts/pi-run.sh",
+		"pi:gen-schema": "bun run deploy/scripts/gen-pi-schema.ts",
 		"pi:typecheck": "tsc -p .pi/tsconfig.json",
 		"pi:test": "bun test ./.pi/lib/ ./.pi/test/"
 	},

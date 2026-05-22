@@ -181,7 +181,7 @@ class TestInsightKitHookNodeInputTypes:
         """
         import tempfile
 
-        from insight_kit.hamilton.adapter import InsightKitHook
+        from insight_kit.integrations.hamilton.adapter import InsightKitHook
         from insight_kit.platform.gate.runstate import RunState
 
         run_dir = Path(tmp_path) if tmp_path is not None else Path(tempfile.mkdtemp())
@@ -209,7 +209,7 @@ class TestInsightKitHookNodeInputTypes:
 
     def test_h_dlt_fingerprint_computation(self):
         """sha256(resource_name + schema) = h_dlt fingerprint (C8)."""
-        from insight_kit.hamilton.adapter import compute_h_dlt_fingerprint
+        from insight_kit.integrations.hamilton.adapter import compute_h_dlt_fingerprint
 
         resource_name = "h_dlt://metrics/revenue"
         schema = "v2"
@@ -219,7 +219,7 @@ class TestInsightKitHookNodeInputTypes:
 
     def test_h_dlt_fingerprint_deterministic(self):
         """Same resource_name + schema → identical fingerprint (C2)."""
-        from insight_kit.hamilton.adapter import compute_h_dlt_fingerprint
+        from insight_kit.integrations.hamilton.adapter import compute_h_dlt_fingerprint
 
         fp1 = compute_h_dlt_fingerprint("metrics.revenue", "v1")
         fp2 = compute_h_dlt_fingerprint("metrics.revenue", "v1")
@@ -227,7 +227,7 @@ class TestInsightKitHookNodeInputTypes:
 
     def test_h_dlt_fingerprint_differs_on_schema_change(self):
         """Different schema version → different fingerprint."""
-        from insight_kit.hamilton.adapter import compute_h_dlt_fingerprint
+        from insight_kit.integrations.hamilton.adapter import compute_h_dlt_fingerprint
 
         fp1 = compute_h_dlt_fingerprint("metrics.revenue", "v1")
         fp2 = compute_h_dlt_fingerprint("metrics.revenue", "v2")

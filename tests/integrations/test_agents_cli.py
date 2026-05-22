@@ -12,10 +12,10 @@ import yaml
 # Helpers
 # ---------------------------------------------------------------------------
 
-CANONICAL_CONFIG = Path(__file__).parent.parent / ".agents" / "config.yaml"
-CANONICAL_SCHEMA = Path(__file__).parent.parent / ".agents" / "config.schema.json"
+CANONICAL_CONFIG = Path(__file__).parent.parent.parent / ".agents" / "config.yaml"
+CANONICAL_SCHEMA = Path(__file__).parent.parent.parent / ".agents" / "config.schema.json"
 CANONICAL_TEMPLATE = (
-    Path(__file__).parent.parent / ".agents" / "personas" / "_template" / "persona.md"
+    Path(__file__).parent.parent.parent / ".agents" / "personas" / "_template" / "persona.md"
 )
 
 COUNCIL_MEMBERS = [
@@ -70,7 +70,7 @@ def _monkeypatch_claude_dirs(monkeypatch, tmp_path: Path):
     (fake_claude / "agents").mkdir(parents=True)
     (fake_claude / "skills").mkdir(parents=True)
 
-    from insight_kit.agents import bootstrap as bs
+    from insight_kit.integrations.agents import bootstrap as bs
 
     monkeypatch.setattr(bs, "CLAUDE_DIR", fake_claude)
     return fake_claude

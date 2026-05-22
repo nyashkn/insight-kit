@@ -20,8 +20,8 @@ from typing import Any
 import structlog
 from hamilton.lifecycle import NodeExecutionHook
 
-from insight_kit.gate import RunState, finalizeRun, ik_claim_emit
-from insight_kit.validation import ValidationError
+from insight_kit.libs.validation import ValidationError
+from insight_kit.platform.gate import RunState, finalizeRun, ik_claim_emit
 
 logger = structlog.get_logger("insight_kit.hamilton")
 

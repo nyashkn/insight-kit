@@ -1,9 +1,2 @@
-"""Agents system — configuration, bootstrap, and orchestration."""
-
-from .config import AgentsConfig, ConfigError, load_config
-
-__all__ = [
-    "AgentsConfig",
-    "ConfigError",
-    "load_config",
-]
+# Back-compat shim — remove in Phase 6 of the restructure.
+from insight_kit.integrations.agents import *  # noqa: F403

@@ -1,5 +1,2 @@
-"""Hamilton adapter — bridge @node execution to the L1 gate (ik_claim_emit)."""
-
-from insight_kit.hamilton.adapter import InsightKitHook, build_driver
-
-__all__ = ["InsightKitHook", "build_driver"]
+# Back-compat shim — remove in Phase 6 of the restructure.
+from insight_kit.integrations.hamilton import *  # noqa: F403

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.agents.config import AgentsConfig, ConfigError, load_config
+from insight_kit.integrations.agents.config import AgentsConfig, ConfigError, load_config
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def config_dir(tmp_path):
     # Copy schema
     schema_path = agents_dir / "config.schema.json"
     project_schema = (
-        Path(__file__).parent.parent / ".agents" / "config.schema.json"
+        Path(__file__).parent.parent.parent / ".agents" / "config.schema.json"
     )
     if project_schema.exists():
         schema_path.write_text(project_schema.read_text())
@@ -28,7 +28,7 @@ def config_dir(tmp_path):
 @pytest.fixture
 def canonical_config_path():
     """Path to the canonical config in the project."""
-    return Path(__file__).parent.parent / ".agents" / "config.yaml"
+    return Path(__file__).parent.parent.parent / ".agents" / "config.yaml"
 
 
 class TestLoadCanonical:

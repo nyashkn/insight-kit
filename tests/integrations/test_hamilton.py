@@ -137,7 +137,7 @@ def test_gen_claim_id_etl_raw() -> None:
 
 def test_to_arrow_from_pyarrow() -> None:
     """Conversion: PyArrow table passthrough."""
-    from insight_kit.hamilton.adapter import _to_arrow
+    from insight_kit.integrations.hamilton.adapter import _to_arrow
 
     t = pa.table({"x": [1, 2]})
     result = _to_arrow(t)
@@ -146,7 +146,7 @@ def test_to_arrow_from_pyarrow() -> None:
 
 def test_to_arrow_from_dict_of_lists() -> None:
     """Conversion: dict-of-lists → PyArrow."""
-    from insight_kit.hamilton.adapter import _to_arrow
+    from insight_kit.integrations.hamilton.adapter import _to_arrow
 
     d = {"x": [1, 2, 3], "y": [4, 5, 6]}
     result = _to_arrow(d)
@@ -157,7 +157,7 @@ def test_to_arrow_from_dict_of_lists() -> None:
 def test_to_arrow_from_pandas() -> None:
     """Conversion: pandas DataFrame → PyArrow."""
     pd = pytest.importorskip("pandas")
-    from insight_kit.hamilton.adapter import _to_arrow
+    from insight_kit.integrations.hamilton.adapter import _to_arrow
 
     df = pd.DataFrame({"x": [1, 2, 3]})
     result = _to_arrow(df)
@@ -170,7 +170,7 @@ def test_to_arrow_from_polars() -> None:
     pytest.importorskip("polars")
     import polars as pl
 
-    from insight_kit.hamilton.adapter import _to_arrow
+    from insight_kit.integrations.hamilton.adapter import _to_arrow
 
     df = pl.DataFrame({"x": [1, 2, 3]})
     result = _to_arrow(df)
@@ -180,7 +180,7 @@ def test_to_arrow_from_polars() -> None:
 
 def test_to_arrow_unconvertible() -> None:
     """Conversion: unconvertible type logs warning, returns None."""
-    from insight_kit.hamilton.adapter import _to_arrow
+    from insight_kit.integrations.hamilton.adapter import _to_arrow
 
     result = _to_arrow("not a dataframe")
     assert result is None
