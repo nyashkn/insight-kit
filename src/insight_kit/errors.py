@@ -1,7 +1,3 @@
-"""insight-kit domain exceptions."""
-
-from __future__ import annotations
-
-
-class ConfigError(Exception):
-    """Raised for configuration problems (version mismatch, bad secrets keys, etc.)."""
+# Back-compat shim — remove in Phase 6 of the restructure.
+from insight_kit.libs.errors import *  # noqa: F403
+from insight_kit.libs.errors import ConfigError  # noqa: F401
