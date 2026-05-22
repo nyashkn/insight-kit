@@ -173,3 +173,25 @@ Fixed now:
   its other half (the actual `<ClaimNum>` Evidence render, T15) stays in the
   Evidence loop. L6's "field ref" contract = `<ClaimNum>`/`<ClaimChart>`.
 - T16 tests: `test_render_audit.py` (34 tests). Full gate suite green, ruff clean.
+
+## 2026-05-22 — T17 eval harness (V11, C10, C11)
+
+- **Harbor deferred** (decided earlier) → T17 built as a plain Python verifier.
+  `src/insight_kit/harness.py` — pure, no container, no credentials.
+- **Semantic field-diff** `diff_run_against_golden` + `classify_field`: each
+  golden field vs the run's claim → `match` / `regression` / `legitimate` /
+  `coverage_drop`. Classification reads gate metadata already on the claim —
+  thin `coverage` → coverage_drop; `supersedes` edge → legitimate; silent
+  disagreement → regression. Only regressions fail the harness.
+- **Negative fixtures** (C11/RT6): buggy runs (wrong values, no supersedes, no
+  thin coverage) are classified `regression` — `test_harness.py` asserts the
+  harness *catches* them, never certifies them.
+- **V11 replay determinism** `check_replay_determinism` — value-equality under
+  C10 tolerance, NOT fingerprint identity; `charts_byte_identical` for the
+  published-tier chart check.
+- **`eval/README.md`** — the LOCAL-only containerization recipe: real-data image
+  never pushed, credentials pulled at runtime from Infisical (`naimarket`
+  project, `mi-eval-harness` identity, `infisical run` env injection). Harness
+  logic is what T17 ships + tests; the real-data container is the user's
+  local step once the Infisical project exists.
+- T17 tests: `test_harness.py` (20 tests). Harness suite green, ruff clean.
