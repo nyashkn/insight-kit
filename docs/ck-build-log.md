@@ -311,3 +311,33 @@ Fixed now:
   ...)`. The cutover dropped those tag paths — mapping them to `claim` records
   would invent semantics. If Hamilton nodes are still expected to emit non-claim
   artifacts, that is an unresolved spec gap for §I/§T to address.
+
+### T25 follow-up fixes — 2026-05-22
+
+Opus review of commit `df671b2` found four issues; all fixed in this session:
+
+- **Fix 1 (HIGH) adapter tier bug** — `adapter.py:_emit_claim` was passing the
+  Hamilton tier inside the `fields` dict as `"claim_tier"` instead of as the
+  `tier=` keyword argument to `ik_claim_emit`. Every adapter-emitted claim
+  silently landed at `tier="draft"`. Fixed by routing the `tier=` keyword
+  correctly. Added `_to_gate_tier()` to map Hamilton-internal tiers (`derived`,
+  `critic`, etc.) to valid gate `ClaimTier` values (`draft`|`published`); the
+  Hamilton tier is preserved in `fields["claim_tier"]` for traceability.
+
+- **Fix 2 (HIGH) test_hamilton.py tier assertions** — the gate-backed claim-emit
+  tests never asserted `rec["tier"]` or `rec["fields"]["claim_tier"]`, so Fix 1
+  was invisible to the test suite. Added assertions proving the correct gate tier
+  and that the Hamilton tier is carried in fields.
+
+- **Fix 3 (MED) ik CLI test coverage recovered** — `tests/test_cli.py` and
+  `tests/test_e2e.py` were deleted in the T25 cutover, removing all coverage of
+  the live `ik` CLI entry point. New `tests/test_ik_cli.py` covers `ik init`,
+  `ik info`, `ik info` (no kit), and `ik validate` (clean / duplicate / supersedes
+  chain / no-kit). No legacy `Run`/`Claim` model used.
+
+- **Fix 4 (LOW) dead validation rule removed** — `check_external_caveats()` in
+  `validation/__init__.py` referenced the deleted `ingest_external()` function.
+  No live caller in `src/`. Function and its 4 test cases removed.
+
+- **Verification**: `uv run pytest` → **546 passed, 1 deselected, 0 failed**.
+  `uv run ruff check src tests` → clean.

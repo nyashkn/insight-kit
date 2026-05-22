@@ -124,6 +124,22 @@ class InsightKitHook(NodeExecutionHook):
         self.run_state = run_state
         self.run_dir = Path(run_dir)
 
+    # Gate tier values accepted by the L1 schema (ClaimTier enum).
+    _GATE_TIERS: frozenset[str] = frozenset({"draft", "published"})
+
+    @classmethod
+    def _to_gate_tier(cls, hamilton_tier: str) -> str:
+        """Map a Hamilton @tag claim_tier value to a valid gate ClaimTier.
+
+        The gate schema only accepts 'draft' | 'published'. Hamilton-specific
+        tiers (derived, critic, etl_raw, etl_clean, etl_metric, viz,
+        counterfactual, initiative) carry semantics internal to the DAG; they
+        land as 'draft' at the gate so the record is emitted without rejection.
+        Only a node explicitly tagged claim_tier='published' produces a
+        published-tier gate record.
+        """
+        return hamilton_tier if hamilton_tier in cls._GATE_TIERS else "draft"
+
     # ---------- gate emit ----------
 
     def _emit_claim(self, claim_id: str, statement: str, *, tier: str, node_name: str) -> None:
@@ -131,9 +147,13 @@ class InsightKitHook(NodeExecutionHook):
 
         The Hamilton notion of a claim (a statement + a node-derived tier) maps
         onto a gate `claim` record: the statement and the originating node are
-        carried as claim fields. Gate rejects (e.g. claim-id-format) are logged,
-        never raised — a node-level emit failure must not abort the DAG.
+        carried as claim fields. The Hamilton-specific tier value is stored in
+        the `claim_tier` field for traceability; the gate-level `tier=` is
+        always a valid ClaimTier ('draft' | 'published'). Gate rejects (e.g.
+        claim-id-format) are logged, never raised — a node-level emit failure
+        must not abort the DAG.
         """
+        gate_tier = self._to_gate_tier(tier)
         try:
             ik_claim_emit(
                 claim_id,
@@ -142,10 +162,11 @@ class InsightKitHook(NodeExecutionHook):
                     "node_id": node_name,
                     "claim_tier": tier,
                 },
+                tier=gate_tier,
                 run_state=self.run_state,
                 run_dir=self.run_dir,
             )
-            logger.info("claim.emitted", claim_id=claim_id, node=node_name, tier=tier)
+            logger.info("claim.emitted", claim_id=claim_id, node=node_name, tier=gate_tier, hamilton_tier=tier)
         except ValidationError as e:
             logger.error("claim.emit_rejected", claim_id=claim_id, node=node_name, error=str(e))
         except Exception as e:

@@ -224,6 +224,11 @@ def test_hamilton_claim_node_emits_through_gate(run_dir: Path) -> None:
     assert rec["claim_id"] == "TEST-D-001"
     assert rec["fields"]["statement"]["value"] == "revenue trend is positive"
     assert rec["fields"]["node_id"]["value"] == "trend_check"
+    # Fix 1 regression guard: gate tier= keyword must be passed correctly.
+    # 'derived' is a Hamilton-internal tier; it maps to gate tier 'draft'.
+    # The Hamilton tier is preserved in fields["claim_tier"] for traceability.
+    assert rec["tier"] == "draft"
+    assert rec["fields"]["claim_tier"]["value"] == "derived"
 
 
 def test_hamilton_failure_raises_exception(run_dir: Path) -> None:
@@ -263,6 +268,14 @@ def boom() -> pa.Table:
     # the failure produced a recorded critic claim
     assert len(rs.records) == 1
     assert rs.records[0].record_type == "claim"
+
+    # Fix 1 regression guard: gate tier= keyword must be passed correctly.
+    # 'critic' is a Hamilton-internal tier; it maps to gate tier 'draft'.
+    # The Hamilton tier is preserved in fields["claim_tier"] for traceability.
+    from insight_kit.gate.store import read_record as _rr
+    rec = _rr(run_dir, rs.records[0].record_id)
+    assert rec["tier"] == "draft"
+    assert rec["fields"]["claim_tier"]["value"] == "critic"
 
 
 def test_hamilton_build_driver_returns_driver(run_dir: Path) -> None:

@@ -25,7 +25,6 @@ from insight_kit.validation import (
     check_claim_id_unique,
     check_claim_id_unique_in_run,
     check_critic_edges,
-    check_external_caveats,
     check_input_claims_exist,
     check_metric_id_allowed,
     check_supersedes_chain_integrity,
@@ -144,31 +143,6 @@ def test_derived_tier_no_edges_ok():
     check_critic_edges("derived", [], [])  # must not raise
     check_critic_edges("raw", None, None)  # must not raise
 
-
-# ---------- external-requires-caveats (4 tests) ----------
-
-
-def test_external_caveats_explicit_list():
-    """Explicit non-empty caveats passes."""
-    check_external_caveats(["my_caveat"])  # must not raise
-
-
-def test_external_caveats_none_defaults():
-    """None (unspecified) passes — defaults applied upstream."""
-    check_external_caveats(None)  # must not raise
-
-
-def test_external_caveats_explicit_empty_raises():
-    """Explicitly passing [] raises — caller must not opt out of caveats."""
-    with pytest.raises(ValidationError) as exc_info:
-        check_external_caveats([])
-    assert exc_info.value.rule_id == "external-requires-caveats"
-    assert "external_source" in (exc_info.value.suggestion or "")
-
-
-def test_external_caveats_multiple_values():
-    """Multiple explicit caveats pass."""
-    check_external_caveats(["external_source", "non_audited", "stale_data"])  # must not raise
 
 
 # ---------- ValidationError attribute surface ----------

@@ -366,16 +366,3 @@ def check_metric_id_allowed(name: str, kit_root: Path) -> None:
     )
 
 
-def check_external_caveats(caveats: list[str] | None) -> None:
-    """Rule: external-requires-caveats.
-
-    ingest_external() results must have non-empty caveats.
-    Raises if explicit empty list passed; defaults are applied upstream.
-    """
-    if caveats is not None and len(caveats) == 0:
-        raise ValidationError(
-            rule_id="external-requires-caveats",
-            message="ingest_external requires non-empty caveats list",
-            suggestion="ingest_external requires non-empty caveats. "
-            "Default: ['external_source','non_audited']",
-        )
