@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from insight_kit.gate.fingerprint import (
+from insight_kit.platform.gate.fingerprint import (
     data_fingerprint,
     record_fingerprint,
     record_id_from_fingerprint,

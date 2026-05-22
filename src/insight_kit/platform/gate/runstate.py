@@ -236,7 +236,7 @@ class RunState:
         if self.run_dir is None:
             return
 
-        from insight_kit.gate.store import index_path
+        from insight_kit.platform.gate.store import index_path
 
         idx = index_path(self.run_dir)
         if not idx.exists():

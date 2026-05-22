@@ -12,8 +12,15 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.cli import EXIT_OK, EXIT_REJECT, EXIT_USAGE, export_schemas, main, run_emit
-from insight_kit.gate.store import resolve_run_dir
+from insight_kit.platform.gate.cli import (
+    EXIT_OK,
+    EXIT_REJECT,
+    EXIT_USAGE,
+    export_schemas,
+    main,
+    run_emit,
+)
+from insight_kit.platform.gate.store import resolve_run_dir
 
 
 @pytest.fixture

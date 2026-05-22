@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import (
+from insight_kit.platform.gate.emit import (
     ik_claim_emit,
     ik_intervention_emit,
     ik_research_emit,
     ik_skill_use_emit,
 )
-from insight_kit.gate.runstate import RunState
-from insight_kit.gate.store import events_dir, record_path
-from insight_kit.gate.verdict import (
+from insight_kit.platform.gate.runstate import RunState
+from insight_kit.platform.gate.store import events_dir, record_path
+from insight_kit.platform.gate.verdict import (
     UTILITY_VERDICT_EVENT,
     UtilityVerdict,
     ik_utility_verdict,

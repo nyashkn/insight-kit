@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_claim_emit, ik_intervention_emit, ik_research_emit
-from insight_kit.gate.runstate import RunState
-from insight_kit.gate.store import record_path
+from insight_kit.platform.gate.emit import ik_claim_emit, ik_intervention_emit, ik_research_emit
+from insight_kit.platform.gate.runstate import RunState
+from insight_kit.platform.gate.store import record_path
 from insight_kit.validation import ValidationError as LayerAValidationError
 
 # ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ class TestSupersession:
 
     def test_supersedes_nonexistent_no_partial_write(self, run_dir, state):
         """No partial write on supersession rejection (V2)."""
-        from insight_kit.gate.store import index_path
+        from insight_kit.platform.gate.store import index_path
 
         try:
             ik_claim_emit(

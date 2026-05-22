@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.audit import (
+from insight_kit.platform.gate.audit import (
     AuditReport,
     ClaimFieldRef,
     RenderAdapter,
@@ -21,9 +21,9 @@ from insight_kit.gate.audit import (
     load_claims_index,
     run_render_audit,
 )
-from insight_kit.gate.emit import ik_claim_emit
-from insight_kit.gate.render_adapters import VegaLiteAdapter
-from insight_kit.gate.runstate import RunState
+from insight_kit.platform.gate.emit import ik_claim_emit
+from insight_kit.platform.gate.render_adapters import VegaLiteAdapter
+from insight_kit.platform.gate.runstate import RunState
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

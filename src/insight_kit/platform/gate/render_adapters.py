@@ -34,7 +34,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from insight_kit.gate.audit import ClaimFieldRef, RenderedToken
+from insight_kit.platform.gate.audit import ClaimFieldRef, RenderedToken
 
 
 def _as_number(value: Any) -> float | None:

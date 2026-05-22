@@ -205,8 +205,8 @@ def test_hamilton_plain_node_executes(run_dir: Path) -> None:
 
 def test_hamilton_claim_node_emits_through_gate(run_dir: Path) -> None:
     """E2E: a @claim_tier node emits a `claim` record through the L1 gate (V1)."""
-    from insight_kit.gate.store import read_record
     from insight_kit.hamilton import build_driver
+    from insight_kit.platform.gate.store import read_record
 
     mod = _make_claim_module()
     rs = RunState(run_dir=run_dir)
@@ -272,7 +272,7 @@ def boom() -> pa.Table:
     # Fix 1 regression guard: gate tier= keyword must be passed correctly.
     # 'critic' is a Hamilton-internal tier; it maps to gate tier 'draft'.
     # The Hamilton tier is preserved in fields["claim_tier"] for traceability.
-    from insight_kit.gate.store import read_record as _rr
+    from insight_kit.platform.gate.store import read_record as _rr
     rec = _rr(run_dir, rs.records[0].record_id)
     assert rec["tier"] == "draft"
     assert rec["fields"]["claim_tier"]["value"] == "critic"

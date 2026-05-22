@@ -61,16 +61,16 @@ ignore = ["E501"]
 "tests/**" = ["N801", "N802"]
 
 # T19 — V5 purity: gate modules must import neither hamilton nor pi.
-# Defense-in-depth (primary enforcement = AST scan in tests/gate/test_purity.py).
-# Scoped to src/insight_kit/gate/** only to avoid blocking hamilton/ adapter code.
+# Defense-in-depth (primary enforcement = AST scan in tests/platform/gate/test_purity.py).
+# Scoped to src/insight_kit/platform/gate/** only to avoid blocking hamilton/ adapter code.
 [tool.ruff.lint.extend-per-file-ignores]
 # No ignores here — keep section as anchor for future per-file rules.
 
 [tool.ruff.lint.flake8-tidy-imports]
 # Banned imports — gate-wide protection (V5, C1).
-# Applied via ruff check on src/insight_kit/gate/; harmless on other modules
+# Applied via ruff check on src/insight_kit/platform/gate/; harmless on other modules
 # since hamilton IS used there (adapter.py). The per-file restriction means we
-# rely on path-scoped CI runs (uv run ruff check src/insight_kit/gate/) for V5.
+# rely on path-scoped CI runs (uv run ruff check src/insight_kit/platform/gate/) for V5.
 ban-relative-imports = "all"
 
 [tool.pytest.ini_options]

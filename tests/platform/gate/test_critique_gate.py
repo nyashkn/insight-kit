@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from insight_kit.gate.runstate import (
+from insight_kit.platform.gate.runstate import (
     CritiqueGateError,
     CritiqueSeverity,
     CritiqueState,

@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_claim_emit
-from insight_kit.gate.runstate import RunState
-from insight_kit.gate.store import record_path
+from insight_kit.platform.gate.emit import ik_claim_emit
+from insight_kit.platform.gate.runstate import RunState
+from insight_kit.platform.gate.store import record_path
 from insight_kit.validation import ValidationError as LayerAValidationError
 
 # ---------------------------------------------------------------------------
@@ -104,7 +104,7 @@ class TestRawParquetPathRejection:
         assert state.rejectionCount == 1
 
     def test_raw_path_reject_zero_partial_write(self, run_dir, state):
-        from insight_kit.gate.store import index_path
+        from insight_kit.platform.gate.store import index_path
 
         try:
             ik_claim_emit(
@@ -181,8 +181,8 @@ class TestInsightKitHookNodeInputTypes:
         """
         import tempfile
 
-        from insight_kit.gate.runstate import RunState
         from insight_kit.hamilton.adapter import InsightKitHook
+        from insight_kit.platform.gate.runstate import RunState
 
         run_dir = Path(tmp_path) if tmp_path is not None else Path(tempfile.mkdtemp())
         return InsightKitHook(RunState(run_dir=run_dir), run_dir)

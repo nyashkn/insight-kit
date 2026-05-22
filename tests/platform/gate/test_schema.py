@@ -13,7 +13,7 @@ import pytest
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
-from insight_kit.gate.schema import (
+from insight_kit.platform.gate.schema import (
     ClaimRecord,
     ClaimTier,
     FieldEntry,

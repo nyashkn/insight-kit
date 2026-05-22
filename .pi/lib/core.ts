@@ -50,7 +50,7 @@ export function gateArgv(recordType: GateRecordType, payloadJson: string): strin
 		"run",
 		"python",
 		"-m",
-		"insight_kit.gate.cli",
+		"insight_kit.platform.gate.cli",
 		CLI_SUBCOMMAND[recordType],
 		"--payload",
 		payloadJson,

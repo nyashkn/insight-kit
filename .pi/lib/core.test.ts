@@ -56,7 +56,7 @@ describe("gateArgv", () => {
 			"run",
 			"python",
 			"-m",
-			"insight_kit.gate.cli",
+			"insight_kit.platform.gate.cli",
 			"emit-claim",
 			"--payload",
 			'{"claim_id":"X"}',

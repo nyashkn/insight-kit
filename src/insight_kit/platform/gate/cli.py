@@ -35,20 +35,20 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from insight_kit.gate.emit import (
+from insight_kit.platform.gate.emit import (
     ik_claim_emit,
     ik_intervention_emit,
     ik_research_emit,
     ik_skill_use_emit,
 )
-from insight_kit.gate.runstate import RecordRef, RunState
-from insight_kit.gate.schema import (
+from insight_kit.platform.gate.runstate import RecordRef, RunState
+from insight_kit.platform.gate.schema import (
     ClaimRecord,
     InterventionRecord,
     ResearchRecord,
     SkillUseRecord,
 )
-from insight_kit.gate.store import index_path, resolve_run_dir
+from insight_kit.platform.gate.store import index_path, resolve_run_dir
 from insight_kit.validation import ValidationError as LayerAValidationError
 
 # Exit codes — the TS extension branches on these.

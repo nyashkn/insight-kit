@@ -15,7 +15,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from insight_kit.gate.store import (
+from insight_kit.platform.gate.store import (
     append_event,
     read_record,
     record_path,

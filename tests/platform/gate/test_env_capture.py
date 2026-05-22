@@ -18,11 +18,11 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.env import (
+from insight_kit.platform.gate.env import (
     ENV_FINGERPRINT_KEY,
     capture_env_fingerprint,
 )
-from insight_kit.gate.runstate import RunState, finalizeRun, write_run_json
+from insight_kit.platform.gate.runstate import RunState, finalizeRun, write_run_json
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -157,7 +157,7 @@ class TestEnvFingerprintInRunJson:
     def test_env_fingerprint_key_in_run_json(self, run_dir, state, uv_lock_path):
         """env_fingerprint must appear in run.json (V6 — all four fingerprints required)."""
         finalizeRun(state, assert_manifest=False)
-        from insight_kit.gate.env import ENV_FINGERPRINT_KEY, capture_env_fingerprint
+        from insight_kit.platform.gate.env import ENV_FINGERPRINT_KEY, capture_env_fingerprint
         env_info = capture_env_fingerprint(lockfile_path=uv_lock_path, container_digest=None)
         path = write_run_json(run_dir, state, extra=env_info.to_dict())
         data = json.loads(path.read_text())
@@ -171,7 +171,7 @@ class TestEnvFingerprintInRunJson:
     def test_run_json_includes_lockfile_hash(self, run_dir, state, uv_lock_path):
         """run.json should also carry lockfile_hash for audit trail."""
         finalizeRun(state, assert_manifest=False)
-        from insight_kit.gate.env import capture_env_fingerprint
+        from insight_kit.platform.gate.env import capture_env_fingerprint
         env_info = capture_env_fingerprint(lockfile_path=uv_lock_path, container_digest=None)
         path = write_run_json(run_dir, state, extra=env_info.to_dict())
         data = json.loads(path.read_text())
@@ -180,7 +180,7 @@ class TestEnvFingerprintInRunJson:
     def test_env_fingerprint_is_stable_across_identical_runs(self, run_dir, state, uv_lock_path):
         """env_fingerprint in run.json is the same value on repeated identical captures."""
         finalizeRun(state, assert_manifest=False)
-        from insight_kit.gate.env import capture_env_fingerprint
+        from insight_kit.platform.gate.env import capture_env_fingerprint
         env1 = capture_env_fingerprint(lockfile_path=uv_lock_path, container_digest="sha256:abc")
         env2 = capture_env_fingerprint(lockfile_path=uv_lock_path, container_digest="sha256:abc")
         assert env1.env_fingerprint == env2.env_fingerprint

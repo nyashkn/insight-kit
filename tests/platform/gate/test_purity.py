@@ -24,7 +24,7 @@ from pathlib import Path
 # Constants — forbidden module prefixes
 # ---------------------------------------------------------------------------
 
-_GATE_DIR = Path(__file__).parent.parent.parent / "src" / "insight_kit" / "gate"
+_GATE_DIR = Path(__file__).parent.parent.parent.parent / "src" / "insight_kit" / "platform" / "gate"
 
 # Exact module names or prefixes that must never appear in gate/
 # "hamilton" covers sf-hamilton and hamilton submodules.
@@ -181,7 +181,7 @@ class TestGateImportPurityAST:
 
 _PURITY_PROBE = """\
 import sys
-import insight_kit.gate  # noqa: F401
+import insight_kit.platform.gate  # noqa: F401
 
 # Check: hamilton must not be in sys.modules after gate import
 hamilton_mods = [m for m in sys.modules if m == "hamilton" or m.startswith("hamilton.")]
@@ -203,7 +203,7 @@ class TestGateImportPuritySysModules:
     """Probe sys.modules after gate import in a fresh subprocess."""
 
     def test_hamilton_absent_from_sys_modules_after_gate_import(self):
-        """hamilton not in sys.modules after import insight_kit.gate."""
+        """hamilton not in sys.modules after import insight_kit.platform.gate."""
         result = subprocess.run(
             [sys.executable, "-c", _PURITY_PROBE],
             capture_output=True,
@@ -215,10 +215,10 @@ class TestGateImportPuritySysModules:
         assert result.stdout.strip() == "PURITY_OK"
 
     def test_pi_absent_from_sys_modules_after_gate_import(self):
-        """pi package not in sys.modules after import insight_kit.gate."""
+        """pi package not in sys.modules after import insight_kit.platform.gate."""
         probe = """\
 import sys
-import insight_kit.gate  # noqa: F401
+import insight_kit.platform.gate  # noqa: F401
 pi_mods = [m for m in sys.modules if m == "pi" or m.startswith("pi.")]
 if pi_mods:
     raise AssertionError(f"V5 violated: pi loaded: {pi_mods}")

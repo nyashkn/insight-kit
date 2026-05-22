@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.store import (
+from insight_kit.platform.gate.store import (
     append_claims_row,
     append_event,
     append_index_row,

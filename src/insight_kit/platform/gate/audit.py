@@ -96,7 +96,7 @@ def build_claims_index(claims_rows: list[dict[str, Any]]) -> ClaimsIndex:
 
 def load_claims_index(run_dir: Path) -> ClaimsIndex:
     """Load + index the claims projection (claims.jsonl) for a run dir."""
-    from insight_kit.gate.store import claims_index_path
+    from insight_kit.platform.gate.store import claims_index_path
 
     path = claims_index_path(run_dir)
     if not path.exists():

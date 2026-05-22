@@ -38,20 +38,20 @@ from typing import Any
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
-from insight_kit.gate.fingerprint import (
+from insight_kit.platform.gate.fingerprint import (
     data_fingerprint as _data_fingerprint,
 )
-from insight_kit.gate.fingerprint import (
+from insight_kit.platform.gate.fingerprint import (
     record_fingerprint as _record_fingerprint,
 )
-from insight_kit.gate.fingerprint import (
+from insight_kit.platform.gate.fingerprint import (
     record_id_from_fingerprint,
 )
-from insight_kit.gate.runstate import RecordRef, RunState
-from insight_kit.gate.schema import (
+from insight_kit.platform.gate.runstate import RecordRef, RunState
+from insight_kit.platform.gate.schema import (
     RecordSchema,
 )
-from insight_kit.gate.store import (
+from insight_kit.platform.gate.store import (
     append_claims_row,
     append_index_row,
     resolve_run_dir,
@@ -111,7 +111,7 @@ def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
 
     Raises LayerAValidationError if the target record.json is not found.
     """
-    from insight_kit.gate.store import record_path
+    from insight_kit.platform.gate.store import record_path
 
     target = record_path(run_dir, supersedes_id)
     if not target.exists():
@@ -153,7 +153,7 @@ def _check_cites_edges(record: Any, run_dir: Path) -> None:
     if not cites:
         return
 
-    from insight_kit.gate.store import read_record, record_path
+    from insight_kit.platform.gate.store import read_record, record_path
 
     for cited_id in cites:
         if not record_path(run_dir, cited_id).exists():

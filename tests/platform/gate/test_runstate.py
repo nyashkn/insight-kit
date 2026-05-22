@@ -12,15 +12,15 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_claim_emit, ik_research_emit
-from insight_kit.gate.runstate import (
+from insight_kit.platform.gate.emit import ik_claim_emit, ik_research_emit
+from insight_kit.platform.gate.runstate import (
     ManifestError,
     RecordRef,
     RunState,
     finalizeRun,
     write_run_json,
 )
-from insight_kit.gate.store import index_path
+from insight_kit.platform.gate.store import index_path
 
 # ---------------------------------------------------------------------------
 # Fixtures

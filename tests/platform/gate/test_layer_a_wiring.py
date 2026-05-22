@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_claim_emit
-from insight_kit.gate.runstate import RunState
-from insight_kit.gate.store import index_path
+from insight_kit.platform.gate.emit import ik_claim_emit
+from insight_kit.platform.gate.runstate import RunState
+from insight_kit.platform.gate.store import index_path
 from insight_kit.validation import ValidationError as LayerAValidationError
 from insight_kit.validation import (
     check_claim_id_format,
@@ -111,7 +111,7 @@ class TestLayerAWiringNonClaimRecords:
 
     def test_intervention_skips_claim_id_format_guard(self, run_dir, state):
         """intervention records don't carry claim_id — format guard must not fire."""
-        from insight_kit.gate.emit import ik_intervention_emit
+        from insight_kit.platform.gate.emit import ik_intervention_emit
 
         ref = ik_intervention_emit(
             "INT-001",
@@ -122,7 +122,7 @@ class TestLayerAWiringNonClaimRecords:
         assert ref.record_type == "intervention"
 
     def test_research_skips_claim_id_guards(self, run_dir, state):
-        from insight_kit.gate.emit import ik_research_emit
+        from insight_kit.platform.gate.emit import ik_research_emit
 
         ref = ik_research_emit(
             "RES-001",

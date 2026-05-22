@@ -295,12 +295,12 @@ describe("tool execute (pi.exec stubbed — invocation shape & result mapping)",
 		expect(fake.execCalls.length).toBe(1);
 		const call = fake.execCalls[0];
 		expect(call.command).toBe("uv");
-		// argv: run python -m insight_kit.gate.cli emit-claim --payload <json>
+		// argv: run python -m insight_kit.platform.gate.cli emit-claim --payload <json>
 		expect(call.args.slice(0, 6)).toEqual([
 			"run",
 			"python",
 			"-m",
-			"insight_kit.gate.cli",
+			"insight_kit.platform.gate.cli",
 			"emit-claim",
 			"--payload",
 		]);

@@ -16,9 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.gate.emit import ik_intervention_emit
-from insight_kit.gate.runstate import RunState
-from insight_kit.gate.store import record_path
+from insight_kit.platform.gate.emit import ik_intervention_emit
+from insight_kit.platform.gate.runstate import RunState
+from insight_kit.platform.gate.store import record_path
 from insight_kit.validation import ValidationError as LayerAValidationError
 
 # ---------------------------------------------------------------------------
