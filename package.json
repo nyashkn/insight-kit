@@ -11,12 +11,17 @@
 		"lint": "biome check .",
 		"format": "biome format --write .",
 		"typecheck": "bun run --filter '*' typecheck",
-		"test": "bun run --filter '*' test"
+		"test": "bun run --filter '*' test",
+		"pi:gen-schema": "bun run scripts/gen-pi-schema.ts",
+		"pi:typecheck": "tsc -p .pi/tsconfig.json",
+		"pi:test": "bun test ./.pi/lib/ ./.pi/test/"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0",
+		"@earendil-works/pi-coding-agent": "0.75.4",
 		"@types/bun": "^1.2.0",
 		"@types/node": "^24.5.2",
+		"typebox": "1.1.38",
 		"typescript": "^5.7.0"
 	}
 }

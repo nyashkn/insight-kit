@@ -195,3 +195,50 @@ Fixed now:
   logic is what T17 ships + tests; the real-data container is the user's
   local step once the Infisical project exists.
 - T17 tests: `test_harness.py` (20 tests). Harness suite green, ruff clean.
+
+## 2026-05-22 — T18 L3 pi extension (C4, C5, I.emit, V1, V2, V5)
+
+- **pi confirmed** = `@earendil-works/pi-coding-agent` v0.75.4. Extension API
+  read from the installed package `.d.ts`: `.pi/extensions/*.ts` jiti-loaded,
+  `export default fn(pi: ExtensionAPI)`, `pi.registerTool({parameters: TSchema,
+  execute})`, `pi.on("tool_call"|"tool_result")`, `pi.exec(cmd,args,opts)` —
+  **no stdin** (so the payload rides on argv).
+- **Built the orchestrator-agnostic core; the pi glue is thin over it.**
+  - `src/insight_kit/gate/cli.py` — the C4 lang seam. `python -m
+    insight_kit.gate.cli emit-{claim,intervention,research,skill-use}` reads a
+    JSON payload (`--payload` / stdin) → runs the matching `ik_*_emit` wrapper →
+    prints one JSON line `{ok:true,record}` / `{ok:false,error}`; exit 0/1/2.
+    `export-schema` prints the four tool param schemas. RunState is rehydrated
+    from `records.jsonl` so the claim_id-unique-in-run guard spans the whole
+    pi session, not one subprocess. V5 — imports no hamilton, no pi.
+  - `scripts/gen-pi-schema.ts` → `.pi/lib/schema.generated.ts`. C5 chain:
+    pydantic `model_json_schema()` → `$defs` inlined ref-free → `export-schema`
+    → `recordParamSchemas` → TypeBox `Type.Unsafe`. Generated, never hand-kept.
+  - `.pi/lib/core.ts` — dependency-free wire logic (argv build, result parse).
+  - `.pi/extensions/insight-kit.ts` — registers the 4 `ik_*_emit` tools; the
+    `tool_call` hook blocks an emit when `INSIGHT_KIT_RUN_DIR` is unset; the
+    `tool_result` hook tallies emits (stderr, behind `INSIGHT_KIT_DEBUG`).
+- **pi + typebox added as pinned repo devDependencies** (0.75.4) so the
+  extension typechecks in-repo; at runtime pi loads it via jiti against its own
+  install. `.pi/tsconfig.json` + `pi:gen-schema`/`pi:typecheck`/`pi:test` scripts.
+- **Testing — researched, not assumed.** An opus agent dug the installed pi
+  `docs/`+`examples/` and six pi-based repos in `/tmp/repos` (Fusion, pi-mono,
+  pi-subagents, pi-autoresearch, autoagent). Verdict: pi ships no mock model, so
+  the SDK route needs a real model; the mature pattern (pi-subagents
+  `test/support/mock-pi.ts`) is a **fake `ExtensionAPI`** that captures
+  `registerTool`/`on` and drives `execute`/hooks directly. Findings in
+  `docs/hamilton-synthesis/pi-extension-testing.md`.
+  - `.pi/test/fake-extension-api.ts` + `insight-kit.extension.test.ts` — 26
+    tests: tool registration, TypeBox `Value.Check` param accept/reject, the
+    `tool_call` block hook, `pi.exec` argv/timeout/signal shape, `tool_result`
+    tally, and 3 real-`uv run` end-to-end cases (emit + gate-reject).
+- **Decision: thin pi glue ships now** (not deferred) — the user asked for a
+  real end-to-end pi run, and the extension is small over a frozen CLI seam.
+- **Seam risks logged** (pi-extension-testing.md §d): payload-on-argv vs
+  `ARG_MAX`; `parseGateResult` takes the last stdout line so the gate CLI must
+  keep all logging on stderr; a `uv` timeout collapses to a generic
+  "no output" error. None block T18; noted for the seam contract.
+- Verification: `tests/gate/test_cli.py` 20 pytest green; `.pi` 38 bun tests
+  green; `tsc -p .pi/tsconfig.json` exit 0. Pre-existing legacy failure
+  `test_hamilton.py::test_hamilton_failure_raises_exception` (legacy
+  `Run.claim` path) is untouched by T18 — T25 rewrites that test at cutover.
