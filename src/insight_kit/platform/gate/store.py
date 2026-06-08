@@ -133,6 +133,55 @@ def write_snapshot(
 
 
 # ---------------------------------------------------------------------------
+# endpoint_index.json — researcher-distilled endpoint index (T31/V20)
+# ---------------------------------------------------------------------------
+
+
+def endpoint_index_path(run_dir: Path, record_id: str) -> Path:
+    """Path to records/{id}/endpoint_index.json."""
+    return run_dir / "records" / record_id / "endpoint_index.json"
+
+
+def write_endpoint_index(
+    run_dir: Path,
+    record_id: str,
+    endpoint_index: dict[str, Any],
+) -> Path:
+    """Write an endpoint-index JSON sibling to snapshot.json (T31/V20).
+
+    Persists endpoint_index as records/{id}/endpoint_index.json next to the
+    research record's snapshot. The index is optional — a research record may
+    omit it if the snapshot does not contain endpoint information. If written,
+    the file is immutable post-emit (V3). Raises FileExistsError if already exists.
+    Returns the path to the written file.
+    """
+    path = endpoint_index_path(run_dir, record_id)
+    if path.exists():
+        raise FileExistsError(
+            f"endpoint_index.json already exists at {path}. "
+            "Endpoint indices are immutable post-emit (V3)."
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(endpoint_index, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return path
+
+
+def read_endpoint_index(run_dir: Path, record_id: str) -> dict[str, Any] | None:
+    """Read endpoint_index.json from a research record bundle, or None if absent.
+
+    Returns the parsed endpoint-index dict if the file exists, else None.
+    Does not raise on missing file — endpoint_index is optional (T31/V20).
+    """
+    path = endpoint_index_path(run_dir, record_id)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------------------
 # records.jsonl — derived projection index
 # ---------------------------------------------------------------------------
 

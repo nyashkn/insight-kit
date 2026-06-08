@@ -31,11 +31,14 @@ Public API:
   API-ingestion chain wrapper (T30, C12, I.cites, I.emit, V20, V22):
     ik_acquire, AcquireResult
 
+  Available-endpoints index helpers (T31, I.cites, V20):
+    endpoint_index_path, write_endpoint_index, read_endpoint_index
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
 Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
-V15, V18, V21, T30, T33.
+V15, V18, V21, T30, T31, T33.
 """
 from __future__ import annotations
 
@@ -101,6 +104,11 @@ from insight_kit.platform.gate.graph_query import (
     GraphAdjacency,
     query_cites,
 )
+from insight_kit.platform.gate.store import (
+    endpoint_index_path,
+    read_endpoint_index,
+    write_endpoint_index,
+)
 from insight_kit.platform.gate.verdict import (
     UtilityVerdict,
     ik_utility_verdict,
@@ -140,6 +148,7 @@ __all__ = [
     "audit_l6",
     "check_annual_equals_monthly_sum",
     "compose_record",
+    "endpoint_index_path",
     "finalizeRun",
     "ik_acquire",
     "ik_claim_emit",
@@ -152,6 +161,8 @@ __all__ = [
     "load_claims_index",
     "parse_refs",
     "query_cites",
+    "read_endpoint_index",
     "run_render_audit",
     "verify_chart_bindings",
+    "write_endpoint_index",
 ]
