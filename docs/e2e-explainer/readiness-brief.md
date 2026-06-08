@@ -2,6 +2,8 @@
 
 > Opus architect brief. Branch `docs/e2e-explainer`. Gate 14 modules COMPLETE, ~411 tests green, §T 23/25 done (T15+T24 CUT). Every claim below is grounded to `file:line` on this worktree. This is a PROPOSAL document — it does NOT edit SPEC.md (that is `/ck:spec`'s job).
 
+> **RESOLUTION (2026-06-09) — this brief's proposals are SHIPPED.** All five gaps were closed on this branch: GAP-2 supersedes-chain wire = T26 (`8efd46b`); GAP-1 critique persistence = T27 (`b2e6302`) + cites/supersedes graph query = T28 (`debd915`, `572c6af`); critic tier + `supports`/`refutes` + `input_claims` schema fields + their guards = T29 (`1a21583`, `cc76196`) — so the two guards this brief called "schema-blocked, defer" are now LIVE; GAP-5 API-ingestion chain = T30–T32 (`b259d73`, `785f917`, `e9aef1e` + end-to-end `731a7f3`, `c68f660`); GAP-4 render read-end = T33 (`eeacb1d`). The point-in-time analysis below (esp. the GAP-2 "only one guard bites / defer the other two" framing) is preserved as the reasoning record at brief-time and is **superseded** by the shipped work. Gate suite now 646 tests green (5 pre-existing hamilton optional-dep skips).
+
 ---
 
 ## State of play (one paragraph)

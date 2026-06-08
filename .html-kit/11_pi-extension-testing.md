@@ -147,7 +147,7 @@ Runner: **`bun test`** (the repo's runner; `core.test.ts` already uses
    `INSIGHT_KIT_RUN_DIR` is unset; passes (`undefined`) when set; ignores
    non-gate tools.
 4. **`pi.exec` round-trip (stubbed)** — argv is `uv run python -m
-   insight_kit.gate.cli emit-<type> --payload <json>`; payload serialized
+   insight_kit.platform.gate.cli emit-<type> --payload <json>`; payload serialized
    verbatim as the last argv element; a finite timeout and the abort signal
    are forwarded; `ok:true` → `AgentToolResult` with the record in `details`;
    `ok:false` → thrown error carrying `rule_id`; no-output → thrown error.
