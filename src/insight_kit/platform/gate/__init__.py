@@ -89,12 +89,18 @@ from insight_kit.platform.gate.schema import (
     SelectionParams,
     SkillUseRecord,
 )
+from insight_kit.platform.gate.graph_query import (
+    AdjacencyNode,
+    GraphAdjacency,
+    query_cites,
+)
 from insight_kit.platform.gate.verdict import (
     UtilityVerdict,
     ik_utility_verdict,
 )
 
 __all__ = [
+    "AdjacencyNode",
     "AuditReport",
     "ChartBindingResult",
     "CheckResult",
@@ -105,6 +111,7 @@ __all__ = [
     "CoverageInfo",
     "CrossCheckResult",
     "FieldEntry",
+    "GraphAdjacency",
     "IntentPayload",
     "InterventionRecord",
     "ManifestError",
@@ -135,6 +142,7 @@ __all__ = [
     "ik_utility_verdict",
     "load_claims_index",
     "parse_refs",
+    "query_cites",
     "run_render_audit",
     "verify_chart_bindings",
 ]
