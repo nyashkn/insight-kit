@@ -100,6 +100,18 @@ def _run_layer_a_guards(
     supersedes = getattr(record, "supersedes", None)
     if supersedes is not None and run_dir is not None:
         _check_supersedes_exists(supersedes, run_dir)
+        # T26 — V3 chain integrity: reject superseding an already-superseded claim.
+        if record.record_type == "claim":
+            from insight_kit.libs.validation import check_supersedes_chain_integrity
+            from insight_kit.libs.provenance.root import find_kit_root
+            try:
+                kit_root = find_kit_root(run_dir)
+            except FileNotFoundError:
+                kit_root = None
+            if kit_root is not None:
+                check_supersedes_chain_integrity(
+                    record.claim_id, supersedes, kit_root, _claim_ids_in_run(run_state)
+                )
 
     # T22/V20/I.cites — knowledge-provenance edges must be valid.
     if run_dir is not None:
