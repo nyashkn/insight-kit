@@ -113,9 +113,22 @@ def _run_layer_a_guards(
                     record.claim_id, supersedes, kit_root, _claim_ids_in_run(run_state)
                 )
 
+    # T29/C13 — critic-tier must have at least one supports/refutes edge.
+    if record.record_type == "claim":
+        from insight_kit.libs.validation import check_critic_edges
+        check_critic_edges(
+            tier=str(record.tier),
+            supports=list(record.supports) if record.supports else None,
+            refutes=list(record.refutes) if record.refutes else None,
+        )
+
     # T22/V20/I.cites — knowledge-provenance edges must be valid.
     if run_dir is not None:
         _check_cites_edges(record, run_dir)
+
+    # T29/C13 — supports/refutes targets must exist and be claim records.
+    if run_dir is not None and record.record_type == "claim":
+        _check_supporter_refutes_targets(record, run_dir)
 
 
 def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
@@ -197,6 +210,53 @@ def _check_cites_edges(record: Any, run_dir: Path) -> None:
                     "knowledge, not a claim/intervention."
                 ),
             )
+
+
+def _check_supporter_refutes_targets(record: Any, run_dir: Path) -> None:
+    """T29/C13 — supports/refutes targets must exist and be claim records.
+
+    A critic-tier (or any) claim may declare supports/refutes edges pointing at
+    other claims. Each target must:
+      - resolve to an existing record in the run dir (referential integrity), and
+      - be a claim record (not research, skill_use, or intervention).
+
+    Raises LayerAValidationError on a dangling or wrong-type target.
+    Zero partial write (V2).
+    """
+    from insight_kit.platform.gate.store import read_record, record_path
+
+    supports = getattr(record, "supports", None) or []
+    refutes = getattr(record, "refutes", None) or []
+
+    for edge_name, targets in (("supports", supports), ("refutes", refutes)):
+        for target_id in targets:
+            if not record_path(run_dir, target_id).exists():
+                raise LayerAValidationError(
+                    rule_id=f"{edge_name}-not-found",
+                    message=(
+                        f"{edge_name} references {target_id!r}, which does not correspond "
+                        "to any record in the run directory. A supports/refutes edge must "
+                        "point to a claim record that already exists (T29, C13)."
+                    ),
+                    suggestion=(
+                        f"Emit the claim record first, then reference its record_id in "
+                        f"{edge_name}. Or check {target_id!r} is correct."
+                    ),
+                )
+            target_type = read_record(run_dir, target_id).get("record_type")
+            if target_type != "claim":
+                raise LayerAValidationError(
+                    rule_id=f"{edge_name}-wrong-type",
+                    message=(
+                        f"{edge_name} references {target_id!r}, a {target_type!r} record. "
+                        "The supports/refutes edges are claim->claim edges — they may only "
+                        "point to a claim record (T29, C13)."
+                    ),
+                    suggestion=(
+                        f"Use supports/refutes only to reference claim records. "
+                        f"For knowledge provenance, use `cites` with research/skill_use records."
+                    ),
+                )
 
 
 _PARQUET_EXTENSIONS: tuple[bytes, ...] = (b".pq", b".parquet")
@@ -620,6 +680,8 @@ def ik_claim_emit(
     narrative_ref: str | None = None,
     cites: list[str] | None = None,
     supersedes: str | None = None,
+    supports: list[str] | None = None,
+    refutes: list[str] | None = None,
     coverage: dict[str, Any] | None = None,
     coverage_warning: str | None = None,
     selection: dict[str, Any] | None = None,
@@ -635,6 +697,10 @@ def ik_claim_emit(
       - FieldEntry dict:   {"revenue": {"value": 123456, "fmt_hint": "$,.0f"}}
 
     All forms normalised to FieldEntry before validation.
+
+    supports / refutes — T29/C13: claim->claim edges for critic-tier claims.
+    A critic-tier claim must declare at least one supports or refutes target.
+    All targets must be existing claim records in the run dir.
 
     coverage / coverage_warning — T10/V14: a published claim with thin coverage
     (coverage={"partial_period": True} or coverage={"n": <30}) is rejected at
@@ -667,6 +733,10 @@ def ik_claim_emit(
         payload["cites"] = cites
     if supersedes is not None:
         payload["supersedes"] = supersedes
+    if supports:
+        payload["supports"] = supports
+    if refutes:
+        payload["refutes"] = refutes
     if coverage is not None:
         payload["coverage"] = coverage
     if coverage_warning is not None:

@@ -33,10 +33,21 @@ class DataFingerprintSource(StrEnum):
 
 
 class ClaimTier(StrEnum):
-    """Tier enum for claim/intervention records (C7)."""
+    """Tier enum for claim/intervention records (C7).
+
+    draft:     analytical assertion in progress — not ready for distribution.
+    published: fully evidenced assertion, passed all gate checks.
+    critic:    T29 — a claim that directly supports or refutes another claim.
+               A critic-tier claim must declare at least one `supports` or
+               `refutes` edge (check_critic_edges enforces this at emit).
+               Critic claims are claims about claims, not interventions; the
+               tier is a ClaimRecord-only concept (InterventionRecord keeps
+               draft/published only).
+    """
 
     draft = "draft"
     published = "published"
+    critic = "critic"
 
 
 class FieldEntry(BaseModel):
@@ -100,11 +111,17 @@ class ClaimRecord(BaseModel):
     """A typed analytical assertion.
 
     fields: dict mapping field name → FieldEntry (value + fmt_hint).
-    tier:   draft | published.
+    tier:   draft | published | critic.
     audience: optional intended audience tag (e.g. "board", "ops").
     narrative_ref: optional path/id pointing to narrative.md for this claim.
     cites: list of research/skill_use record ids that informed this claim (I.cites).
     supersedes: id of the prior record this corrects (T6 — emit validates the target exists).
+    supports: T29/C13 — list of claim_ids this claim supports (claim->claim edges).
+              All targets must exist and be claim records. Enforced by
+              _check_supporter_refutes_targets at emit.
+    refutes:  T29/C13 — list of claim_ids this claim refutes (claim->claim edges).
+              All targets must exist and be claim records. Enforced by
+              _check_supporter_refutes_targets at emit.
     coverage: optional input-coverage metadata (n, partial_period) — T10/V14.
     coverage_warning: warning text; a published claim with thin coverage
         (partial_period or n<30) must carry one or emit rejects (T10/V14).
@@ -123,6 +140,9 @@ class ClaimRecord(BaseModel):
     narrative_ref: str | None = None
     cites: list[str] = Field(default_factory=list)
     supersedes: str | None = None
+    # T29/C13 — critic-tier claim->claim support/refutation edges.
+    supports: list[str] = Field(default_factory=list)
+    refutes: list[str] = Field(default_factory=list)
     # T10/V14 — input coverage + the warning thin coverage requires.
     coverage: CoverageInfo | None = None
     coverage_warning: str | None = None
