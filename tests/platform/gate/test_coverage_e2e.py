@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 
 from insight_kit.platform.gate.acquire import AcquireResult, ik_acquire
+from insight_kit.platform.gate.emit import ik_skill_use_emit
 from insight_kit.platform.gate.runcheck import (
     check_coverage_from_run,
     derive_used_endpoints,
@@ -350,9 +351,14 @@ class TestCoverageE2EMissedHigh:
 
 class TestCoverageE2EFullCoverage:
     def test_e2e_full_coverage_no_critique_needed(self, run_dir, state):
-        """Full E2E: acquire with endpoint_index, two skill_use records covering all
-        high-relevance endpoints → check passes, no critique fired."""
-        # Acquire chain 1: skill_use for orders.listOrders
+        """Full E2E: acquire with endpoint_index, two skill_use records (both citing
+        the same research bundle) covering all high-relevance endpoints → check passes,
+        no critique fired.
+
+        Both skill_use records cite the same research bundle so that the scoped
+        used-set (check_coverage_from_run) sees both endpoints.
+        """
+        # Acquire chain: skill_use for orders.listOrders (first high endpoint)
         result = _acquire(
             run_dir,
             state,
@@ -365,24 +371,26 @@ class TestCoverageE2EFullCoverage:
             endpoint_index=ENDPOINT_INDEX,
         )
 
-        # Acquire chain 2: skill_use for orders.getOrder (second high-relevance)
-        _acquire(
-            run_dir,
-            state,
-            research_id="RES-E2E-FC-002",
-            skill_use_id="SKU-E2E-FC-002",
-            claim_id="TEST-D-002",
-            api_search_result={**SEARCH_RESULT, "chain": "FC-2"},
-            api_extraction_result={**EXTRACTION_RESULT_ORDERS_GET, "chain": "FC-2"},
-            skill_use_source="orders.getOrder",
+        # Emit a second skill_use for orders.getOrder (second high endpoint), citing
+        # the SAME research bundle — so the scoped used-set covers both highs.
+        ik_skill_use_emit(
+            "SKU-E2E-FC-002",
+            "api-extract:SKU-E2E-FC-002",
+            "shopify-rest-extractor",
+            "orders.getOrder",
+            snapshot={**EXTRACTION_RESULT_ORDERS_GET, "chain": "FC-2"},
+            cites=[result.research_ref.record_id],
+            timestamp=TS,
+            run_state=state,
+            run_dir=run_dir,
         )
 
-        # Both high-relevance endpoints are now in the used set
+        # Both high-relevance endpoints are now in the run-global used set
         used = derive_used_endpoints(run_dir)
         assert "orders.listOrders" in used
         assert "orders.getOrder" in used
 
-        # Coverage check uses the first chain's endpoint_index
+        # Coverage check scoped to bundle FC-001 — sees both endpoints (both cite it)
         cov = check_coverage_from_run(
             run_dir,
             result.research_ref.record_id,
@@ -424,3 +432,147 @@ class TestCoverageE2EFullCoverage:
         )
         # No critique fired → file should not exist
         assert not critique_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# T32 hardening: multi-research regression — cross-bundle leak is closed
+# ---------------------------------------------------------------------------
+
+
+class TestCoverageMultiResearchScoping:
+    """Regression: bundle-A's high endpoint used ONLY by a skill_use citing bundle-B
+    must still be flagged as missed when check_coverage_from_run is called for bundle-A.
+
+    Without the research_record_id scoping fix, the run-global used-set would include
+    bundle-B's skill_use source, falsely satisfying bundle-A's coverage check.
+    """
+
+    def test_cross_bundle_gap_not_masked_by_other_bundle_skill_use(
+        self, run_dir, state
+    ):
+        """Bundle-A's high endpoint 'orders.listOrders' is used only inside a
+        skill_use that cites bundle-B (not bundle-A).  check_coverage_from_run
+        for bundle-A MUST still flag it as missed (scoped used-set = empty for A)."""
+        # Bundle-A: research with endpoint_index but its skill_use uses a
+        # *different* endpoint (products.list, medium).
+        result_a = _acquire(
+            run_dir,
+            state,
+            research_id="RES-MR-A-001",
+            skill_use_id="SKU-MR-A-001",
+            claim_id="MRGA-D-001",
+            api_search_result={**SEARCH_RESULT, "bundle": "A"},
+            api_extraction_result={**EXTRACTION_RESULT_PRODUCTS_ONLY, "bundle": "A"},
+            skill_use_source="products.list",  # medium endpoint, NOT the high one
+            endpoint_index=ENDPOINT_INDEX,     # has orders.listOrders + orders.getOrder as high
+        )
+
+        # Bundle-B: independent research; its skill_use hits 'orders.listOrders' —
+        # the same high endpoint as bundle-A requires — but cites bundle-B's research.
+        result_b = _acquire(
+            run_dir,
+            state,
+            research_id="RES-MR-B-001",
+            skill_use_id="SKU-MR-B-001",
+            claim_id="MRGB-D-001",
+            api_search_result={**SEARCH_RESULT, "bundle": "B"},
+            api_extraction_result={**EXTRACTION_RESULT_ORDERS_LIST, "bundle": "B"},
+            skill_use_source="orders.listOrders",  # high endpoint, but cites B not A
+        )
+        _ = result_b  # noqa: F841
+
+        # Sanity check: run-global used-set contains the endpoint (the old bug).
+        global_used = derive_used_endpoints(run_dir)
+        assert "orders.listOrders" in global_used, (
+            "Precondition: global used-set must contain the endpoint "
+            "(otherwise test is not exercising the cross-bundle scenario)"
+        )
+
+        # The critical assertion: scoped check for bundle-A must still flag the gap.
+        cov = check_coverage_from_run(
+            run_dir,
+            result_a.research_ref.record_id,
+            claim_id=result_a.claim_ref.record_id,
+        )
+        assert cov.passed is False, (
+            "check_coverage_from_run must flag missed high endpoints for bundle-A "
+            "even though 'orders.listOrders' appears in the run-global used-set "
+            "(cross-bundle leak must be closed by scoping to the correct bundle)"
+        )
+        assert "orders.listOrders" in cov.missed_high_endpoints
+        assert "orders.getOrder" in cov.missed_high_endpoints
+
+    def test_cross_bundle_gap_derive_used_endpoints_scoped(self, run_dir, state):
+        """derive_used_endpoints with research_record_id filters to only that bundle's
+        skill_use records.  The other bundle's usage must not appear."""
+        # Bundle-A acquisition
+        result_a = _acquire(
+            run_dir,
+            state,
+            research_id="RES-MR2-A-001",
+            skill_use_id="SKU-MR2-A-001",
+            claim_id="MRTA-D-001",
+            api_search_result={**SEARCH_RESULT, "bundle": "A2"},
+            api_extraction_result={**EXTRACTION_RESULT_PRODUCTS_ONLY, "bundle": "A2"},
+            skill_use_source="products.list",
+        )
+
+        # Bundle-B acquisition using 'orders.listOrders'
+        result_b = _acquire(
+            run_dir,
+            state,
+            research_id="RES-MR2-B-001",
+            skill_use_id="SKU-MR2-B-001",
+            claim_id="MRTB-D-001",
+            api_search_result={**SEARCH_RESULT, "bundle": "B2"},
+            api_extraction_result={**EXTRACTION_RESULT_ORDERS_LIST, "bundle": "B2"},
+            skill_use_source="orders.listOrders",
+        )
+
+        # Scoped to bundle-A: should only see 'products.list'
+        scoped_a = derive_used_endpoints(
+            run_dir, research_record_id=result_a.research_ref.record_id
+        )
+        assert scoped_a == {"products.list"}, (
+            f"Scoped used-set for bundle-A must only include bundle-A's skill_use source; "
+            f"got {scoped_a!r}"
+        )
+        assert "orders.listOrders" not in scoped_a
+
+        # Scoped to bundle-B: should only see 'orders.listOrders'
+        scoped_b = derive_used_endpoints(
+            run_dir, research_record_id=result_b.research_ref.record_id
+        )
+        assert scoped_b == {"orders.listOrders"}, (
+            f"Scoped used-set for bundle-B must only include bundle-B's skill_use source; "
+            f"got {scoped_b!r}"
+        )
+        assert "products.list" not in scoped_b
+
+    def test_derive_used_endpoints_none_remains_run_global(self, run_dir, state):
+        """derive_used_endpoints(run_dir, research_record_id=None) returns the full
+        run-global set (backward compatibility)."""
+        _acquire(
+            run_dir,
+            state,
+            research_id="RES-MR3-A-001",
+            skill_use_id="SKU-MR3-A-001",
+            claim_id="MRCA-D-001",
+            api_search_result={**SEARCH_RESULT, "bundle": "A3"},
+            api_extraction_result={**EXTRACTION_RESULT_PRODUCTS_ONLY, "bundle": "A3"},
+            skill_use_source="products.list",
+        )
+        _acquire(
+            run_dir,
+            state,
+            research_id="RES-MR3-B-001",
+            skill_use_id="SKU-MR3-B-001",
+            claim_id="MRCB-D-001",
+            api_search_result={**SEARCH_RESULT, "bundle": "B3"},
+            api_extraction_result={**EXTRACTION_RESULT_ORDERS_LIST, "bundle": "B3"},
+            skill_use_source="orders.listOrders",
+        )
+
+        global_used = derive_used_endpoints(run_dir, research_record_id=None)
+        assert "products.list" in global_used
+        assert "orders.listOrders" in global_used

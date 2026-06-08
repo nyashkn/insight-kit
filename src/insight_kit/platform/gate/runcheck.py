@@ -249,6 +249,15 @@ def check_endpoint_coverage_gap(
     When missed_high endpoints are detected, the caller may fire a critique via
     apply_critique with severity='high' (V16).
 
+    Namespace contract (I.cites, T32):
+        Coverage matching uses string identity. An element in ``used_endpoints``
+        (derived from ``skill_use.source``) registers as covering an endpoint in
+        ``endpoint_index`` only when it equals the entry's ``id`` field exactly
+        (falling back to ``endpoint`` then ``name`` if ``id`` is absent).
+        Callers MUST ensure that ``skill_use.source`` is set to the same string
+        used as the endpoint ``id`` in the index — no normalisation or alias
+        resolution is performed here.
+
     Args:
         endpoint_index: the research record's endpoint_index dict from snapshot.
                        Contains 'available_endpoints' list of {id, relevance, why, ...}.
@@ -333,7 +342,10 @@ def check_endpoint_coverage_gap(
 # ---------------------------------------------------------------------------
 
 
-def derive_used_endpoints(run_dir: Path) -> set[str]:
+def derive_used_endpoints(
+    run_dir: Path,
+    research_record_id: str | None = None,
+) -> set[str]:
     """Scan skill_use record.json files and collect their .source values.
 
     Walks records/*/record.json under run_dir, reads every record whose
@@ -344,14 +356,29 @@ def derive_used_endpoints(run_dir: Path) -> set[str]:
     Skips corrupt or unreadable record.json files with a WARNING log (mirrors
     the store.reindex / graph_query.query_cites skip pattern).
 
+    Namespace contract (I.cites, T32):
+        When ``research_record_id`` is provided, only skill_use records whose
+        ``cites`` list contains that id are included.  This scopes the used-set
+        to the specific research bundle under check, preventing endpoint usage
+        from a *different* research bundle from masking a real gap (the
+        cross-bundle false-negative, T32 hardening).  When ``research_record_id``
+        is None the full run-global set is returned (backward-compatible).
+
+        Coverage then relies on string identity between ``skill_use.source`` and
+        the endpoint ``id`` in the endpoint_index — no normalisation is applied.
+        Callers MUST use the same string in both places (I.cites, T32).
+
     Args:
-        run_dir: path to the run directory (must exist; records/ scanned).
+        run_dir:              path to the run directory (must exist; records/ scanned).
+        research_record_id:   when provided, restrict to skill_use records whose
+                              ``cites`` list contains this id.  None = run-global
+                              (backward compatible).
 
     Returns:
-        set[str] of source values from all skill_use records found.
-        Empty set if no skill_use records are found or run_dir has no records/.
+        set[str] of source values from matching skill_use records.
+        Empty set if no matching skill_use records are found or run_dir has no records/.
 
-    Cites: T32, V16, I.store.
+    Cites: T32, V16, I.store, I.cites.
     """
     run_dir = Path(run_dir).resolve()
     records_root = run_dir / "records"
@@ -372,6 +399,14 @@ def derive_used_endpoints(run_dir: Path) -> set[str]:
         if rec.get("record_type") != "skill_use":
             continue
 
+        # T32 hardening: when a research bundle is specified, only count
+        # skill_use records that cite that bundle.  This prevents a skill_use
+        # from a *different* research chain from falsely satisfying coverage.
+        if research_record_id is not None:
+            cites: list[str] = rec.get("cites") or []
+            if research_record_id not in cites:
+                continue
+
         source = rec.get("source", "")
         if source:
             used.add(str(source))
@@ -388,14 +423,20 @@ def check_coverage_from_run(
     """End-to-end coverage check: derive used-set + read index + run gap check.
 
     Convenience that wires three steps together for the T32 end-to-end critic:
-      1. derive_used_endpoints(run_dir)  — real sources from skill_use records.
+      1. derive_used_endpoints(run_dir, research_record_id)  — sources from
+         skill_use records scoped to the bundle under check (T32 hardening).
       2. read_endpoint_index(run_dir, research_record_id)  — load stored index.
       3. check_endpoint_coverage_gap(index, used_list, claim_id=claim_id).
+
+    Passes ``research_record_id`` to ``derive_used_endpoints`` so that endpoint
+    usage from *other* research bundles in the same run cannot mask a real gap
+    (cross-bundle false-negative, T32 hardening).
 
     Args:
         run_dir:             run directory containing records/.
         research_record_id:  record_id (directory name) of the research record
-                             whose endpoint_index.json should be loaded.
+                             whose endpoint_index.json should be loaded, and the
+                             bundle id used to scope the used-set.
         claim_id:            optional claim_id forwarded to the gap check for
                              descriptive messages.
 
@@ -406,7 +447,7 @@ def check_coverage_from_run(
     """
     from insight_kit.platform.gate.store import read_endpoint_index
 
-    used_set = derive_used_endpoints(run_dir)
+    used_set = derive_used_endpoints(run_dir, research_record_id=research_record_id)
     endpoint_index = read_endpoint_index(run_dir, research_record_id)
     return check_endpoint_coverage_gap(
         endpoint_index,
