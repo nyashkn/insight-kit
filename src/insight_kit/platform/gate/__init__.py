@@ -28,11 +28,14 @@ Public API:
     compose_record, parse_refs, verify_chart_bindings, ComposeError,
     ChartBindingResult
 
+  API-ingestion chain wrapper (T30, C12, I.cites, I.emit, V20, V22):
+    ik_acquire, AcquireResult
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
 Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
-V15, V18, V21, T33.
+V15, V18, V21, T30, T33.
 """
 from __future__ import annotations
 
@@ -89,6 +92,10 @@ from insight_kit.platform.gate.schema import (
     SelectionParams,
     SkillUseRecord,
 )
+from insight_kit.platform.gate.acquire import (
+    AcquireResult,
+    ik_acquire,
+)
 from insight_kit.platform.gate.graph_query import (
     AdjacencyNode,
     GraphAdjacency,
@@ -100,6 +107,7 @@ from insight_kit.platform.gate.verdict import (
 )
 
 __all__ = [
+    "AcquireResult",
     "AdjacencyNode",
     "AuditReport",
     "ChartBindingResult",
@@ -133,6 +141,7 @@ __all__ = [
     "check_annual_equals_monthly_sum",
     "compose_record",
     "finalizeRun",
+    "ik_acquire",
     "ik_claim_emit",
     "ik_feature_get",
     "ik_intervention_emit",
