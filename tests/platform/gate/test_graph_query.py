@@ -9,6 +9,8 @@ Covers:
   - Empty run_dir returns empty GraphAdjacency.
   - record_type preserved for all discriminated union kinds.
   - record_count reflects successfully scanned records.
+  - REGRESSION: real emit pipeline (business_id != dir_id) produces correct
+    edges with no phantom stubs (T28 correctness fix).
 """
 from __future__ import annotations
 
@@ -358,3 +360,83 @@ class TestPublicExport:
     def test_adjacency_node_importable_from_gate(self):
         from insight_kit.platform.gate import AdjacencyNode as AN  # noqa: F401
         assert AN is not None
+
+
+# ---------------------------------------------------------------------------
+# REGRESSION — real emit pipeline: business_id != dir_id (T28 correctness)
+#
+# In the real emit pipeline, write_record is called with a content-addressed
+# record_id derived from the record fingerprint (not the business id).
+# Before the T28 fix, graph_query keyed nodes by the business id extracted
+# from record.json, so cites/supersedes targets (content-addressed ids) never
+# matched real nodes — phantom AdjacencyNode(record_type='unknown') stubs were
+# created instead, and the real target reported cited_by=[]/superseded_by=[].
+# ---------------------------------------------------------------------------
+
+
+class TestRealEmitPipeline:
+    """Regression test using the actual ik_research_emit / ik_claim_emit pipeline."""
+
+    def test_content_addressed_cites_no_phantom_stubs(self, tmp_path):
+        """Emit research + claim via real pipeline; assert correct edges, no phantom stubs."""
+        from insight_kit.platform.gate.emit import ik_claim_emit, ik_research_emit
+        from insight_kit.platform.gate.runstate import RunState
+
+        run_dir = tmp_path / "run"
+        state = RunState()
+
+        # Emit a research record — record_id is content-addressed (fingerprint),
+        # NOT equal to research_id ("RES-T28-001").
+        research_ref = ik_research_emit(
+            research_id="RES-T28-001",
+            snapshot_ref="https://example.com/data",
+            query="regression test query",
+            source="test-source",
+            snapshot={"rows": [1, 2, 3]},
+            timestamp="2026-06-09T00:00:00+00:00",
+            run_state=state,
+            run_dir=run_dir,
+        )
+
+        # Emit a claim that cites the research by its content-addressed record_id.
+        claim_ref = ik_claim_emit(
+            "TEST-D-028",
+            {"metric": 42},
+            cites=[research_ref.record_id],
+            run_state=state,
+            run_dir=run_dir,
+        )
+
+        # Assert business_id != content-addressed record_id (precondition for
+        # the regression to be meaningful — if they were equal the old code would
+        # have accidentally passed).
+        assert research_ref.record_id != "RES-T28-001", (
+            "Precondition failed: content-addressed id should differ from business id"
+        )
+        assert claim_ref.record_id != "TEST-D-028", (
+            "Precondition failed: content-addressed id should differ from business id"
+        )
+
+        g = query_cites(run_dir)
+
+        # Forward edge: claim cites research (keyed by content-addressed ids).
+        assert g.graph[claim_ref.record_id].cites == [research_ref.record_id]
+
+        # Reverse edge: research cited_by claim (no phantom stub).
+        assert g.graph[research_ref.record_id].cited_by == [claim_ref.record_id]
+
+        # No phantom stubs: every node in the graph must have a known record_type.
+        phantom_nodes = [
+            node for node in g.graph.values() if node.record_type == "unknown"
+        ]
+        assert phantom_nodes == [], (
+            f"Phantom stub nodes detected (T28 regression): "
+            f"{[n.record_id for n in phantom_nodes]}"
+        )
+
+        # business_id attribute carries the business id without affecting node key.
+        assert g.graph[research_ref.record_id].business_id == "RES-T28-001"
+        assert g.graph[claim_ref.record_id].business_id == "TEST-D-028"
+
+        # record_count reflects the two real records (not phantom stubs).
+        assert g.record_count == 2

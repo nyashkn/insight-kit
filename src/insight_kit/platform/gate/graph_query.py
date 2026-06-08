@@ -12,6 +12,15 @@ Invariants respected:
     V3  — record.json files are never modified.
     V7  — scan pattern mirrors reindex; regenerable from record.json set.
 
+Node identity:
+    Every node is keyed by ``dir_id`` — the directory name under records/,
+    which equals the content-addressed record_id produced by
+    record_id_from_fingerprint() in emit.py.  The ``cites`` and ``supersedes``
+    values stored in record.json are also content-addressed record_ids, so edge
+    targets match real nodes without phantom stubs.  The discriminated-union
+    business id (claim_id / research_id / …) is stored as the optional
+    ``business_id`` attribute on AdjacencyNode and is NOT used as the node key.
+
 Cites: V3, V7, I.store, T28.
 """
 from __future__ import annotations
@@ -36,8 +45,12 @@ log = logging.getLogger(__name__)
 class AdjacencyNode:
     """Edges for a single record in the knowledge graph.
 
-    record_id: unique stable id of this record.
+    record_id: content-addressed id (= directory name under records/).
     record_type: 'claim' | 'intervention' | 'research' | 'skill_use'.
+    business_id: discriminated-union business id from the record payload
+                 (claim_id / research_id / skill_use_id / intervention_id),
+                 or None if the record has an unknown type.  Informational
+                 only — node identity and all edge matching use record_id.
     cites: list of record_ids this record directly cites (outgoing refs).
     cited_by: list of record_ids that cite this one (reverse edges, derived).
     supersedes: single record_id this record supersedes (or None).
@@ -46,6 +59,7 @@ class AdjacencyNode:
 
     record_id: str
     record_type: str
+    business_id: str | None = None
     cites: list[str] = field(default_factory=list)
     cited_by: list[str] = field(default_factory=list)
     supersedes: str | None = None
@@ -56,7 +70,8 @@ class AdjacencyNode:
 class GraphAdjacency:
     """Adjacency view of cites/supersedes edges for all records in a run.
 
-    graph: dict[str, AdjacencyNode] keyed by record_id.
+    graph: dict[str, AdjacencyNode] keyed by content-addressed record_id
+           (= directory name under records/).
     record_count: total records successfully scanned.
     """
 
@@ -68,33 +83,33 @@ class GraphAdjacency:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+# Maps record_type discriminant to its business-id field name.
+_BUSINESS_ID_FIELD: dict[str, str] = {
+    "claim": "claim_id",
+    "intervention": "intervention_id",
+    "research": "research_id",
+    "skill_use": "skill_use_id",
+}
 
-def _extract_edges(rec: dict[str, Any]) -> tuple[str | None, list[str], str | None]:
-    """Extract (record_id, cites, supersedes) from a raw record dict.
 
-    Returns (record_id, cites_list, supersedes_or_None).
-    Returns (None, [], None) if the dict is missing a stable id field.
+def _extract_record_meta(
+    rec: dict[str, Any],
+) -> tuple[str | None, list[str], str | None]:
+    """Extract (business_id, cites, supersedes) from a raw record dict.
+
+    business_id is the discriminated-union id (claim_id / research_id / …),
+    or None for unknown record types.  It is NOT used as the graph node key —
+    node identity is always the content-addressed dir_id.
+
+    Returns (business_id_or_None, cites_list, supersedes_or_None).
     """
     record_type = rec.get("record_type", "")
-
-    # Determine the canonical id field per discriminated-union kind.
-    id_field_map = {
-        "claim": "claim_id",
-        "intervention": "intervention_id",
-        "research": "research_id",
-        "skill_use": "skill_use_id",
-    }
-    id_field = id_field_map.get(record_type)
-    record_id: str | None = rec.get(id_field) if id_field else None
-    if not record_id:
-        # Fall back to the directory name the caller may have injected.
-        record_id = rec.get("_record_id")
-    if not record_id:
-        return None, [], None
+    id_field = _BUSINESS_ID_FIELD.get(record_type)
+    business_id: str | None = rec.get(id_field) if id_field else None
 
     cites: list[str] = rec.get("cites") or []
     supersedes: str | None = rec.get("supersedes") or None
-    return record_id, cites, supersedes
+    return business_id, cites, supersedes
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +124,11 @@ def query_cites(run_dir: Path | None = None) -> GraphAdjacency:
     builds an in-memory adjacency dict on each call.  Corrupt or unreadable
     record.json files are skipped (logged at WARNING), matching reindex
     behaviour.
+
+    Graph nodes are keyed by the content-addressed record_id (= directory name
+    under records/).  The ``cites`` and ``supersedes`` values in record.json
+    are also content-addressed ids, so edge targets match real nodes without
+    phantom stubs.
 
     Args:
         run_dir: Path to run directory.  Resolved via store.resolve_run_dir()
@@ -126,6 +146,7 @@ def query_cites(run_dir: Path | None = None) -> GraphAdjacency:
     records_root = run_dir / "records"
 
     # Pass 1 — forward edges (scan record.json set, mirror reindex pattern).
+    # Nodes are ALWAYS keyed by dir_id (content-addressed record_id).
     nodes: dict[str, AdjacencyNode] = {}
     skipped: list[str] = []
 
@@ -146,28 +167,28 @@ def query_cites(run_dir: Path | None = None) -> GraphAdjacency:
                 )
                 continue
 
-            record_id, cites, supersedes = _extract_edges(rec)
-            if record_id is None:
-                # Use directory name as fallback stable id.
-                record_id = dir_id
-
             record_type = rec.get("record_type", "unknown")
+            business_id, cites, supersedes = _extract_record_meta(rec)
 
-            # Ensure this record exists in the graph.
-            if record_id not in nodes:
-                nodes[record_id] = AdjacencyNode(
-                    record_id=record_id,
+            # Node key is always dir_id (content-addressed), never business_id.
+            if dir_id not in nodes:
+                nodes[dir_id] = AdjacencyNode(
+                    record_id=dir_id,
                     record_type=record_type,
+                    business_id=business_id,
                 )
             else:
-                # Node was pre-created as a target of a reverse edge; fill it in.
-                nodes[record_id].record_type = record_type
+                # Node was pre-created as a stub target of an earlier cite edge;
+                # fill in the real record_type and business_id now.
+                nodes[dir_id].record_type = record_type
+                nodes[dir_id].business_id = business_id
 
-            node = nodes[record_id]
+            node = nodes[dir_id]
             node.cites = list(cites)
             node.supersedes = supersedes
 
             # Ensure cited targets exist in graph (as stubs for reverse wiring).
+            # cites values are content-addressed ids — they match dir_id keys.
             for cited_id in cites:
                 if cited_id not in nodes:
                     nodes[cited_id] = AdjacencyNode(
