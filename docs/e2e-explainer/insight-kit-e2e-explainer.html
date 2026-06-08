@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>insight-kit — e2e explainer (post-T25 gate)</title>
+<style>
+  :root{
+    --bg:#f7f6f3; --paper:#fffefb; --ink:#1a1814; --ink2:#54504a; --muted:#8a857d;
+    --line:#e7e3db; --line2:#d8d3c9;
+    --rust:#c4623f; --rust-d:#a04a2c; --clay:#cc785c; --sand:#e8dcc8; --sand2:#f0e9dc;
+    --green:#3f7d52; --green-bg:#e6f0e7; --amber:#b07a1e; --amber-bg:#f6edd8;
+    --red:#b3402f; --red-bg:#f6e3df; --grey:#6b6760; --grey-bg:#ece9e3;
+    --blue:#3a6b8a; --blue-bg:#e3edf2; --violet:#6b5b95; --violet-bg:#ebe7f2;
+    --code:#2b2722; --codebg:#f3efe7;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code','JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;font-size:15px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  header.hero{background:linear-gradient(160deg,#1f1c18 0%,#2c2620 55%,#3a2c22 100%);color:#f3ede2;padding:42px 0 34px}
+  header.hero .wrap{display:block}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--clay);margin:0 0 10px}
+  h1{font-size:32px;line-height:1.12;margin:0 0 12px;font-weight:680;letter-spacing:-.01em}
+  h1 .sub{color:#c9bfae;font-weight:400}
+  .lede{font-size:16px;color:#d8cfc0;max-width:820px;margin:0}
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .pill{font-family:var(--mono);font-size:11.5px;padding:4px 10px;border-radius:20px;border:1px solid #574b3d;background:#2a241d;color:#d8cfc0}
+  .pill b{color:#e9b08c;font-weight:600}
+  .pill.ok{border-color:#3f5a40;background:#22301f;color:#b8d6b3}
+
+  nav.tabs{position:sticky;top:0;z-index:50;background:rgba(247,246,243,.93);backdrop-filter:blur(8px);border-bottom:1px solid var(--line2)}
+  nav.tabs .wrap{display:flex;gap:2px;overflow-x:auto;padding:0 22px}
+  nav.tabs button{font-family:var(--sans);font-size:13.5px;font-weight:560;color:var(--ink2);background:none;border:none;border-bottom:2.5px solid transparent;padding:13px 14px;cursor:pointer;white-space:nowrap;transition:.15s}
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button.active{color:var(--rust-d);border-bottom-color:var(--rust)}
+  nav.tabs button .n{font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:5px}
+  nav.tabs button.active .n{color:var(--clay)}
+
+  main{padding:34px 0 80px}
+  section.tab{display:none;animation:fade .25s ease}
+  section.tab.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h2{font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .tag{font-family:var(--mono);font-size:12px;color:var(--clay);font-weight:500}
+  .section-lede{color:var(--ink2);max-width:860px;margin:0 0 22px;font-size:15px}
+  h3{font-size:16.5px;margin:30px 0 12px;display:flex;align-items:center;gap:9px}
+  h3 .dot{width:9px;height:9px;border-radius:50%;background:var(--rust);flex:0 0 auto}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:14px 0;box-shadow:0 1px 2px rgba(40,30,20,.03)}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+
+  code.fl{font-family:var(--mono);font-size:12px;background:var(--codebg);color:var(--rust-d);padding:1.5px 6px;border-radius:5px;border:1px solid var(--line2);white-space:nowrap}
+  code.fl.v{color:var(--green)}
+  code.k{font-family:var(--mono);font-size:12.5px;background:var(--codebg);color:var(--code);padding:1px 5px;border-radius:4px}
+  .mono{font-family:var(--mono)}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+  th{text-align:left;font-weight:620;color:var(--ink2);border-bottom:2px solid var(--line2);padding:9px 10px;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#faf8f3}
+  td .t{font-weight:600}
+
+  .badge{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;display:inline-block}
+  .b-done{background:var(--green-bg);color:var(--green)}
+  .b-part{background:var(--amber-bg);color:var(--amber)}
+  .b-todo{background:var(--grey-bg);color:var(--grey)}
+  .b-cut{background:var(--red-bg);color:var(--red)}
+  .b-writes{background:var(--green-bg);color:var(--green)}
+  .b-audits{background:var(--blue-bg);color:var(--blue)}
+  .b-extern{background:var(--amber-bg);color:var(--amber)}
+  .b-none{background:var(--red-bg);color:var(--red)}
+
+  .note{border-left:3px solid var(--clay);background:var(--sand2);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px;color:var(--ink2)}
+  .note.warn{border-left-color:var(--amber);background:var(--amber-bg)}
+  .note.honest{border-left-color:var(--blue);background:var(--blue-bg)}
+  .note b{color:var(--ink)}
+
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:4px 0}
+
+  /* swimlane */
+  .lane{display:grid;grid-template-columns:148px 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:9px 0;background:var(--paper)}
+  .lane .who{padding:13px 14px;font-weight:620;font-size:13.5px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:3px;justify-content:center}
+  .lane .who small{font-weight:400;color:var(--muted);font-family:var(--mono);font-size:10.5px}
+  .lane .what{padding:12px 15px;font-size:13.5px;color:var(--ink2)}
+  .lane.de .who{background:var(--blue-bg)} .lane.an .who{background:var(--sand2)}
+  .lane.re .who{background:var(--violet-bg)} .lane.cr .who{background:var(--red-bg)}
+  .lane.rn .who{background:var(--green-bg)} .lane.ev .who{background:var(--grey-bg)}
+  .lane.op .who{background:#efe9df} .lane.ann .who{background:var(--amber-bg)}
+  .lane .what .out{font-family:var(--mono);font-size:11.5px;color:var(--rust-d);margin-top:5px}
+
+  .flow-arrow{text-align:center;color:var(--line2);font-size:18px;margin:-2px 0;line-height:1}
+
+  pre.code{background:var(--code);color:#e8e0d2;font-family:var(--mono);font-size:12.5px;line-height:1.6;padding:16px 18px;border-radius:10px;overflow-x:auto;margin:12px 0}
+  pre.code .c{color:#8a8478} pre.code .s{color:#d6a77a} pre.code .kw{color:#cf8e6d} pre.code .fn{color:#9fc2d4} pre.code .hl{color:#e9b08c;font-weight:600}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--ink2);margin:10px 0 18px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+
+  .step{display:grid;grid-template-columns:34px 1fr;gap:14px;margin:0}
+  .step .num{width:34px;height:34px;border-radius:50%;background:var(--rust);color:#fff;font-weight:680;display:flex;align-items:center;justify-content:center;font-size:15px;font-family:var(--mono)}
+  .step .body{padding-bottom:18px;border-left:2px solid var(--line2);margin-left:-17px;padding-left:31px;margin-top:4px}
+  .step:last-child .body{border-left-color:transparent}
+  .step .body h4{margin:0 0 5px;font-size:15px}
+  .step .body p{margin:4px 0;font-size:13.5px;color:var(--ink2)}
+
+  .filetree{font-family:var(--mono);font-size:12.5px;background:var(--codebg);border:1px solid var(--line2);border-radius:10px;padding:16px 18px;line-height:1.7;overflow-x:auto}
+  .filetree .dir{color:var(--blue)} .filetree .w{color:var(--green);font-weight:600}
+  .filetree .a{color:var(--blue)} .filetree .x{color:var(--amber)} .filetree .n{color:var(--red)}
+  .filetree .cm{color:var(--muted)}
+
+  footer{border-top:1px solid var(--line2);padding:26px 0;color:var(--muted);font-size:12.5px;font-family:var(--mono)}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .kbd{font-family:var(--mono);font-size:11px;background:var(--codebg);border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:1px 5px}
+  svg{max-width:100%}
+  .cap{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">insight-kit · Layer 1 typed-record gate · end-to-end</p>
+    <h1>The honest e2e explainer <span class="sub">— rebuilt on the post-T25 gate</span></h1>
+    <p class="lede">How eight role-agents drive analytical work through one immutable, content-addressed gate.
+      Every claim in this page cites <code class="fl" style="background:#2a241d;border-color:#574b3d;color:#e9b08c">file:line</code>
+      from <b>this</b> worktree (branch <span class="mono">docs/e2e-explainer</span>, feat lineage @ <span class="mono">961aaa3</span>).
+      Where the gate does <i>not</i> do a thing the old docs claimed, this page says so out loud.</p>
+    <div class="hero-meta">
+      <span class="pill ok">gate <b>14 modules</b> ✓</span>
+      <span class="pill ok">suite <b>~411 tests GREEN</b></span>
+      <span class="pill">§T <b>23/25 done</b></span>
+      <span class="pill">open: <b>T15 · T24</b> (Evidence)</span>
+      <span class="pill">seam <b>.pi → uv run → gate.cli</b> ✓</span>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap" id="tabnav">
+    <button data-tab="modules" class="active"><span class="n">1</span>Modules map</button>
+    <button data-tab="swimlane"><span class="n">2</span>Swimlane</button>
+    <button data-tab="example"><span class="n">3</span>Execution example</button>
+    <button data-tab="callflow"><span class="n">4</span>Call-flow</button>
+    <button data-tab="critic"><span class="n">5</span>Critic loop</button>
+    <button data-tab="readiness"><span class="n">6</span>Readiness</button>
+    <button data-tab="diff"><span class="n">7</span>Diff: old vs gate</button>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<!-- ============ 1 MODULES ============ -->
+<section class="tab active" id="modules">
+  <h2>Modules map <span class="tag">platform/gate · libs/provenance · .pi · .agents</span></h2>
+  <p class="section-lede">Four cooperating surfaces. The <b>L1 gate</b> (pure Python lib — zero Hamilton, zero pi) is the only writer of records.
+    The <b>L3 .pi extension</b> (TypeScript) calls it across a <code class="k">uv run</code> subprocess seam.
+    <b>libs/provenance</b> holds the kept kit-root discovery. <b>.agents</b> are the eight role-agents that drive it.</p>
+
+  <h3><span class="dot"></span>L1 gate — <code class="k">src/insight_kit/platform/gate/</code> · 13 modules + __init__</h3>
+  <table>
+    <thead><tr><th style="width:120px">Module</th><th>Purpose</th><th style="width:300px">Key symbols <span class="mono" style="text-transform:none;font-weight:400">(file:line)</span></th></tr></thead>
+    <tbody>
+      <tr><td class="t">emit.py</td><td>Core gate: pydantic validate → Layer-A guards → fingerprint → immutable write → RunState register. The one writer.</td>
+        <td><code class="fl">_record_emit:432</code> <code class="fl">ik_claim_emit:602</code> <code class="fl">ik_intervention_emit:668</code> <code class="fl">ik_research_emit:704</code> <code class="fl">ik_skill_use_emit:748</code> <code class="fl">_check_supersedes_exists:109</code></td></tr>
+      <tr><td class="t">store.py</td><td>Immutable on-disk layout. Refuses overwrite (V3). Writes record.json + snapshot.json + the derived indexes + event logs.</td>
+        <td><code class="fl">record_path:60</code> <code class="fl">write_record:65</code> <code class="fl">write_snapshot:107</code> <code class="fl">append_index_row:176</code> <code class="fl">append_claims_row:211</code> <code class="fl">append_event:233</code> <code class="fl">reindex:258</code></td></tr>
+      <tr><td class="t">schema.py</td><td>RecordSchema discriminated union (pydantic v2) over the four record_types. Single schema source (C5).</td>
+        <td><code class="fl">RecordSchema:266</code> <code class="fl">ClaimRecord:99</code> <code class="fl">InterventionRecord:164</code> <code class="fl">ResearchRecord:192</code> <code class="fl">SkillUseRecord:230</code> <code class="fl">DataFingerprintSource:20</code></td></tr>
+      <tr><td class="t">fingerprint.py</td><td>Content-address: sha256 over canonical JSON, pinned float repr, NFC-normalized unicode.</td>
+        <td><code class="fl">record_fingerprint:77</code> <code class="fl">data_fingerprint:87</code> <code class="fl">record_id_from_fingerprint:103</code> <code class="fl">_canonical_dumps:55</code></td></tr>
+      <tr><td class="t">runstate.py</td><td>Per-run accumulator. critiqueRounds severity gate (V16), idempotent finalizeRun (V10), fail-closed published finalize (V17).</td>
+        <td><code class="fl">RunState:205</code> <code class="fl">apply_critique:139</code> <code class="fl">CritiqueGateError:118</code> <code class="fl">CritiqueState:93</code> <code class="fl">finalizeRun:277</code> <code class="fl">finalize_published_run:310</code> <code class="fl">write_run_json:354</code></td></tr>
+      <tr><td class="t">audit.py</td><td>Layer-D render audit (V12). L5 token→claim join (orphan / value-mismatch), L6 prose lint (no bare numerics).</td>
+        <td><code class="fl">audit_l5:152</code> <code class="fl">audit_l6:242</code> <code class="fl">run_render_audit:299</code> <code class="fl">RenderedToken:43</code> <code class="fl">RenderAdapter:61</code> <code class="fl">build_claims_index:82</code></td></tr>
+      <tr><td class="t">render_adapters.py</td><td>Backend-agnostic adapter: extract rendered tokens from a Vega-Lite <span class="mono">chart.vl.json</span> spec via usermeta claim-binding.</td>
+        <td><code class="fl">VegaLiteAdapter:59</code> <code class="fl">_as_number:40</code></td></tr>
+      <tr><td class="t">runcheck.py</td><td>Layer-B/C validator runner. Subprocess wrapper → CheckResult. Cross-check: annual = Σ monthly (V15).</td>
+        <td><code class="fl">ik_run_check:45</code> <code class="fl">CheckResult:22</code> <code class="fl">check_annual_equals_monthly_sum:142</code></td></tr>
+      <tr><td class="t">cli.py</td><td>The L1/L3 seam (C4). uv-run bridge: emit-* subcommands route JSON payloads through the frozen gate; export-schema derives tool params.</td>
+        <td><code class="fl">main:251</code> <code class="fl">run_emit:120</code> <code class="fl">_EMIT_WRAPPERS:60</code> <code class="fl">_rehydrate_run_state:73</code> <code class="fl">export_schemas:231</code></td></tr>
+      <tr><td class="t">verdict.py</td><td>Post-hoc utility verdict on knowledge records (V21). Append-only event; never edits record.json.</td>
+        <td><code class="fl">ik_utility_verdict:40</code> <code class="fl">UtilityVerdict:30</code> <code class="fl">UTILITY_VERDICT_EVENT:26</code></td></tr>
+      <tr><td class="t">env.py</td><td>Env capture (T20): container_digest + lockfile_hash → env_fingerprint. Degrades deterministically.</td>
+        <td><code class="fl">capture_env_fingerprint:108</code> <code class="fl">EnvInfo:54</code> <code class="fl">ENV_FINGERPRINT_KEY:34</code></td></tr>
+      <tr><td class="t">feature.py</td><td>Provisional-feature fallback on catalog miss (V18): provisional = draft-locked vs certified = publishable.</td>
+        <td><code class="fl">ik_feature_get:84</code> <code class="fl">ProvisionalFeature:25</code> <code class="fl">CertifiedFeature:54</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid g3" style="margin-top:18px">
+    <div class="card">
+      <h3 style="margin-top:0"><span class="dot" style="background:var(--green)"></span>libs/provenance</h3>
+      <p style="font-size:13.5px;color:var(--ink2);margin:0 0 8px"><code class="k">src/insight_kit/libs/provenance/</code></p>
+      <p style="font-size:13.5px"><b>root.py</b> — kit-root discovery, KEPT per C13.
+        <code class="fl v">find_kit_root:24</code> <code class="fl v">runs_dir:43</code> <code class="fl v">kit_config:66</code> <code class="fl v">init_kit:87</code></p>
+      <div class="note honest" style="margin:10px 0 0">
+        <b>Deleted at T25 cutover (C13):</b> <code class="k">provenance/run.py</code> + <code class="k">provenance/claim.py</code>.
+        Verified <b>ABSENT</b> in this worktree — the old <span class="mono">Run.claim</span> / flat-jsonl path is gone, git-history only.
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0"><span class="dot" style="background:var(--violet)"></span>.pi — L3 extension (TS)</h3>
+      <p style="font-size:13.5px;color:var(--ink2);margin:0 0 8px">TypeScript pi-coding-agent extension. Calls L1 over <code class="k">uv run</code>.</p>
+      <ul class="tight" style="font-size:13px">
+        <li><code class="fl">.pi/lib/core.ts:48</code> — <b>gateArgv()</b> builds argv</li>
+        <li><code class="fl">.pi/lib/core.ts:35</code> — CLI_SUBCOMMAND map</li>
+        <li><code class="fl">.pi/extensions/insight-kit.ts:66</code> — tool_call BLOCK hook</li>
+        <li><code class="fl">.pi/extensions/insight-kit.ts:101</code> — <b>pi.exec("uv",…)</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0"><span class="dot" style="background:var(--amber)"></span>.agents — 8 role-agents</h3>
+      <p style="font-size:13.5px;color:var(--ink2);margin:0 0 8px"><code class="k">.agents/agents/&lt;name&gt;/agent.md</code> — all 8 exist.</p>
+      <p style="font-size:13px;line-height:1.9">
+        <span class="badge b-audits">data-engineer</span> <span class="badge b-audits">analyst</span>
+        <span class="badge b-audits">researcher</span> <span class="badge b-audits">critic</span>
+        <span class="badge b-audits">renderer</span> <span class="badge b-audits">evaluator</span>
+        <span class="badge b-audits">operator</span> <span class="badge b-audits">annotator</span>
+      </p>
+      <p class="cap">Verified as files on disk; see Swimlane tab for each role.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 SWIMLANE ============ -->
+<section class="tab" id="swimlane">
+  <h2>Swimlane <span class="tag">8 role-agents → one gate</span></h2>
+  <p class="section-lede">Each agent is a file under <code class="k">.agents/agents/&lt;name&gt;/agent.md</code> (verified). They never write records directly —
+    every output crosses the same L1 gate (<code class="fl">emit.py:432</code> <code class="k">_record_emit</code>). Tier and record_type differ; the gate does not.</p>
+
+  <div class="legend">
+    <span><span class="badge b-writes">produces</span> record(s) through the gate</span>
+    <span><span class="badge b-audits">reads / audits</span> existing records</span>
+    <span class="mono" style="color:var(--muted)">out → record_type / tier emitted</span>
+  </div>
+
+  <div class="lane de"><div class="who">data-engineer<small>ETL_R/M/C</small></div><div class="what">
+    Bronze ingest, silver transforms, ETL views, source SQL, schema management. Registers upstream inputs so downstream claims can carry a real <span class="mono">data_fingerprint</span> (not a payload fallback — V22).
+    <div class="out">out → claim (tier: ETL_R/ETL_M/ETL_C)</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane an"><div class="who">analyst<small>D-tier</small></div><div class="what">
+    Derives descriptive + predictive D-tier claims from ETL-materialized data. Emits explicit selection params as claim fields (V15), coverage warnings when n&lt;30 / partial period (V14).
+    <div class="out">out → claim (tier: D / draft|published)</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane re"><div class="who">researcher<small>X-tier + SEARCH</small></div><div class="what">
+    Retrieves + snapshots external evidence (papers, benchmarks, competitor data) as knowledge records. <b>SEARCH leg</b>: tavily / perplexity via <span class="mono">ingest_search()</span> + <span class="mono">ingest_url()</span> + <span class="mono">ingest_skill()</span>. Snapshot persisted to <span class="mono">records/{id}/snapshot.json</span> (<code class="fl">store.py:107</code>), hashed into record_fingerprint. A published claim depending on it MUST carry a <span class="mono">cites</span> edge (V20).
+    <div class="out">out → research / skill_use (untiered knowledge)</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane cr"><div class="who">critic<small>C-tier</small></div><div class="what">
+    Challenges any D/X/I/R claim — re-runs SQL, audits assumptions, tests sensitivity. Emits a critique; an <span class="mono">open</span> critique of <span class="mono">severity ≥ high</span> on a published/board record HARD-blocks via <code class="fl">runstate.py:139</code> <span class="mono">apply_critique</span> (V16). See Critic-loop tab.
+    <div class="out">out → critique edge → forces tier↓draft or supersession</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane rn"><div class="who">renderer<small>I/V-tier</small></div><div class="what">
+    Authors Evidence pages + Vega-Lite viz specs (Altair → <span class="mono">chart.vl.json</span>) consuming claim components. The gate audits the output it produces: L5 token→claim join (<code class="fl">audit.py:152</code>), L6 prose lint (<code class="fl">audit.py:242</code>).
+    <div class="out">out → render artifacts (gate-audited, not gate-written)</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane ev"><div class="who">evaluator<small>golden-set</small></div><div class="what">
+    Regression + golden-set eval of claim chains; drift detection across run cohorts. Golden = audited-truth values (C11), buggy historical runs kept as negative fixtures. Determinism check per V11 (value ±tol, chart byte-identical).
+    <div class="out">out → eval-report artifacts</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane op"><div class="who">operator<small>graph health</small></div><div class="what">
+    Kit ops, tier hygiene, annotation passes, goal lifecycle. Produces no claims — maintains the health of the claim graph. Owns finalizeRun fail-closed posture on published runs (V17, <code class="fl">runstate.py:310</code>).
+    <div class="out">out → (no records) — ops + lifecycle</div></div></div>
+  <div class="flow-arrow">↓</div>
+  <div class="lane ann"><div class="who">annotator<small>layer-A flags</small></div><div class="what">
+    Adds typed annotations to claims + runs (layer-A validation flags, off-glossary metric tags). Pairs with critic for layer-A enforcement at the gate boundary.
+    <div class="out">out → annotation events (append-only)</div></div></div>
+
+  <div class="note">All eight lanes converge on <code class="fl">emit.py:432</code>. One gate, one provenance store, one immutable-record contract — runtime-agnostic (C1: imports neither <span class="mono">hamilton</span> nor <span class="mono">pi</span>, lint-enforced V5 / T19).</div>
+</section>
+
+<!-- ============ 3 EXECUTION EXAMPLE ============ -->
+<section class="tab" id="example">
+  <h2>Execution example <span class="tag">Dock Blocks · repeat-customer value + Charleston risk</span></h2>
+  <p class="section-lede"><b>Q:</b> “Are repeat customers worth more, and is Charleston concentration a risk?” Below: what materializes on disk per stage,
+    which agent produces it, and — honestly — whether the <b>gate writes it</b>, <b>merely audits it</b>, or it’s <b>authored elsewhere entirely</b>.</p>
+
+  <div class="legend">
+    <span><span class="badge b-writes">gate writes</span> store.py emits the file</span>
+    <span><span class="badge b-audits">gate audits</span> read/lints, doesn’t write</span>
+    <span><span class="badge b-extern">authored elsewhere</span> pipeline/renderer artifact</span>
+    <span><span class="badge b-none">NOT a gate file</span> old-docs myth</span>
+  </div>
+
+  <h3><span class="dot"></span>What lands under <code class="k">runs/&lt;run&gt;/</code></h3>
+  <div class="filetree">
+runs/2026-06-08_dockblocks/
+├── <span class="w">records.jsonl</span>              <span class="cm"># derived projection index — append_index_row  store.py:176</span>
+├── <span class="w">claims.jsonl</span>               <span class="cm"># regenerable claim view (Evidence back-compat) store.py:211</span>
+├── <span class="w">run.json</span>                   <span class="cm"># RunState: fingerprints, critiqueRounds, manifest  runstate.py:354</span>
+└── records/
+    └── DOCK-D-128/
+        ├── <span class="w">record.json</span>         <span class="cm"># canonical, immutable, content-addressed  store.py:65 (V3)</span>
+        ├── <span class="w">snapshot.json</span>       <span class="cm"># captured-results snapshot (research/skill)  store.py:107</span>
+        ├── events/
+        │   └── <span class="w">critique.jsonl</span>  <span class="cm"># append-only critique + verdict events  store.py:233</span>
+        ├── <span class="a">narrative.md</span>        <span class="cm"># authored by renderer; gate L6-lints it    audit.py:242</span>
+        └── <span class="a">chart.vl.json</span>       <span class="cm"># Altair Vega-Lite spec; gate L5-joins tokens render_adapters.py:59</span>
+  </div>
+
+  <table style="margin-top:16px">
+    <thead><tr><th style="width:175px">Artifact</th><th style="width:130px">Producer</th><th style="width:150px">Gate relationship</th><th>Honest enforcement ref</th></tr></thead>
+    <tbody>
+      <tr><td class="mono t">record.json</td><td>analyst → gate</td><td><span class="badge b-writes">gate writes</span></td>
+        <td>Canonical immutable unit. Re-emit raises (V3). <code class="fl">store.py:65</code>, overwrite-refusal at <code class="fl">store.py:79</code>.</td></tr>
+      <tr><td class="mono t">records.jsonl</td><td>gate</td><td><span class="badge b-writes">gate writes</span></td>
+        <td>Only emit writes it (V1). One projection row / record. <code class="fl">store.py:176</code>; regenerable via <code class="fl">store.py:258</code> reindex.</td></tr>
+      <tr><td class="mono t">claims.jsonl</td><td>gate</td><td><span class="badge b-writes">gate writes</span></td>
+        <td>Claim-projection back-compat view for Evidence (I.store). <code class="fl">store.py:211</code>.</td></tr>
+      <tr><td class="mono t">run.json</td><td>gate</td><td><span class="badge b-writes">gate writes</span></td>
+        <td>Holds the fingerprint set + critiqueRounds + manifest. <code class="fl">runstate.py:354</code>.</td></tr>
+      <tr><td class="mono t">snapshot.json</td><td>researcher → gate</td><td><span class="badge b-writes">gate writes</span></td>
+        <td>Knowledge-record captured results (T22/V20), hashed into record_fingerprint, immutable. <code class="fl">store.py:107</code>.</td></tr>
+      <tr><td class="mono t">events/critique.jsonl</td><td>critic → gate</td><td><span class="badge b-writes">gate writes</span></td>
+        <td>Append-only event log; record.json never mutated (V3/V21). <code class="fl">store.py:233</code>.</td></tr>
+      <tr><td class="mono t">narrative.md</td><td>renderer / analyst</td><td><span class="badge b-audits">gate audits</span></td>
+        <td>record.json carries <span class="mono">narrative_ref</span> (<code class="fl">schema.py:105</code>); L6 lints it for bare numerics (V8) <code class="fl">audit.py:242</code>. Gate does <b>not</b> write the prose.</td></tr>
+      <tr><td class="mono t">chart.vl.json</td><td>renderer (Altair)</td><td><span class="badge b-audits">gate audits</span></td>
+        <td>VegaLiteAdapter extracts rendered tokens (<code class="fl">render_adapters.py:59</code>); L5 joins them to claim fields, zero orphans (V9/V12) <code class="fl">audit.py:152</code>. Gate does <b>not</b> render the chart.</td></tr>
+      <tr><td class="mono t">data_snapshot.parquet</td><td>Hamilton / ETL pipeline</td><td><span class="badge b-extern">authored elsewhere</span></td>
+        <td><b>Honest:</b> no gate module references a <span class="mono">data_snapshot.parquet</span>. The gate fingerprints inputs (<code class="fl">fingerprint.py:87</code> data_fingerprint) and demands a <span class="mono">registered_input</span> source (V22), but the parquet itself is a pipeline artifact, not gate-emitted.</td></tr>
+      <tr><td class="mono t">fingerprints.json</td><td>—</td><td><span class="badge b-none">NOT a gate file</span></td>
+        <td><b>Honest:</b> there is <i>no</i> <span class="mono">fingerprints.json</span> on disk. Fingerprints are <b>fields inside</b> record.json + run.json (<span class="mono">record_fingerprint / data_fingerprint / code_fingerprint / env_fingerprint</span>), computed at <code class="fl">fingerprint.py:77</code> and <code class="fl">env.py:108</code>. The old explainer invented this file.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note honest"><b>Why this honesty matters.</b> The previous explainer drew <span class="mono">data_snapshot.parquet</span> and <span class="mono">fingerprints.json</span> as gate outputs. They are not. The gate’s real disk contract is exactly the six <span class="badge b-writes" style="vertical-align:middle">gate writes</span> rows above; everything else it <i>audits</i> or <i>fingerprints</i>. Misdrawing the contract is how hallucinated numbers slip through — which is the entire reason the gate exists.</div>
+</section>
+
+<!-- ============ 4 CALL-FLOW ============ -->
+<section class="tab" id="callflow">
+  <h2>Call-flow <span class="tag">.pi → uv run → insight_kit.platform.gate.cli</span></h2>
+  <p class="section-lede">The L3 TypeScript extension never writes records itself. It marshals a JSON payload, blocks if the run context is missing,
+    then shells out to the Python gate via <code class="k">uv run</code> (C4 lang seam). One fresh process per emit, 60s timeout.</p>
+
+  <svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg" font-family="var(--mono)" font-size="12.5">
+    <defs>
+      <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#a04a2c"/></marker>
+    </defs>
+    <!-- lane labels -->
+    <text x="14" y="26" fill="#8a857d" font-weight="700">.pi  (TypeScript / pi-coding-agent)</text>
+    <rect x="10" y="34" width="960" height="150" rx="10" fill="#ebe7f2" stroke="#d8d3c9"/>
+    <text x="14" y="232" fill="#8a857d" font-weight="700">uv run subprocess  →  insight_kit.platform.gate.cli  (Python L1)</text>
+    <rect x="10" y="240" width="960" height="178" rx="10" fill="#e3edf2" stroke="#d8d3c9"/>
+
+    <!-- TS boxes -->
+    <g>
+      <rect x="28" y="56" width="190" height="56" rx="8" fill="#fffefb" stroke="#6b5b95"/>
+      <text x="40" y="78" fill="#1a1814" font-weight="700">tool_call: ik_claim_emit</text>
+      <text x="40" y="96" fill="#54504a">agent calls typed tool</text>
+    </g>
+    <g>
+      <rect x="266" y="48" width="220" height="72" rx="8" fill="#f6e3df" stroke="#b3402f"/>
+      <text x="278" y="70" fill="#b3402f" font-weight="700">BLOCK hook</text>
+      <text x="278" y="88" fill="#54504a">!INSIGHT_KIT_RUN_DIR</text>
+      <text x="278" y="105" fill="#a04a2c">insight-kit.ts:66 → block:true</text>
+    </g>
+    <g>
+      <rect x="534" y="56" width="200" height="56" rx="8" fill="#fffefb" stroke="#6b5b95"/>
+      <text x="546" y="78" fill="#1a1814" font-weight="700">gateArgv(type,json)</text>
+      <text x="546" y="96" fill="#54504a">core.ts:48 builds argv</text>
+    </g>
+    <g>
+      <rect x="772" y="56" width="186" height="56" rx="8" fill="#fffefb" stroke="#6b5b95"/>
+      <text x="784" y="78" fill="#1a1814" font-weight="700">pi.exec("uv",…)</text>
+      <text x="784" y="96" fill="#54504a">insight-kit.ts:101</text>
+    </g>
+    <!-- TS arrows -->
+    <line x1="218" y1="84" x2="262" y2="84" stroke="#a04a2c" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="222" y="78" fill="#b3402f" font-size="10">env set?</text>
+    <line x1="486" y1="84" x2="530" y2="84" stroke="#a04a2c" stroke-width="1.6" marker-end="url(#arr)"/>
+    <line x1="734" y1="84" x2="768" y2="84" stroke="#a04a2c" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="300" y="142" fill="#54504a" font-size="11">argv = ["run","python","-m","insight_kit.platform.gate.cli","emit-claim","--payload",json]  ·  CLI_SUBCOMMAND map core.ts:35</text>
+
+    <!-- crossing arrow -->
+    <line x1="865" y1="112" x2="865" y2="262" stroke="#a04a2c" stroke-width="1.8" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+    <text x="700" y="225" fill="#a04a2c" font-size="11">uv run · fresh process · 60s timeout</text>
+
+    <!-- Python boxes -->
+    <g>
+      <rect x="772" y="262" width="186" height="58" rx="8" fill="#fffefb" stroke="#3a6b8a"/>
+      <text x="784" y="285" fill="#1a1814" font-weight="700">cli.main()</text>
+      <text x="784" y="303" fill="#54504a">argparse subparsers</text>
+      <text x="784" y="316" fill="#3a6b8a">cli.py:251</text>
+    </g>
+    <g>
+      <rect x="534" y="262" width="200" height="58" rx="8" fill="#fffefb" stroke="#3a6b8a"/>
+      <text x="546" y="285" fill="#1a1814" font-weight="700">resolve_run_dir()</text>
+      <text x="546" y="303" fill="#54504a">env / --run-dir / raise</text>
+      <text x="546" y="316" fill="#3a6b8a">store.py:31</text>
+    </g>
+    <g>
+      <rect x="296" y="262" width="200" height="58" rx="8" fill="#fffefb" stroke="#3a6b8a"/>
+      <text x="308" y="285" fill="#1a1814" font-weight="700">run_emit()</text>
+      <text x="308" y="303" fill="#54504a">_EMIT_WRAPPERS[cmd]</text>
+      <text x="308" y="316" fill="#3a6b8a">cli.py:120 · map :60</text>
+    </g>
+    <g>
+      <rect x="28" y="252" width="230" height="78" rx="8" fill="#e6f0e7" stroke="#3f7d52"/>
+      <text x="40" y="276" fill="#1a1814" font-weight="700">_record_emit (the gate)</text>
+      <text x="40" y="294" fill="#54504a">validate→fingerprint→write</text>
+      <text x="40" y="311" fill="#3f7d52">emit.py:432</text>
+      <text x="40" y="326" fill="#a04a2c" font-size="10.5">exit 0 ok · 1 reject(V2) · 2 usage</text>
+    </g>
+    <!-- python arrows -->
+    <line x1="770" y1="291" x2="738" y2="291" stroke="#a04a2c" stroke-width="1.6" marker-end="url(#arr)"/>
+    <line x1="532" y1="291" x2="500" y2="291" stroke="#a04a2c" stroke-width="1.6" marker-end="url(#arr)"/>
+    <line x1="294" y1="291" x2="262" y2="291" stroke="#a04a2c" stroke-width="1.6" marker-end="url(#arr)"/>
+    <!-- return -->
+    <line x1="143" y1="332" x2="143" y2="372" stroke="#3f7d52" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text x="155" y="360" fill="#3f7d52" font-size="11">{ok:true, record:{record_id,…}}  →  stdout single JSON line  →  back to pi</text>
+  </svg>
+  <p class="cap">Seam resolves: <code class="fl">.pi/lib/core.ts:48</code> gateArgv → <code class="fl">cli.py:251</code> main → <code class="fl">cli.py:120</code> run_emit → <code class="fl">emit.py:432</code> _record_emit.</p>
+
+  <h3><span class="dot" style="background:var(--red)"></span>The BLOCK-if-RUN_DIR-unset hook (verbatim)</h3>
+  <pre class="code"><span class="c">// .pi/extensions/insight-kit.ts:66</span>
+pi.<span class="fn">on</span>(<span class="s">"tool_call"</span>, (event) => {
+  <span class="kw">if</span> (<span class="fn">isGateTool</span>(event.toolName) &amp;&amp; !process.env.<span class="hl">INSIGHT_KIT_RUN_DIR</span>) {
+    <span class="kw">return</span> {
+      block: <span class="hl">true</span>,
+      reason: <span class="s">`${event.toolName}: INSIGHT_KIT_RUN_DIR is not set. The L1 gate has`</span> +
+        <span class="s">" no run directory to write the record into — set it before emitting."</span>,
+    };
+  }
+});</pre>
+  <p style="font-size:13.5px;color:var(--ink2)">Belt-and-braces: TS blocks the call <i>before</i> spawning uv, and Python independently raises if the dir is still unresolved — <code class="fl">store.py:31</code> <span class="mono">resolve_run_dir()</span> priority is <span class="mono">--run-dir</span> → <span class="mono">INSIGHT_KIT_RUN_DIR</span> → <span class="mono">ValueError</span>. No run context ⇒ no record, on both sides of the seam.</p>
+</section>
+
+<!-- ============ 5 CRITIC LOOP ============ -->
+<section class="tab" id="critic">
+  <h2>Critic reject → re-derive loop <span class="tag">REAL enforcement, proven by tests</span></h2>
+  <p class="section-lede">The old docs <i>described</i> a critic loop. This one is <b>enforced in code</b>: an open high-severity critique on a published/board
+    record raises <code class="k">CritiqueGateError</code>, the correction enters as a <i>new</i> superseding record (immutability, V3), and a named test proves it.</p>
+
+  <h3><span class="dot"></span>Walk: claim DOCK-D-128 → refute → gate → supersede → re-gate</h3>
+  <div class="step"><div class="num">1</div><div class="body">
+    <h4>analyst emits DOCK-D-128 as <span class="mono">published</span></h4>
+    <p>“Repeat customers are worth 2.3× first-timers.” Through <code class="fl">emit.py:602</code> ik_claim_emit → record.json written immutably.</p>
+  </div></div>
+  <div class="step"><div class="num">2</div><div class="body">
+    <h4>critic refutes with <span class="mono">severity: high</span></h4>
+    <p>Re-runs the SQL, finds the cohort window double-counts. Emits an <span class="mono">open</span> CritiqueState (<code class="fl">runstate.py:93</code>) against the published claim.</p>
+  </div></div>
+  <div class="step"><div class="num">3</div><div class="body">
+    <h4><span class="mono">apply_critique</span> gate fires</h4>
+    <p><code class="fl">runstate.py:139</code> increments <span class="mono">critiqueRounds</span> (line 166), confirms record_type ∈ {claim,intervention} (line 169), status==open (line 173), <span class="mono">_is_gated_tier</span> true for published/board (line 177 → 132/134), severity ≥ high (line 181) — then raises <code class="fl">runstate.py:118</code> <span class="mono">CritiqueGateError</span>. Caller MUST force tier → draft (V16).</p>
+  </div></div>
+  <div class="step"><div class="num">4</div><div class="body">
+    <h4>correction enters as DOCK-D-128b — a NEW record</h4>
+    <p>No mutation (V3). The fixed claim emits with <span class="mono">supersedes=DOCK-D-128</span>. The gate verifies the target exists first: <code class="fl">emit.py:109</code> <span class="mono">_check_supersedes_exists</span> — missing target raises <span class="mono">LayerAValidationError("supersedes-not-found")</span> (emit.py:117). Field defined <code class="fl">schema.py:125</code>.</p>
+  </div></div>
+  <div class="step"><div class="num">5</div><div class="body">
+    <h4>re-gate; cap at 3 rounds then auto-downgrade</h4>
+    <p>DOCK-D-128b re-runs the full gate. If critique rounds reach 3, <span class="mono">apply_critique</span> stops raising and returns <span class="mono">{downgraded:true, tier:"draft"}</span> (<code class="fl">runstate.py:189</code>) — the loop never stalls forever.</p>
+  </div></div>
+
+  <h3><span class="dot" style="background:var(--green)"></span>The tests that PROVE it</h3>
+  <table>
+    <thead><tr><th>Test <span class="mono" style="font-weight:400;text-transform:none">(tests/platform/gate/…)</span></th><th>file:line</th><th>Asserts</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">test_open_high_on_published_claim_raises</td><td><code class="fl v">test_critique_gate.py:79</code></td><td>open HIGH on published claim → <span class="mono">pytest.raises(CritiqueGateError)</span></td></tr>
+      <tr><td class="mono">test_open_high_on_board_audience_raises</td><td><code class="fl v">test_critique_gate.py:106</code></td><td>tier=draft BUT audience=board → still raises (V16 board gate)</td></tr>
+      <tr><td class="mono">test_open_medium_on_published_does_not_raise</td><td><code class="fl v">test_critique_gate.py:132</code></td><td>medium &lt; high threshold → no raise</td></tr>
+      <tr><td class="mono">test_resolved_high_on_published_does_not_raise</td><td><code class="fl v">test_critique_gate.py:159</code></td><td>resolved (not open) HIGH → gate passes</td></tr>
+      <tr><td class="mono">test_open_critical_on_research_does_not_raise</td><td><code class="fl v">test_critique_gate.py:187</code></td><td>research (untiered knowledge) exempt</td></tr>
+      <tr><td class="mono">test_critique_rounds_incremented_on_gate_fail</td><td><code class="fl v">test_critique_gate.py:207</code></td><td>after raise, <span class="mono">state.critiqueRounds == 1</span></td></tr>
+      <tr><td class="mono">test_cap_3_triggers_downgrade</td><td><code class="fl v">test_critique_gate.py:248</code></td><td>at rounds==3 → <span class="mono">result.downgraded is True, tier=="draft"</span> (no raise)</td></tr>
+      <tr><td class="mono">test_supersedes_existing_record_accepted</td><td><code class="fl v">test_supersession.py:39</code></td><td>128b with supersedes=128 accepted; <span class="mono">rec2["supersedes"]==ref1.record_id</span></td></tr>
+      <tr><td class="mono">test_supersedes_nonexistent_record_raises</td><td><code class="fl v">test_supersession.py:58</code></td><td><span class="mono">raises(LayerAValidationError, match="supersedes-not-found")</span></td></tr>
+      <tr><td class="mono">test_supersedes_nonexistent_increments_rejection</td><td><code class="fl v">test_supersession.py:69</code></td><td>rejected supersession → <span class="mono">state.rejectionCount == 1</span> (V2)</td></tr>
+      <tr><td class="mono">test_supersedes_chain_three_records</td><td><code class="fl v">test_supersession.py:100</code></td><td>001→002→003 chain holds (re-gate loop closes)</td></tr>
+    </tbody>
+  </table>
+  <div class="note">Severity ladder + gate predicates live in <code class="fl">runstate.py:81</code> (CritiqueSeverity), <code class="fl">runstate.py:126</code> (_is_gated_tier). Supersedes field on all four record types: <code class="fl">schema.py:125</code> / 180 / 216 / 253. Immutability error path: <code class="fl">store.py:81</code> (“Create a new record with a 'supersedes' edge instead.”).</div>
+</section>
+
+<!-- ============ 6 READINESS ============ -->
+<section class="tab" id="readiness">
+  <h2>Readiness board <span class="tag">§T 23/25 done · every row a file:line</span></h2>
+  <p class="section-lede">Status straight from <code class="k">SPEC.md</code> §T (lines 74–98). Each DONE row maps to its enforcing module. T15 + T24 are the only
+    open rows — both Evidence read-end. KN’s directive marks them <span class="badge b-cut">CUT</span> (Vega-Lite supersedes Evidence); Task B runs <code class="k">/ck:spec</code> to record that in SPEC.</p>
+
+  <div class="legend">
+    <span><span class="badge b-done">done</span> shipped + tested</span>
+    <span><span class="badge b-cut">cut</span> won't-do (KN directive)</span>
+    <span><span class="badge b-todo">open</span> still <span class="mono">.</span> in SPEC</span>
+  </div>
+
+  <table>
+    <thead><tr><th style="width:48px">T</th><th style="width:90px">Status</th><th>Task (SPEC.md §T)</th><th style="width:230px">Enforcing ref</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">T1</td><td><span class="badge b-done">done</span></td><td>RecordSchema discriminated union</td><td><code class="fl">schema.py:266</code> <span class="mono">SPEC:74</span></td></tr>
+      <tr><td class="mono">T2</td><td><span class="badge b-done">done</span></td><td>core _record_emit + typed wrappers</td><td><code class="fl">emit.py:432</code></td></tr>
+      <tr><td class="mono">T3</td><td><span class="badge b-done">done</span></td><td>content-address fingerprints (sha256 canonical)</td><td><code class="fl">fingerprint.py:77</code></td></tr>
+      <tr><td class="mono">T4</td><td><span class="badge b-done">done</span></td><td>storage: record.json + records.jsonl + events</td><td><code class="fl">store.py:65</code></td></tr>
+      <tr><td class="mono">T5</td><td><span class="badge b-done">done</span></td><td>RunState + idempotent finalizeRun</td><td><code class="fl">runstate.py:277</code></td></tr>
+      <tr><td class="mono">T6</td><td><span class="badge b-done">done</span></td><td>supersession edge</td><td><code class="fl">emit.py:109</code></td></tr>
+      <tr><td class="mono">T7</td><td><span class="badge b-done">done</span></td><td>tier gate: published needs full fingerprint set</td><td><code class="fl">emit.py:432</code> <span class="mono">V6/V22</span></td></tr>
+      <tr><td class="mono">T8</td><td><span class="badge b-done">done</span></td><td>Layer A/B/C wiring</td><td><code class="fl">runcheck.py:45</code></td></tr>
+      <tr><td class="mono">T9</td><td><span class="badge b-done">done</span></td><td>input-provenance check (reject raw parquet)</td><td><code class="fl">adapter.py:79</code> <span class="mono">V13</span></td></tr>
+      <tr><td class="mono">T10</td><td><span class="badge b-done">done</span></td><td>coverage-warning gate</td><td><code class="fl">emit.py:432</code> <span class="mono">V14</span></td></tr>
+      <tr><td class="mono">T11</td><td><span class="badge b-done">done</span></td><td>selection params + Layer-C cross-check</td><td><code class="fl">runcheck.py:142</code></td></tr>
+      <tr><td class="mono">T12</td><td><span class="badge b-done">done</span></td><td>critique severity gate + critiqueRounds</td><td><code class="fl">runstate.py:139</code></td></tr>
+      <tr><td class="mono">T13</td><td><span class="badge b-done">done</span></td><td>published-tier fail-closed hooks</td><td><code class="fl">runstate.py:310</code></td></tr>
+      <tr><td class="mono">T14</td><td><span class="badge b-done">done</span></td><td>ik_feature_get provisional-fallback</td><td><code class="fl">feature.py:84</code></td></tr>
+      <tr style="background:#f6e3df"><td class="mono">T15</td><td><span class="badge b-cut">cut</span></td><td>Evidence read-end &lt;ClaimNum&gt;/&lt;ClaimChart&gt;</td><td><span class="mono">SPEC:88</span> — open <span class="mono">.</span> · Vega supersedes</td></tr>
+      <tr><td class="mono">T16</td><td><span class="badge b-done">done</span></td><td>Layer-D render audit (L5+L6)</td><td><code class="fl">audit.py:152</code> / <code class="fl">audit.py:242</code></td></tr>
+      <tr><td class="mono">T17</td><td><span class="badge b-done">done</span></td><td>eval harness (golden=audited-truth)</td><td><span class="mono">SPEC:90</span></td></tr>
+      <tr><td class="mono">T18</td><td><span class="badge b-done">done</span></td><td>L3 pi extension (.pi/extensions/*.ts)</td><td><code class="fl">core.ts:48</code> / <code class="fl">insight-kit.ts:101</code></td></tr>
+      <tr><td class="mono">T19</td><td><span class="badge b-done">done</span></td><td>purity lint (no hamilton/pi in L1)</td><td><code class="fl v">test_purity.py</code> <span class="mono">V5</span></td></tr>
+      <tr><td class="mono">T20</td><td><span class="badge b-done">done</span></td><td>env capture (container digest + lockfile)</td><td><code class="fl">env.py:108</code></td></tr>
+      <tr><td class="mono">T21</td><td><span class="badge b-done">done</span></td><td>intervention reconciliation (intent/realized)</td><td><code class="fl">schema.py:164</code> <span class="mono">V19</span></td></tr>
+      <tr><td class="mono">T22</td><td><span class="badge b-done">done</span></td><td>research/skill_use knowledge records + cites</td><td><code class="fl">emit.py:704</code> <span class="mono">V20</span></td></tr>
+      <tr><td class="mono">T23</td><td><span class="badge b-done">done</span></td><td>post-hoc utility verdict (append-only)</td><td><code class="fl">verdict.py:40</code></td></tr>
+      <tr style="background:#f6e3df"><td class="mono">T24</td><td><span class="badge b-cut">cut</span></td><td>Evidence intervention page</td><td><span class="mono">SPEC:97</span> — open <span class="mono">.</span> · Vega supersedes</td></tr>
+      <tr><td class="mono">T25</td><td><span class="badge b-done">done</span></td><td>cutover: rewire adapter+cli, delete run.py/claim.py</td><td><code class="fl">adapter.py</code> · legacy deleted</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note warn"><b>SPEC vs directive, stated honestly.</b> As of this commit SPEC.md still carries T15 + T24 as open (<span class="mono">.</span>). They are marked <span class="badge b-cut" style="vertical-align:middle">cut</span> here on KN’s call that Evidence read-end is obsolete (Vega-Lite is the render path — see <code class="fl">render_adapters.py:59</code> VegaLiteAdapter, already the audited surface). <b>Task B</b> runs <code class="k">/ck:spec</code> (the spec’s sole mutator) to make SPEC agree. Until that commit lands, this board leads the spec by one step.</div>
+
+  <p style="font-size:13.5px;color:var(--ink2)">Invariant anchors: V12 render audit <code class="fl">audit.py:152</code>, V16 critique gate <code class="fl">runstate.py:139</code>, V17 fail-closed <code class="fl">runstate.py:310</code>, V18 provisional feature <code class="fl">feature.py:84</code>, V19 reconciliation <code class="fl">schema.py:164</code>, V22 fingerprint honesty <code class="fl">schema.py:20</code> (DataFingerprintSource).</p>
+</section>
+
+<!-- ============ 7 DIFF ============ -->
+<section class="tab" id="diff">
+  <h2>Diff: old approach vs the gate <span class="tag">flat jsonl → content-addressed immutable</span></h2>
+  <p class="section-lede">Two contrasts. <b>(a)</b> the pre-T25 in-repo legacy (<code class="k">provenance/run.py</code> + <code class="k">claim.py</code>, recovered from git history).
+    <b>(b)</b> the sibling nairomarket <code class="k">growth_insights/.eval-out/run/claims.jsonl</code> — flat one-line-per-claim.</p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3 style="margin-top:0"><span class="dot" style="background:var(--grey)"></span>OLD — flat jsonl, mutable</h3>
+      <p style="font-size:13px;color:var(--ink2)">Pre-T25 <code class="k">provenance/run.py</code> (1070 lines) + <code class="k">claim.py</code> (103 lines). Last present at <code class="fl">e21c665</code>, deleted in <code class="fl">df671b2</code> (T25 cutover).</p>
+      <ul class="tight" style="font-size:13px">
+        <li>Claims accumulate in-memory <span class="mono">self._claims</span>, flushed <b>all at once</b> to one <span class="mono">claims.jsonl</span> at <span class="mono">Run.__exit__</span>.</li>
+        <li>“Append-only” by <i>comment</i>, not by structure — the whole file is rewritten on exit.</li>
+        <li>No content-addressing — no record_fingerprint; claim_id is caller-supplied / sequential.</li>
+        <li>Validation batched at exit (Layer-B global uniqueness), not per-record at write.</li>
+        <li>Supersedes is a plain field; existence not checked at emit.</li>
+      </ul>
+      <pre class="code"><span class="c"># sibling: growth_insights/.eval-out/run/claims.jsonl</span>
+{<span class="s">"claim_id"</span>:<span class="s">"MD-D-G6-001"</span>,<span class="s">"tier"</span>:<span class="s">"derived"</span>,
+ <span class="s">"analyst"</span>:<span class="s">"karpathy"</span>,<span class="s">"goal"</span>:<span class="s">"g4f7_attribution"</span>,
+ <span class="s">"statement"</span>:<span class="s">"blended CPA fell 1,498→1,055 KES…"</span>,
+ <span class="s">"result_snapshot"</span>:<span class="s">"pre:1,498/519 post:1,055/158"</span>,
+ <span class="s">"confidence"</span>:<span class="s">"Med"</span>,<span class="s">"cites"</span>:[]}
+<span class="c"># numbers live as prose. no fingerprint. no</span>
+<span class="c"># immutability. no audit join. mutable line.</span></pre>
+      <p class="cap">Sibling repo — verified present at <span class="mono">/…/nairomarket/growth_insights/.eval-out/run/claims.jsonl</span>; sample line above is real.</p>
+    </div>
+
+    <div class="card" style="border-color:var(--clay)">
+      <h3 style="margin-top:0"><span class="dot" style="background:var(--rust)"></span>NEW — content-addressed, immutable</h3>
+      <p style="font-size:13px;color:var(--ink2)">Post-T25 <code class="k">platform/gate/</code>. Every record validated → fingerprinted → written once → indexed.</p>
+      <ul class="tight" style="font-size:13px">
+        <li><b>Content-addressing:</b> record_id derived from sha256 of canonical record.json — <code class="fl">fingerprint.py:77</code> / <code class="fl">fingerprint.py:103</code>.</li>
+        <li><b>Immutability:</b> write-once; re-emit raises FileExistsError (V3) — <code class="fl">store.py:65</code> / refusal <code class="fl">store.py:79</code>.</li>
+        <li><b>Supersedes is checked:</b> target must exist or <span class="mono">supersedes-not-found</span> raises — <code class="fl">emit.py:109</code>.</li>
+        <li><b>Per-record validation</b> at the gate, zero partial write on reject (V2) — <code class="fl">emit.py:432</code>.</li>
+        <li><b>L5/L6 audit:</b> rendered numbers must join to a claim field; prose carries zero bare numerics — <code class="fl">audit.py:152</code> / <code class="fl">audit.py:242</code>.</li>
+        <li><b>Provenance honesty:</b> data_fingerprint_source ∈ {registered_input, payload}; published with payload-only → reject (V22) — <code class="fl">schema.py:20</code>.</li>
+      </ul>
+      <pre class="code"><span class="c"># records/DOCK-D-128/record.json (canonical)</span>
+{
+  <span class="s">"record_type"</span>:<span class="s">"claim"</span>, <span class="s">"tier"</span>:<span class="s">"published"</span>,
+  <span class="s">"fields"</span>:{<span class="s">"repeat_value_multiple"</span>:[<span class="hl">2.3</span>,<span class="s">"x"</span>]},
+  <span class="s">"record_fingerprint"</span>:<span class="s">"sha256:9f3c…"</span>,
+  <span class="s">"data_fingerprint"</span>:<span class="s">"sha256:11ab…"</span>,
+  <span class="s">"data_fingerprint_source"</span>:<span class="s">"registered_input"</span>,
+  <span class="s">"supersedes"</span>:<span class="kw">null</span>, <span class="s">"narrative_ref"</span>:<span class="s">"narrative.md"</span>
+}
+<span class="c"># every number is a field. immutable. audited.</span></pre>
+    </div>
+  </div>
+
+  <h3><span class="dot"></span>What the gate adds over the flat approach</h3>
+  <table>
+    <thead><tr><th>Property</th><th style="width:230px">flat jsonl (old)</th><th style="width:260px">gate (post-T25)</th><th style="width:150px">enforced at</th></tr></thead>
+    <tbody>
+      <tr><td class="t">content-addressing</td><td>✗ caller-supplied id</td><td>✓ sha256(canonical record.json)</td><td><code class="fl">fingerprint.py:77</code></td></tr>
+      <tr><td class="t">immutability</td><td>✗ file rewritten at exit</td><td>✓ write-once, overwrite refused</td><td><code class="fl">store.py:79</code></td></tr>
+      <tr><td class="t">supersedes integrity</td><td>✗ unchecked field</td><td>✓ target-exists or reject</td><td><code class="fl">emit.py:109</code></td></tr>
+      <tr><td class="t">per-record validation</td><td>✗ batched at exit</td><td>✓ at emit, zero partial write</td><td><code class="fl">emit.py:432</code></td></tr>
+      <tr><td class="t">L5 token→claim audit</td><td>✗ numbers as prose</td><td>✓ orphan render = fail</td><td><code class="fl">audit.py:152</code></td></tr>
+      <tr><td class="t">L6 prose lint</td><td>✗ free-text statement</td><td>✓ zero bare numerics</td><td><code class="fl">audit.py:242</code></td></tr>
+      <tr><td class="t">fingerprint honesty</td><td>✗ none</td><td>✓ registered_input vs payload</td><td><code class="fl">schema.py:20</code></td></tr>
+      <tr><td class="t">critique gate</td><td>✗ advisory</td><td>✓ open-high blocks published</td><td><code class="fl">runstate.py:139</code></td></tr>
+    </tbody>
+  </table>
+  <div class="note honest"><b>Flagged on trust:</b> the nairomarket <span class="mono">growth_insights</span> repo is a <i>sibling</i>, not part of this worktree. Its <span class="mono">claims.jsonl</span> path + sample line were verified by a fact-gather pass; treat the comparison as illustrative of the flat-jsonl pattern the gate replaces, not as in-tree code.</div>
+</section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>insight-kit e2e explainer · branch <b>docs/e2e-explainer</b> @ 961aaa3 · all file:line from this worktree</span>
+    <span>tabs: <span class="kbd">1</span>–<span class="kbd">7</span> · gate 14 modules · ~411 tests GREEN</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var nav=document.getElementById('tabnav');
+  var btns=[].slice.call(nav.querySelectorAll('button'));
+  var tabs=[].slice.call(document.querySelectorAll('section.tab'));
+  function show(id){
+    btns.forEach(function(b){b.classList.toggle('active',b.dataset.tab===id);});
+    tabs.forEach(function(t){t.classList.toggle('active',t.id===id);});
+    window.scrollTo({top:0,behavior:'instant'});
+  }
+  nav.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(b) show(b.dataset.tab);
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    var i=parseInt(e.key,10);
+    if(i>=1&&i<=btns.length) show(btns[i-1].dataset.tab);
+  });
+})();
+</script>
+</body>
+</html>
