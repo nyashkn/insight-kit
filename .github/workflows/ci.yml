@@ -51,11 +51,20 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Install Python deps
+        run: uv sync --extra dev --extra polars
       - name: Install JS deps
         run: bun install --frozen-lockfile
       - name: Typecheck .pi (tsc)
         run: bun run pi:typecheck
       - name: Test .pi (bun test)
+        # bun test ./.pi/test/ shells `uv run python -m insight_kit.platform.gate.cli`
+        # (the C4 lang seam) — needs the uv/Python env set up above.
         run: bun run pi:test
 
   eval:
