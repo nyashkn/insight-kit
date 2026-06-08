@@ -13,7 +13,11 @@ All three records are content-addressed.  Partial-write is impossible by
 construction — each emit is atomic (V2) and uses the underlying _record_emit
 gate unchanged.
 
-Cites: C12, I.cites, I.emit, V20, V22, T30.
+T31 extension: if `endpoint_index` is provided, write_endpoint_index is called
+immediately after the research record is emitted so that the endpoint index is
+persisted in the same bundle as the research snapshot.
+
+Cites: C12, I.cites, I.emit, V20, V22, T30, T31.
 """
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ from insight_kit.platform.gate.emit import (
     ik_skill_use_emit,
 )
 from insight_kit.platform.gate.runstate import RecordRef, RunState
+from insight_kit.platform.gate.store import write_endpoint_index
 
 # ---------------------------------------------------------------------------
 # Return type
@@ -84,6 +89,8 @@ def ik_acquire(
     claim_coverage: dict[str, Any] | None = None,
     claim_coverage_warning: str | None = None,
     claim_selection: dict[str, Any] | None = None,
+    # optional endpoint index (T31) — written alongside the research snapshot
+    endpoint_index: dict[str, Any] | None = None,
     # run wiring
     run_state: RunState,
     run_dir: Path | None = None,
@@ -119,6 +126,12 @@ def ik_acquire(
         claim_coverage:        optional CoverageInfo dict.
         claim_coverage_warning: optional coverage_warning string.
         claim_selection:       optional SelectionParams dict.
+        endpoint_index:        optional endpoint-index dict (T31 — written as
+                               records/{research_record_id}/endpoint_index.json
+                               immediately after the research record is emitted).
+                               Shape: {"available_endpoints": [{endpoint, relevance,
+                               source, ...}, ...]}. If None, no file is written
+                               and existing callers are unaffected.
         run_state:             mutable RunState accumulator for this run session.
         run_dir:               run directory; resolved from env if None.
 
@@ -140,6 +153,10 @@ def ik_acquire(
         run_state=run_state,
         run_dir=run_dir,
     )
+
+    # 1a. Optional endpoint index (T31) — persisted alongside the research snapshot.
+    if endpoint_index is not None:
+        write_endpoint_index(run_dir or research_ref.run_dir, research_ref.record_id, endpoint_index)
 
     # 2. Skill-use record — the api-data-extraction; cites the research record.
     skill_use_ref = ik_skill_use_emit(

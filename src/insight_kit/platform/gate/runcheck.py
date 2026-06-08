@@ -11,14 +11,26 @@ gaps (V16). Detects when a claim used only a subset of available high-relevance
 API endpoints. Callers fire a critique via apply_critique when missed_high
 endpoints are found.
 
+T32 extension — derive_used_endpoints: scans skill_use record.json files under
+run_dir/records/* and collects their .source values, building the real used-set
+from emitted data rather than a hand-fed list.
+
+check_coverage_from_run: convenience that wires derive_used_endpoints +
+read_endpoint_index into check_endpoint_coverage_gap for end-to-end critic runs.
+
 Cites: I.runcheck, V2, V16, C1, T32.
 """
 from __future__ import annotations
 
+import json
+import logging
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # CheckResult — structured return value
@@ -313,4 +325,91 @@ def check_endpoint_coverage_gap(
             f"{label}: all {len(high_endpoints)} high-relevance endpoint(s) covered "
             f"(T32/V16)"
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# T32 extension — derive_used_endpoints + check_coverage_from_run
+# ---------------------------------------------------------------------------
+
+
+def derive_used_endpoints(run_dir: Path) -> set[str]:
+    """Scan skill_use record.json files and collect their .source values.
+
+    Walks records/*/record.json under run_dir, reads every record whose
+    record_type == 'skill_use', and accumulates the non-empty `source` field
+    values into a set.  This derives the real used-endpoint set from emitted
+    data rather than requiring the caller to hand-feed a list.
+
+    Skips corrupt or unreadable record.json files with a WARNING log (mirrors
+    the store.reindex / graph_query.query_cites skip pattern).
+
+    Args:
+        run_dir: path to the run directory (must exist; records/ scanned).
+
+    Returns:
+        set[str] of source values from all skill_use records found.
+        Empty set if no skill_use records are found or run_dir has no records/.
+
+    Cites: T32, V16, I.store.
+    """
+    run_dir = Path(run_dir).resolve()
+    records_root = run_dir / "records"
+    used: set[str] = set()
+
+    if not records_root.exists():
+        return used
+
+    for rec_path in sorted(records_root.glob("*/record.json")):
+        try:
+            rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        except Exception:
+            log.warning(
+                "derive_used_endpoints: skipping corrupt record at %s", rec_path
+            )
+            continue
+
+        if rec.get("record_type") != "skill_use":
+            continue
+
+        source = rec.get("source", "")
+        if source:
+            used.add(str(source))
+
+    return used
+
+
+def check_coverage_from_run(
+    run_dir: Path,
+    research_record_id: str,
+    *,
+    claim_id: str | None = None,
+) -> "CheckEndpointCoverageResult":
+    """End-to-end coverage check: derive used-set + read index + run gap check.
+
+    Convenience that wires three steps together for the T32 end-to-end critic:
+      1. derive_used_endpoints(run_dir)  — real sources from skill_use records.
+      2. read_endpoint_index(run_dir, research_record_id)  — load stored index.
+      3. check_endpoint_coverage_gap(index, used_list, claim_id=claim_id).
+
+    Args:
+        run_dir:             run directory containing records/.
+        research_record_id:  record_id (directory name) of the research record
+                             whose endpoint_index.json should be loaded.
+        claim_id:            optional claim_id forwarded to the gap check for
+                             descriptive messages.
+
+    Returns:
+        CheckEndpointCoverageResult from check_endpoint_coverage_gap.
+
+    Cites: T32, V16.
+    """
+    from insight_kit.platform.gate.store import read_endpoint_index
+
+    used_set = derive_used_endpoints(run_dir)
+    endpoint_index = read_endpoint_index(run_dir, research_record_id)
+    return check_endpoint_coverage_gap(
+        endpoint_index,
+        list(used_set),
+        claim_id=claim_id,
     )
