@@ -130,6 +130,10 @@ def _run_layer_a_guards(
     if run_dir is not None and record.record_type == "claim":
         _check_supporter_refutes_targets(record, run_dir)
 
+    # T29 (completion) — input_claims targets must exist and be claim records.
+    if run_dir is not None and record.record_type == "claim":
+        check_input_claims_exist(record, run_dir)
+
 
 def _check_supersedes_exists(supersedes_id: str, run_dir: Path) -> None:
     """T6/V3 — verify the superseded record exists in the run dir.
@@ -257,6 +261,57 @@ def _check_supporter_refutes_targets(record: Any, run_dir: Path) -> None:
                         f"For knowledge provenance, use `cites` with research/skill_use records."
                     ),
                 )
+
+
+def check_input_claims_exist(record: Any, run_dir: Path) -> None:
+    """T29 (completion) — input_claims targets must exist and be claim records.
+
+    A claim may declare input_claims edges pointing at other claims from which
+    it is derived (data lineage).  This is distinct from:
+      - `cites`  (knowledge-provenance chain: research/skill_use ids)
+      - `supports`/`refutes`  (critic stance edges: claim->claim critique)
+
+    Each input_claims target must:
+      - resolve to an existing record in the run dir (referential integrity), and
+      - be a claim record — input_claims captures derivation lineage between
+        claims, not citations of knowledge records.
+
+    Raises LayerAValidationError on a dangling or wrong-type target.
+    Zero partial write (V2).
+    """
+    from insight_kit.platform.gate.store import read_record, record_path
+
+    input_claims = getattr(record, "input_claims", None) or []
+
+    for target_id in input_claims:
+        if not record_path(run_dir, target_id).exists():
+            raise LayerAValidationError(
+                rule_id="input-claims-not-found",
+                message=(
+                    f"input_claims references {target_id!r}, which does not correspond "
+                    "to any record in the run directory. An input_claims edge must "
+                    "point to a claim record that already exists (T29, data lineage)."
+                ),
+                suggestion=(
+                    f"Emit the source claim record first, then reference its record_id "
+                    f"in input_claims. Or check {target_id!r} is correct."
+                ),
+            )
+        target_type = read_record(run_dir, target_id).get("record_type")
+        if target_type != "claim":
+            raise LayerAValidationError(
+                rule_id="input-claims-wrong-type",
+                message=(
+                    f"input_claims references {target_id!r}, a {target_type!r} record. "
+                    "The input_claims edge is the claim->claim data-lineage chain — it "
+                    "may only point to a claim record (T29). For knowledge provenance "
+                    "(research/skill_use), use `cites` instead."
+                ),
+                suggestion=(
+                    "Use input_claims only to reference claim records that this claim "
+                    "is derived from. For research/skill_use knowledge sources, use `cites`."
+                ),
+            )
 
 
 _PARQUET_EXTENSIONS: tuple[bytes, ...] = (b".pq", b".parquet")
@@ -682,6 +737,7 @@ def ik_claim_emit(
     supersedes: str | None = None,
     supports: list[str] | None = None,
     refutes: list[str] | None = None,
+    input_claims: list[str] | None = None,
     coverage: dict[str, Any] | None = None,
     coverage_warning: str | None = None,
     selection: dict[str, Any] | None = None,
@@ -701,6 +757,12 @@ def ik_claim_emit(
     supports / refutes — T29/C13: claim->claim edges for critic-tier claims.
     A critic-tier claim must declare at least one supports or refutes target.
     All targets must be existing claim records in the run dir.
+
+    input_claims — T29 (completion): record_ids of OTHER CLAIM records this
+    claim is computed/derived from (claim->claim data lineage).  Distinct from
+    `cites` (research/skill_use knowledge provenance) and from
+    `supports`/`refutes` (critique stance edges).  All targets must be existing
+    claim records in the run dir.
 
     coverage / coverage_warning — T10/V14: a published claim with thin coverage
     (coverage={"partial_period": True} or coverage={"n": <30}) is rejected at
@@ -737,6 +799,8 @@ def ik_claim_emit(
         payload["supports"] = supports
     if refutes:
         payload["refutes"] = refutes
+    if input_claims:
+        payload["input_claims"] = input_claims
     if coverage is not None:
         payload["coverage"] = coverage
     if coverage_warning is not None:

@@ -122,6 +122,11 @@ class ClaimRecord(BaseModel):
     refutes:  T29/C13 — list of claim_ids this claim refutes (claim->claim edges).
               All targets must exist and be claim records. Enforced by
               _check_supporter_refutes_targets at emit.
+    input_claims: T29 (completion) — record_ids of OTHER CLAIM records this
+              claim is computed/derived from (claim->claim data lineage).
+              Distinct from `cites` (research/skill_use knowledge provenance)
+              and from `supports`/`refutes` (critique stance edges).
+              Enforced by check_input_claims_exist at emit.
     coverage: optional input-coverage metadata (n, partial_period) — T10/V14.
     coverage_warning: warning text; a published claim with thin coverage
         (partial_period or n<30) must carry one or emit rejects (T10/V14).
@@ -143,6 +148,13 @@ class ClaimRecord(BaseModel):
     # T29/C13 — critic-tier claim->claim support/refutation edges.
     supports: list[str] = Field(default_factory=list)
     refutes: list[str] = Field(default_factory=list)
+    # T29 (completion) — claim->claim data-lineage edges.
+    # record_ids of OTHER CLAIM records this claim is computed/derived from.
+    # Distinct from `cites` (knowledge provenance: research/skill_use ids) and
+    # from `supports`/`refutes` (critique stance edges).  Values are
+    # content-addressed record_ids (same id-space as cites/supersedes =
+    # records/<dir>/ directory name = record_id_from_fingerprint).
+    input_claims: list[str] = Field(default_factory=list)
     # T10/V14 — input coverage + the warning thin coverage requires.
     coverage: CoverageInfo | None = None
     coverage_warning: str | None = None
