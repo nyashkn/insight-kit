@@ -94,25 +94,55 @@ class CritiqueSeverity(IntEnum):
 class CritiqueState:
     """Immutable snapshot of a single critique.
 
-    status:   'open' | 'resolved'.
-    severity: CritiqueSeverity.
-    reason:   free-text explanation.
+    status:           'open' | 'resolved'.
+    severity:         CritiqueSeverity.
+    reason:           free-text explanation.
+    critic_id:        optional identity of the critic (agent id, user id, etc.).
+    target_record_id: optional id of the record being critiqued (defaults to record_id
+                      in apply_critique if not set).
+    timestamp:        optional ISO-8601 string; defaults to current UTC time in
+                      apply_critique if not set.
     """
 
     status: str
     severity: CritiqueSeverity
     reason: str
+    critic_id: str | None = None
+    target_record_id: str | None = None
+    timestamp: str | None = None
 
     @classmethod
-    def open(cls, *, severity: str | CritiqueSeverity, reason: str) -> CritiqueState:
+    def open(
+        cls,
+        *,
+        severity: str | CritiqueSeverity,
+        reason: str,
+        critic_id: str | None = None,
+        target_record_id: str | None = None,
+        timestamp: str | None = None,
+    ) -> CritiqueState:
         """Factory for an open critique."""
         if isinstance(severity, str):
             severity = CritiqueSeverity[severity]
-        return cls(status="open", severity=severity, reason=reason)
+        return cls(
+            status="open",
+            severity=severity,
+            reason=reason,
+            critic_id=critic_id,
+            target_record_id=target_record_id,
+            timestamp=timestamp,
+        )
 
     def resolve(self) -> CritiqueState:
-        """Return a new CritiqueState with status='resolved'."""
-        return CritiqueState(status="resolved", severity=self.severity, reason=self.reason)
+        """Return a new CritiqueState with status='resolved', carrying provenance through."""
+        return CritiqueState(
+            status="resolved",
+            severity=self.severity,
+            reason=self.reason,
+            critic_id=self.critic_id,
+            target_record_id=self.target_record_id,
+            timestamp=self.timestamp,
+        )
 
 
 class CritiqueGateError(Exception):
@@ -144,6 +174,7 @@ def apply_critique(
     tier: str | None,
     audience: str | None,
     critique: CritiqueState,
+    run_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Apply a critique to a record and enforce the severity gate (V16).
 
@@ -164,6 +195,22 @@ def apply_critique(
     Raises CritiqueGateError when severity gate fires (below cap).
     """
     run_state.critiqueRounds += 1
+
+    # Persist the critique event when a run_dir is supplied (T27).
+    # Placed BEFORE gate branches so the event is written on every path —
+    # pass, downgrade, AND the raise path (record-then-enforce).
+    if run_dir is not None:
+        from insight_kit.platform.gate.store import append_event  # lazy import — avoid runstate<->store circular
+
+        event: dict[str, Any] = {
+            "status": critique.status,
+            "severity": critique.severity.name,
+            "reason": critique.reason,
+            "critic_id": critique.critic_id,
+            "target_record_id": critique.target_record_id or record_id,
+            "timestamp": critique.timestamp or datetime.now(UTC).isoformat(),
+        }
+        append_event(run_dir, record_id, "critique", event)
 
     # Gate only applies to tiered record types
     if record_type not in _GATED_RECORD_TYPES:
