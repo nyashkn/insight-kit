@@ -3,7 +3,7 @@
 T25 cutover: the legacy `Run`-integration tests are dropped — `Run` is deleted
 (C13). These tests now exercise the `check_*` guard functions directly; the
 `validation/` module is kept + reused unchanged (C13). The guards' wiring into
-the L1 gate is covered by tests/gate/test_layer_a_wiring.py.
+the L1 gate is covered by tests/platform/gate/test_layer_a_wiring.py.
 
 Covers: claim-id-format, claim-id-namespace, critic-requires-edge,
 external-requires-caveats, input-claims-referential-integrity,
