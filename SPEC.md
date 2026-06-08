@@ -1,6 +1,6 @@
 # SPEC — insight-kit · L1 typed-record gate
 
-caveman spec. ck-governed. `/ck:spec` sole mutator. task status: `.` todo · `~` wip · `x` done.
+caveman spec. ck-governed. `/ck:spec` sole mutator. task status: `.` todo · `~` wip · `x` done · `-` won't-do.
 scope = Layer 1 of the 3-layer pi-harness redesign (docs/hamilton-synthesis/pi-harness-redesign.html).
 §R folds the 2026-05-21 opus red-team of the 3-layer design.
 
@@ -85,7 +85,7 @@ T11 | x  | selection params as explicit claim fields + Layer-C cross-check (annu
 T12 | x  | critique severity gate + critiqueRounds counter in RunState                            | V16
 T13 | x  | published-tier fail-closed hooks — manifest/finalize fatal on published                | V17
 T14 | x  | ik_feature_get — provisional-feature return on miss + draft-lock                       | V18
-T15 | .  | Evidence read-end — <ClaimNum>/<ClaimChart> resolve from index, fingerprint vs record.json | V9,I.evidence
+T15 | -  | Evidence read-end — <ClaimNum>/<ClaimChart> resolve from index, fingerprint vs record.json. WON'T-DO: Evidence read-end obsolete — Vega-Lite render path supersedes (render_adapters.py VegaLiteAdapter + L5/L6 audit = canonical audited surface). KN 2026-06-08 | V9,I.evidence
 T16 | x  | Layer-D render audit — L5 HTML-token→claim join + L6 prose lint, CI-blocking on published | V12,I.audit
 T17 | x  | eval harness — containerize growth_insights fixture, golden=audited-truth, semantic field-diff, classify regression/legitimate/coverage-drop, buggy runs as negative fixtures | V11,C10,C11
 T18 | x  | L3 pi extension (.pi/extensions/*.ts) — typed-wrapper TS ToolDefinitions (ik_claim_emit + ik_intervention_emit + ik_research_emit + ik_skill_use_emit), call L1 via pi.exec uv-run subprocess, gen TypeBox parameters from pydantic JSON Schema, gate on tool_call/tool_result hooks | C4,C5,I.emit
@@ -94,7 +94,7 @@ T20 | x  | env capture — container digest + lockfile hash into run.json       
 T21 | x  | intervention reconciliation — intent/realized fields, emit-time reconciliation gate, draft→published promotion lock until realized populated | V19,C12
 T22 | x  | research/skill_use knowledge records — captured-results snapshot persist, cites-edge requirement on dependent published claim/intervention | V20,I.cites
 T23 | x  | post-hoc utility verdict — append-only useful/not_useful event on research/skill_use records | V21,I.events
-T24 | .  | Evidence intervention page — render per-intervention from intervention records (baseline/realized/delta/critic), replacing the initiatives_log.jsonl hand-edit | C12,I.evidence
+T24 | -  | Evidence intervention page — render per-intervention from intervention records (baseline/realized/delta/critic), replacing the initiatives_log.jsonl hand-edit. WON'T-DO: Evidence render-end obsolete — superseded by Vega-Lite path (render_adapters.py + L5/L6 audit). intervention records still emit via gate (T21); only the Evidence page is cut. KN 2026-06-08 | C12,I.evidence
 T25 | x  | cutover — rewire InsightKitHook adapter + cli + agents + insight_kit/__init__ exports onto the gate; delete provenance/run.py + provenance/claim.py; delete/rewrite obsolete tests; full uv run pytest green | C8,C13,V1
 ```
 
