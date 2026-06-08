@@ -43,6 +43,21 @@ jobs:
       - name: Build
         run: uv build
 
+  pi-seam:
+    runs-on: ubuntu-latest
+    needs: security
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install JS deps
+        run: bun install --frozen-lockfile
+      - name: Typecheck .pi (tsc)
+        run: bun run pi:typecheck
+      - name: Test .pi (bun test)
+        run: bun run pi:test
+
   eval:
     runs-on: ubuntu-latest
     needs: test

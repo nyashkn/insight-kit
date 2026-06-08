@@ -31,7 +31,7 @@ export const GATE_TOOL_RECORD_TYPE: Record<string, GateRecordType> = {
 
 export const GATE_TOOL_NAMES = Object.keys(GATE_TOOL_RECORD_TYPE);
 
-/** Gate record type -> `insight_kit.gate.cli` subcommand. */
+/** Gate record type -> `insight_kit.platform.gate.cli` subcommand. */
 const CLI_SUBCOMMAND: Record<GateRecordType, string> = {
 	claim: "emit-claim",
 	intervention: "emit-intervention",

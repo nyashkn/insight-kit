@@ -3,7 +3,7 @@
  * T18 — regenerate `.pi/lib/schema.generated.ts` from the L1 pydantic schema.
  *
  * C5: the pydantic record models are the single schema source. This build step
- * turns `insight_kit.gate.cli export-schema` JSON into a committed TS module the
+ * turns `insight_kit.platform.gate.cli export-schema` JSON into a committed TS module the
  * pi extension wraps as TypeBox `parameters`. Never hand-edit the generated file.
  *
  * Run: `bun run deploy/scripts/gen-pi-schema.ts`

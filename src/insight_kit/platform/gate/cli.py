@@ -1,7 +1,7 @@
 """T18 — uv-run CLI bridge: the C4 lang seam between the L3 pi extension and L1.
 
 The L3 pi extension is TypeScript; the L1 gate is Python. They meet here. The
-extension shells out — `uv run python -m insight_kit.gate.cli <subcommand>` —
+extension shells out — `uv run python -m insight_kit.platform.gate.cli <subcommand>` —
 once per tool call (the audit-engine `run_check` pattern, C4). Each invocation:
 
   emit-claim | emit-intervention | emit-research | emit-skill-use
@@ -251,7 +251,7 @@ def _emit_json(obj: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point. Returns the process exit code."""
     parser = argparse.ArgumentParser(
-        prog="insight_kit.gate.cli",
+        prog="insight_kit.platform.gate.cli",
         description="L1 typed-record gate — uv-run CLI bridge for the L3 pi extension (C4).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
