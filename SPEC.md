@@ -98,11 +98,11 @@ T24 | -  | Evidence intervention page — render per-intervention from intervent
 T25 | x  | cutover — rewire InsightKitHook adapter + cli + agents + insight_kit/__init__ exports onto the gate; delete provenance/run.py + provenance/claim.py; delete/rewrite obsolete tests; full uv run pytest green | C8,C13,V1
 T26 | x  | wire check_supersedes_chain_integrity into _run_layer_a_guards alongside _check_supersedes_exists — reject superseding an already-superseded claim (claim-only; find_kit_root wrapped, isolated-tmp skips) | V3,T6,C13
 T27 | x  | critique persistence — extend CritiqueState w/ critic_id/target_record_id/timestamp; apply_critique appends records/{id}/events/critique.jsonl via append_event (mirror T23 utility-verdict); record.json untouched; return-dict contract unchanged | V16,V21,V3,I.events
-T28 | .  | read-only cites/supersedes graph query over record.json set (derive, not project) — query_cites(run_dir) adjacency view; reuse reindex scan pattern | I.cites,V7
-T29 | .  | add critic tier + supports/refutes edges to ClaimRecord; wire check_critic_edges + check_input_claims_exist into _run_layer_a_guards | V2,C13,T27
-T30 | .  | research->skill_use->claim API-ingestion chain — ergonomic acquire() wrapper: external pull -> snapshot -> ik_research_emit (api doc search) / ik_skill_use_emit (api extraction, cites research) -> ik_claim_emit (cites both, input_data=registered) | I.cites,I.emit,V20,V22,C12
-T31 | .  | available-endpoints index — researcher distills search_docs hits into endpoint_index.json (available_endpoints + relevance) persisted in research snapshot | I.cites,V20
-T32 | .  | critic coverage check (Layer-B/C) — set-diff used(skill_use.source) vs available(research endpoint_index high-relevance); missed-high -> critique via apply_critique | I.runcheck,V16,T27,T31
+T28 | x  | read-only cites/supersedes graph query over record.json set (derive, not project) — query_cites(run_dir) adjacency view; reuse reindex scan pattern | I.cites,V7
+T29 | x  | add critic tier + supports/refutes edges to ClaimRecord; wire check_critic_edges + check_input_claims_exist into _run_layer_a_guards | V2,C13,T27
+T30 | x  | research->skill_use->claim API-ingestion chain — ergonomic acquire() wrapper: external pull -> snapshot -> ik_research_emit (api doc search) / ik_skill_use_emit (api extraction, cites research) -> ik_claim_emit (cites both, input_data=registered) | I.cites,I.emit,V20,V22,C12
+T31 | x  | available-endpoints index — researcher distills search_docs hits into endpoint_index.json (available_endpoints + relevance) persisted in research snapshot | I.cites,V20
+T32 | x  | critic coverage check (Layer-B/C) — set-diff used(skill_use.source) vs available(research endpoint_index high-relevance); missed-high -> critique via apply_critique | I.runcheck,V16,T27,T31
 T33 | x  | gate-native render composer — narrative.md ref-tags <ClaimChart src=chart.vl.json claim=.../>; chart.vl.json stays separate content-addressed sibling (C10 spec-equality); new MarkdownVegaAdapter extends RenderAdapter, run_render_audit joins prose(L6)+chart(L5) to one claim index; compose -> self-contained HTML via vega-embed, reusing usermeta.insight_kit.{claim_id,field_map}; optional vl-convert PNG for vision-critic. Evidence.dev T15 binding stays cut | V12,C10,I.audit
 ```
 
