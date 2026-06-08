@@ -6,13 +6,19 @@ tests) as a subprocess and returns a structured CheckResult.
 The runner is intentionally content-agnostic — it does not inspect, parse, or
 interpret the check logic. It delegates entirely to the script's exit code.
 
-Cites: I.runcheck, V2, C1.
+T32 — check_endpoint_coverage_gap: Layer-B/C pure-fn check for endpoint coverage
+gaps (V16). Detects when a claim used only a subset of available high-relevance
+API endpoints. Callers fire a critique via apply_critique when missed_high
+endpoints are found.
+
+Cites: I.runcheck, V2, V16, C1, T32.
 """
 from __future__ import annotations
 
 import subprocess
 import sys
 from dataclasses import dataclass, field
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # CheckResult — structured return value
@@ -188,4 +194,123 @@ def check_annual_equals_monthly_sum(
         actual=actual,
         rel_diff=rel_diff,
         message=message,
+    )
+
+
+# ---------------------------------------------------------------------------
+# T32 — endpoint coverage gap check (V16/I.runcheck)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CheckEndpointCoverageResult:
+    """Result of endpoint coverage gap check (T32, V16).
+
+    passed:               True iff no missed high-relevance endpoints.
+    missed_high_endpoints: list of endpoint ids with relevance=='high' not used.
+    available_high_count: number of high-relevance endpoints available.
+    used_endpoint_count:  number of unique endpoints actually used.
+    message:              human-readable summary.
+    """
+
+    passed: bool
+    missed_high_endpoints: list[str]
+    available_high_count: int
+    used_endpoint_count: int
+    message: str
+
+
+def check_endpoint_coverage_gap(
+    endpoint_index: dict[str, Any] | None,
+    used_endpoints: list[str],
+    *,
+    claim_id: str | None = None,
+) -> CheckEndpointCoverageResult:
+    """T32/V16/I.runcheck — Layer-B/C pure-fn check for endpoint coverage gaps.
+
+    Detects when a claim used only a subset of available high-relevance API endpoints.
+    Compares endpoints actually used (from skill_use.source values) against endpoints
+    available in the research record's endpoint_index with relevance=='high'.
+
+    Pure function — not wired into emit. A caller invokes this post-run over a set of
+    related skill_use records (e.g. via ik_run_check driving a script that calls this).
+    When missed_high endpoints are detected, the caller may fire a critique via
+    apply_critique with severity='high' (V16).
+
+    Args:
+        endpoint_index: the research record's endpoint_index dict from snapshot.
+                       Contains 'available_endpoints' list of {id, relevance, why, ...}.
+                       May be None or missing 'available_endpoints' → returns passed=True.
+        used_endpoints: list of endpoint ids actually used (derived from skill_use.source).
+        claim_id: optional claim_id for the message (descriptive, not load-bearing).
+
+    Returns:
+        CheckEndpointCoverageResult — passed True iff no high-relevance endpoints missed.
+    """
+    label = f"claim {claim_id!r}" if claim_id else "claim"
+
+    # Graceful handling: no denominator → no gate
+    if endpoint_index is None:
+        return CheckEndpointCoverageResult(
+            passed=True,
+            missed_high_endpoints=[],
+            available_high_count=0,
+            used_endpoint_count=len(set(used_endpoints)),
+            message=f"{label}: no endpoint_index provided — coverage check skipped (T32/V16)",
+        )
+
+    available_endpoints: list[dict[str, Any]] = endpoint_index.get("available_endpoints", [])
+    if not available_endpoints:
+        return CheckEndpointCoverageResult(
+            passed=True,
+            missed_high_endpoints=[],
+            available_high_count=0,
+            used_endpoint_count=len(set(used_endpoints)),
+            message=f"{label}: endpoint_index has no available_endpoints — coverage check skipped (T32/V16)",
+        )
+
+    # Collect high-relevance endpoint ids (use 'id' key, fall back to 'endpoint' key)
+    high_endpoints: list[str] = []
+    for ep in available_endpoints:
+        if ep.get("relevance") == "high":
+            ep_id = ep.get("id") or ep.get("endpoint") or ep.get("name")
+            if ep_id:
+                high_endpoints.append(str(ep_id))
+
+    if not high_endpoints:
+        return CheckEndpointCoverageResult(
+            passed=True,
+            missed_high_endpoints=[],
+            available_high_count=0,
+            used_endpoint_count=len(set(used_endpoints)),
+            message=f"{label}: no high-relevance endpoints in index — coverage check skipped (T32/V16)",
+        )
+
+    used_set = set(used_endpoints)
+    missed = [ep_id for ep_id in high_endpoints if ep_id not in used_set]
+
+    if missed:
+        missed_str = ", ".join(repr(m) for m in missed)
+        message = (
+            f"{label}: missed {len(missed)} high-relevance endpoint(s) out of "
+            f"{len(high_endpoints)} available: {missed_str} — "
+            f"possible incomplete API coverage (T32/V16)"
+        )
+        return CheckEndpointCoverageResult(
+            passed=False,
+            missed_high_endpoints=missed,
+            available_high_count=len(high_endpoints),
+            used_endpoint_count=len(used_set),
+            message=message,
+        )
+
+    return CheckEndpointCoverageResult(
+        passed=True,
+        missed_high_endpoints=[],
+        available_high_count=len(high_endpoints),
+        used_endpoint_count=len(used_set),
+        message=(
+            f"{label}: all {len(high_endpoints)} high-relevance endpoint(s) covered "
+            f"(T32/V16)"
+        ),
     )

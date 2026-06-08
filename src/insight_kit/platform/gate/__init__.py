@@ -11,7 +11,8 @@ Public API:
     RunState, RecordRef, finalizeRun, ManifestError
 
   Layer-B/C runner + cross-checks (I.runcheck):
-    ik_run_check, CheckResult, check_annual_equals_monthly_sum, CrossCheckResult
+    ik_run_check, CheckResult, check_annual_equals_monthly_sum, CrossCheckResult,
+    check_endpoint_coverage_gap, CheckEndpointCoverageResult
 
   Feature catalog (V18):
     ik_feature_get, ProvisionalFeature
@@ -38,7 +39,7 @@ Public API:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
 Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
-V15, V18, V21, T30, T31, T33.
+V15, V16, V18, V21, T30, T31, T32, T33.
 """
 from __future__ import annotations
 
@@ -71,9 +72,11 @@ from insight_kit.platform.gate.feature import (
 )
 from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter, VegaLiteAdapter
 from insight_kit.platform.gate.runcheck import (
+    CheckEndpointCoverageResult,
     CheckResult,
     CrossCheckResult,
     check_annual_equals_monthly_sum,
+    check_endpoint_coverage_gap,
     ik_run_check,
 )
 from insight_kit.platform.gate.runstate import (
@@ -119,6 +122,7 @@ __all__ = [
     "AdjacencyNode",
     "AuditReport",
     "ChartBindingResult",
+    "CheckEndpointCoverageResult",
     "CheckResult",
     "ClaimFieldRef",
     "ClaimRecord",
@@ -147,6 +151,7 @@ __all__ = [
     "audit_l5",
     "audit_l6",
     "check_annual_equals_monthly_sum",
+    "check_endpoint_coverage_gap",
     "compose_record",
     "endpoint_index_path",
     "finalizeRun",
