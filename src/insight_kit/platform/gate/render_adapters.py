@@ -6,8 +6,10 @@ backend-agnostic audit core consumes. Adding a render backend = adding an
 adapter here; the audit core never changes.
 
 Implemented:
-  VegaLiteAdapter — Altair-emitted chart.vl.json (the Vega-Lite spec, a stable
-                    public format — no SDK dependence).
+  VegaLiteAdapter    — Altair-emitted chart.vl.json (the Vega-Lite spec, a stable
+                       public format — no SDK dependence).
+  MarkdownVegaAdapter — T33 composer — narrative.md with <ClaimChart src> refs;
+                        delegates per-chart token extraction to VegaLiteAdapter.
 
 Deferred (each ships with its backend):
   EvidenceAdapter   — Evidence .md / HTML, with the Evidence SDK loop.
@@ -100,3 +102,85 @@ class VegaLiteAdapter:
         if isinstance(artifact, dict):
             return artifact
         return json.loads(Path(artifact).read_text(encoding="utf-8"))
+
+
+class MarkdownVegaAdapter:
+    """T33 — RenderAdapter for narrative.md files containing <ClaimChart src> refs.
+
+    Finds every <ClaimChart src="chart.vl.json" claim="..."/> tag in the
+    narrative, resolves each src relative to the narrative file's parent
+    directory, and delegates token extraction to VegaLiteAdapter. Returns the
+    concatenated list[RenderedToken] from all charts found.
+
+    This allows run_render_audit to audit a composed narrative's charts against
+    the claim index without re-implementing any Vega-Lite token logic.
+
+    artifact: str (narrative.md content) or Path to the narrative.md file.
+    When artifact is a Path, sibling .vl.json files are resolved relative to
+    artifact.parent. When artifact is a string, sibling resolution requires
+    that the string was read from a known location — in that case pass a Path
+    instead for correct sibling resolution.
+    """
+
+    backend = "markdown-vega"
+
+    def extract_tokens(
+        self,
+        artifact: str | Path,
+        *,
+        base_dir: Path | None = None,
+    ) -> list[RenderedToken]:
+        """Extract RenderedTokens from all <ClaimChart> refs in a narrative.md.
+
+        For each <ClaimChart src="..."> tag, loads the sibling Vega-Lite spec
+        and delegates to VegaLiteAdapter.extract_tokens(spec).
+        Returns concatenated tokens from all charts (order: appearance in doc).
+
+        artifact:
+          - Path    → content read from file; sibling_dir = artifact.parent.
+          - str of an existing file path → treated as Path (resolved automatically).
+          - str of raw narrative content → sibling_dir = base_dir (raise if a
+            relative src is present and base_dir is None).
+
+        base_dir: optional override for sibling resolution when artifact is a
+          raw content string. Ignored when artifact is a Path or a path string
+          that resolves to an existing file.
+        """
+        from insight_kit.platform.gate.compose import parse_refs  # avoid circular at module level
+
+        if isinstance(artifact, Path):
+            content = artifact.read_text(encoding="utf-8")
+            sibling_dir: Path | None = artifact.parent
+        else:
+            # str: first check whether it is an existing file path.
+            candidate = Path(artifact)
+            if candidate.exists():
+                content = candidate.read_text(encoding="utf-8")
+                sibling_dir = candidate.parent
+            else:
+                # Treat as raw narrative content string.
+                content = artifact
+                sibling_dir = base_dir
+
+        refs = parse_refs(content)
+        vla = VegaLiteAdapter()
+        tokens: list[RenderedToken] = []
+
+        for chart_ref in refs.chart_refs:
+            if sibling_dir is not None:
+                spec_path = sibling_dir / chart_ref.src
+            else:
+                src_path = Path(chart_ref.src)
+                if src_path.is_absolute():
+                    spec_path = src_path
+                else:
+                    raise ValueError(
+                        f"MarkdownVegaAdapter: cannot resolve relative chart src "
+                        f"{chart_ref.src!r} — pass artifact as a Path or provide "
+                        f"base_dir when using a raw content string."
+                    )
+
+            spec = VegaLiteAdapter._load(spec_path)
+            tokens.extend(vla.extract_tokens(spec))
+
+        return tokens

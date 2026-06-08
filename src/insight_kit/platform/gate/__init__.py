@@ -21,16 +21,28 @@ Public API:
 
   Layer-D render audit (V12, I.audit):
     run_render_audit, audit_l5, audit_l6, load_claims_index, RenderedToken,
-    ClaimFieldRef, RenderAdapter, AuditReport, VegaLiteAdapter
+    ClaimFieldRef, RenderAdapter, AuditReport, VegaLiteAdapter,
+    MarkdownVegaAdapter
+
+  Gate-native render composer (T33, I.audit):
+    compose_record, parse_refs, verify_chart_bindings, ComposeError,
+    ChartBindingResult
 
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
 Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
-V15, V18, V21.
+V15, V18, V21, T33.
 """
 from __future__ import annotations
 
+from insight_kit.platform.gate.compose import (
+    ChartBindingResult,
+    ComposeError,
+    compose_record,
+    parse_refs,
+    verify_chart_bindings,
+)
 from insight_kit.platform.gate.audit import (
     AuditReport,
     ClaimFieldRef,
@@ -51,7 +63,7 @@ from insight_kit.platform.gate.feature import (
     ProvisionalFeature,
     ik_feature_get,
 )
-from insight_kit.platform.gate.render_adapters import VegaLiteAdapter
+from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter, VegaLiteAdapter
 from insight_kit.platform.gate.runcheck import (
     CheckResult,
     CrossCheckResult,
@@ -84,16 +96,19 @@ from insight_kit.platform.gate.verdict import (
 
 __all__ = [
     "AuditReport",
+    "ChartBindingResult",
     "CheckResult",
     "ClaimFieldRef",
     "ClaimRecord",
     "ClaimTier",
+    "ComposeError",
     "CoverageInfo",
     "CrossCheckResult",
     "FieldEntry",
     "IntentPayload",
     "InterventionRecord",
     "ManifestError",
+    "MarkdownVegaAdapter",
     "ProvisionalFeature",
     "RealizedPayload",
     "RecordRef",
@@ -109,6 +124,7 @@ __all__ = [
     "audit_l5",
     "audit_l6",
     "check_annual_equals_monthly_sum",
+    "compose_record",
     "finalizeRun",
     "ik_claim_emit",
     "ik_feature_get",
@@ -118,5 +134,7 @@ __all__ = [
     "ik_skill_use_emit",
     "ik_utility_verdict",
     "load_claims_index",
+    "parse_refs",
     "run_render_audit",
+    "verify_chart_bindings",
 ]
