@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>insight-kit e2e — practical (record inputs through the gate)</title>
+<style>
+  :root{
+    --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+    --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC;
+    --olive:#788C5D; --sage:#A8B89A; --rose:#C97B7B;
+    --g100:#F0EEE6; --g200:#E6E3DA; --g300:#D1CFC5;
+    --g500:#87867F; --g700:#3D3D3A;
+    --blue:#5B7B8C; --blue-bg:#e7eef1; --amber:#B8862E; --amber-bg:#f7efdd;
+    --serif:ui-serif,Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+  a{color:var(--clay-d)}
+
+  header.hero{border-bottom:1.5px solid var(--g300);padding:38px 0 26px;background:var(--paper)}
+  .kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--clay);margin:0 0 10px}
+  h1{font-family:var(--serif);font-size:33px;line-height:1.12;margin:0 0 12px;font-weight:600;letter-spacing:-.01em}
+  .lede{font-size:16px;color:var(--g700);max-width:850px;margin:0}
+  .src{font-family:var(--mono);font-size:11.5px;color:var(--g500);margin-top:16px}
+
+  .tldr{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;background:var(--g100);border-radius:10px;margin:20px 0 0}
+  .tldr .p{font-family:var(--mono);font-size:12px;background:var(--paper);border:1.5px solid var(--g300);padding:6px 11px;border-radius:18px}
+  .tldr .p b{color:var(--clay-d)}
+  .tldr .arrow{color:var(--g500);font-family:var(--mono)}
+
+  nav.tabs{position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:blur(8px);border-bottom:1.5px solid var(--g300)}
+  nav.tabs .wrap{display:flex;gap:4px;overflow-x:auto}
+  nav.tabs button{font-family:var(--sans);font-size:13.5px;font-weight:560;color:var(--g500);background:none;border:none;border-bottom:2.5px solid transparent;padding:13px 14px;cursor:pointer;white-space:nowrap}
+  nav.tabs button:hover{color:var(--slate)}
+  nav.tabs button.active{color:var(--clay-d);border-bottom-color:var(--clay)}
+  nav.tabs button .n{font-family:var(--mono);font-size:11px;color:var(--g300);margin-right:5px}
+  nav.tabs button.active .n{color:var(--clay)}
+
+  main{padding:30px 0 80px}
+  section.tab{display:none}
+  section.tab.active{display:block;animation:f .25s ease}
+  @keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h2{font-family:var(--serif);font-size:25px;margin:0 0 6px;font-weight:600}
+  h2 .t{font-family:var(--mono);font-size:12.5px;color:var(--clay);font-weight:500}
+  .lede2{color:var(--g700);max-width:880px;margin:0 0 22px}
+  h3{font-family:var(--serif);font-size:18px;margin:30px 0 12px;font-weight:600}
+
+  code.fl{font-family:var(--mono);font-size:12px;background:var(--g100);color:var(--clay-d);padding:1.5px 6px;border-radius:5px;border:1px solid var(--g200);white-space:nowrap}
+  code.fl.ok{color:var(--olive)}
+  code.k{font-family:var(--mono);font-size:12.5px;background:var(--g100);color:var(--g700);padding:1px 5px;border-radius:4px}
+  .mono{font-family:var(--mono)}
+
+  /* swimlane (borrowed 17-E) */
+  .lane-wrap{border:1.5px solid var(--g300);border-radius:12px;background:var(--g100);padding:16px;margin:14px 0}
+  .lane-head{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+  .lh{font-family:var(--mono);font-size:11.5px;font-weight:600;padding:7px 10px;border-radius:8px;text-transform:uppercase;letter-spacing:.04em}
+  .lh.prod{color:var(--clay-d);background:#fbf2ec}
+  .lh.gate{color:var(--slate);background:var(--paper);border:1px solid var(--g300)}
+  .lh.disk{color:#56683f;background:#f1f4ec}
+  .lstep{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:7px 0}
+  .cellbox{font-size:12px;padding:9px 10px;border-radius:8px;background:var(--paper);border:1.5px solid var(--g300)}
+  .cellbox.prod{border-left:3px solid var(--clay)}
+  .cellbox.gate{border-left:3px solid var(--slate)}
+  .cellbox.disk{border-left:3px solid var(--olive)}
+  .cellbox .ct{font-weight:600;font-size:12.5px;margin-bottom:3px}
+  .cellbox .ml{font-family:var(--mono);font-size:10px;color:var(--g500);display:block;line-height:1.5}
+  .lconn{display:grid;grid-template-columns:1fr 1fr 1fr;height:16px;font-family:var(--mono);font-size:13px;color:var(--g500)}
+  .lconn span{text-align:center}
+  .lconn .cr{color:var(--olive)} .lconn .cl{color:var(--clay)}
+
+  /* before/after record cards (borrowed 18-F) */
+  .ba-grid{display:grid;grid-template-columns:1fr 44px 1fr;align-items:start;gap:0;margin:14px 0}
+  .ba-arrow{color:var(--clay);font-size:22px;text-align:center;padding-top:40px;font-family:var(--mono)}
+  .rec{border:1.5px solid var(--g300);border-radius:10px;overflow:hidden;background:var(--paper);margin-bottom:12px}
+  .rec.kept{border-color:var(--clay)}
+  .rec .rhead{display:flex;justify-content:space-between;padding:9px 13px;font-family:var(--mono);font-size:11.5px;font-weight:600}
+  .rec.draft .rhead{background:#f3ecdf}
+  .rec.pub .rhead{background:var(--olive);color:#fff}
+  .rec .frow{display:flex;justify-content:space-between;gap:10px;padding:5px 13px;font-size:12.5px;border-top:1px solid var(--g100)}
+  .rec .frow .fk{color:var(--g500);font-family:var(--mono);font-size:11px;flex:0 0 auto}
+  .rec .frow .fv{font-family:var(--mono);font-size:11.5px;text-align:right}
+  .rec .frow .fv.add{color:var(--olive);font-weight:600}
+  .rec .frow .fv.carry{color:var(--clay-d);font-weight:600}
+  .rec .frow .fv.dim{color:var(--g500)}
+  .rec .badge{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:6px;margin:8px 13px;display:inline-block}
+  .b-inj{background:#eef2e8;color:#56683f} .b-gate{background:#f5e4dc;color:var(--clay-d)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+  th{text-align:left;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--g500);padding:8px 9px;border-bottom:1.5px solid var(--g300)}
+  td{padding:8px 9px;border-bottom:1px solid var(--g200);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--g100)}
+  td.req{font-family:var(--mono);font-size:11px}
+  .yes{color:var(--clay-d);font-weight:600} .no{color:var(--g500)} .inj{color:var(--olive);font-weight:600}
+
+  .delta th{font-family:var(--mono)}
+  .tag-add{color:var(--olive);font-weight:600} .tag-carry{color:var(--clay-d);font-weight:600} .tag-keep{color:var(--g700)} .tag-gone{color:var(--rose);text-decoration:line-through}
+  td.rule{color:var(--g500);font-size:11.5px}
+
+  .code{background:var(--slate);border-radius:10px;padding:14px 16px;margin:12px 0;overflow-x:auto}
+  .code pre{margin:0;font-family:var(--mono);font-size:12px;line-height:1.6;color:#E8E6DE;white-space:pre}
+  .code .kw{color:var(--clay)} .code .str{color:var(--sage)} .code .fn{color:#C9B98A} .code .nu{color:#d9a87a} .code .cm{color:var(--g500)} .code .hl{color:#e9b08c;font-weight:600}
+
+  .card{background:var(--paper);border:1.5px solid var(--g300);border-radius:12px;padding:18px 20px;margin:12px 0}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:860px){.g2,.g3,.lane-head,.lstep,.lconn{grid-template-columns:1fr}.ba-grid{grid-template-columns:1fr}.ba-arrow{padding:6px 0;transform:rotate(90deg)}}
+
+  .callout{border-radius:9px;padding:13px 16px;margin:12px 0;font-size:13.5px}
+  .callout.risk{border-left:4px solid var(--rose);background:#f9eeee}
+  .callout.cut{border-left:4px solid var(--g500);background:#f1f0eb;color:var(--g700)}
+  .callout.real{border-left:4px solid var(--olive);background:#eef2e8}
+  .callout.conv{border-left:4px solid var(--amber);background:var(--amber-bg)}
+  .callout b{color:var(--slate)}
+
+  .chip{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .c-real{background:#eef2e8;color:#56683f} .c-conv{background:var(--amber-bg);color:var(--amber)} .c-cut{background:#efe2e2;color:#7a2e2e} .c-gap{background:#f5e4dc;color:var(--clay-d)}
+
+  ul.tight{margin:8px 0;padding-left:20px} ul.tight li{margin:4px 0;font-size:13.5px}
+  .filetree{font-family:var(--mono);font-size:12px;background:var(--g100);border:1.5px solid var(--g300);border-radius:10px;padding:15px 17px;line-height:1.7;overflow-x:auto}
+  .filetree .w{color:var(--olive);font-weight:600} .filetree .a{color:var(--blue)} .filetree .cm{color:var(--g500)}
+
+  footer{border-top:1.5px solid var(--g300);padding:24px 0;color:var(--g500);font-size:12px;font-family:var(--mono)}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .cap{font-size:11.5px;color:var(--g500);margin-top:6px;font-style:italic}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">insight-kit · L1 typed-record gate · practical e2e</p>
+    <h1>A record’s journey through the gate</h1>
+    <p class="lede">The companion to the reference explainer — this one is <b>practical</b>: what each agent actually <i>passes in</i>,
+      what the gate <i>injects</i>, and what materializes on disk, traced through one real question. Every field name + file:line is from this worktree.</p>
+    <div class="tldr">
+      <span class="p"><b>produce</b> agent fields</span><span class="arrow">→</span>
+      <span class="p"><b>gate</b> validate</span><span class="arrow">→</span>
+      <span class="p"><b>fingerprint</b> sha256</span><span class="arrow">→</span>
+      <span class="p"><b>store</b> record.json</span><span class="arrow">→</span>
+      <span class="p"><b>audit</b> L5·L6</span><span class="arrow">→</span>
+      <span class="p"><b>render</b> chart·prose</span>
+    </div>
+    <p class="src">branch docs/e2e-explainer · gate 14 modules · ~411 tests green · v2 (practical) · see v1 for module/ref map</p>
+  </div>
+</header>
+
+<nav class="tabs"><div class="wrap" id="tabnav">
+  <button data-tab="pipeline" class="active"><span class="n">1</span>Pipeline & inputs</button>
+  <button data-tab="anatomy"><span class="n">2</span>Record anatomy</button>
+  <button data-tab="worked"><span class="n">3</span>Worked example</button>
+  <button data-tab="apichain"><span class="n">4</span>API-ingestion chain</button>
+  <button data-tab="honest"><span class="n">5</span>What’s real vs not</button>
+</div></nav>
+
+<main><div class="wrap">
+
+<!-- ===== 1 PIPELINE ===== -->
+<section class="tab active" id="pipeline">
+  <h2>Pipeline & inputs <span class="t">producer → gate → disk, per record type</span></h2>
+  <p class="lede2">Each lane is one record type crossing the gate. <b>PRODUCES</b> = what the agent passes to the emit wrapper.
+    <b>GATE</b> = what <code class="fl">_record_emit</code> does to it (emit.py:432). <b>DISK</b> = what lands under <code class="k">runs/&lt;run&gt;/</code>.
+    Fields in <span class="mono" style="color:var(--olive)">olive</span> are gate-injected — callers must not set them.</p>
+
+  <div class="lane-wrap">
+    <div class="lane-head">
+      <div class="lh prod">produces — agent input</div>
+      <div class="lh gate">gate — _record_emit</div>
+      <div class="lh disk">disk — what's written</div>
+    </div>
+
+    <!-- claim -->
+    <div class="lstep">
+      <div class="cellbox prod"><div class="ct">analyst → ik_claim_emit</div>
+        <span class="ml">claim_id, fields{name:(value,fmt_hint)}</span>
+        <span class="ml">tier, selection, coverage, coverage_warning</span>
+        <span class="ml">input_data=&lt;bytes&gt; cites[] supersedes</span>
+        <span class="ml">emit.py:602</span></div>
+      <div class="cellbox gate"><div class="ct">validate → fingerprint</div>
+        <span class="ml">pydantic ClaimRecord schema.py:99</span>
+        <span class="ml">Layer-A: id-format, unique, supersedes-exists</span>
+        <span class="ml">inject data/record_fingerprint, source</span>
+        <span class="ml">tier-gate↓draft if fp set incomplete</span></div>
+      <div class="cellbox disk"><div class="ct">records/&lt;id&gt;/record.json</div>
+        <span class="ml">canonical, immutable store.py:65</span>
+        <span class="ml">+ records.jsonl row store.py:176</span>
+        <span class="ml">+ claims.jsonl view store.py:211</span></div>
+    </div>
+    <div class="lconn"><span class="cr">↘</span><span>↓</span><span class="cl">↙</span></div>
+
+    <!-- research -->
+    <div class="lstep">
+      <div class="cellbox prod"><div class="ct">researcher → ik_research_emit</div>
+        <span class="ml">research_id, query, source, snapshot{}</span>
+        <span class="ml">snapshot_ref, timestamp, cites[]</span>
+        <span class="ml">SEARCH leg: ingest_search/url/skill</span>
+        <span class="ml">emit.py:704</span></div>
+      <div class="cellbox gate"><div class="ct">snapshot-hash → fingerprint</div>
+        <span class="ml">snapshot non-empty else reject</span>
+        <span class="ml">snapshot sha256 → snapshot_fingerprint</span>
+        <span class="ml">folded into record_fingerprint</span>
+        <span class="ml">untiered (knowledge record V20)</span></div>
+      <div class="cellbox disk"><div class="ct">records/&lt;id&gt;/snapshot.json</div>
+        <span class="ml">captured results, immutable store.py:107</span>
+        <span class="ml">+ record.json + records.jsonl</span>
+        <span class="ml">cited by published claim (V20)</span></div>
+    </div>
+    <div class="lconn"><span class="cr">↘</span><span>↓</span><span class="cl">↙</span></div>
+
+    <!-- intervention -->
+    <div class="lstep">
+      <div class="cellbox prod"><div class="ct">operator → ik_intervention_emit</div>
+        <span class="ml">intervention_id, intent{description,params}</span>
+        <span class="ml">realized{status,details}</span>
+        <span class="ml">tier, cites[], input_data</span>
+        <span class="ml">emit.py:668</span></div>
+      <div class="cellbox gate"><div class="ct">reconciliation gate</div>
+        <span class="ml">published needs realized!=null (V19)</span>
+        <span class="ml">status ∈ applied|partial|failed</span>
+        <span class="ml">then tier/fingerprint gates</span></div>
+      <div class="cellbox disk"><div class="ct">records/&lt;id&gt;/record.json</div>
+        <span class="ml">intent + realized captured</span>
+        <span class="ml">draft promotable once realized set</span></div>
+    </div>
+    <div class="lconn"><span class="cr">↘</span><span>↓</span><span class="cl">↙</span></div>
+
+    <!-- audit -->
+    <div class="lstep">
+      <div class="cellbox prod"><div class="ct">renderer → chart.vl.json + narrative.md</div>
+        <span class="ml">Altair Vega-Lite spec + prose</span>
+        <span class="ml">usermeta.insight_kit.field_map</span>
+        <span class="ml">(authored, NOT gate-written)</span></div>
+      <div class="cellbox gate"><div class="ct">Layer-D render audit (V12)</div>
+        <span class="ml">L5 token→claim join audit.py:152</span>
+        <span class="ml">L6 prose lint, 0 bare numerics audit.py:242</span>
+        <span class="ml">CI-blocking on published/board</span></div>
+      <div class="cellbox disk"><div class="ct">AuditReport (pass/fail)</div>
+        <span class="ml">orphan token → fail</span>
+        <span class="ml">run_render_audit audit.py:299</span></div>
+    </div>
+  </div>
+  <p class="cap">Every lane converges on the same <code class="fl">_record_emit</code> (emit.py:432). Runtime-agnostic (C1): the gate imports neither hamilton nor pi.</p>
+
+  <h3>Who produces what</h3>
+  <table>
+    <thead><tr><th>Agent</th><th>Emit wrapper</th><th>Record type / tier</th><th>Key inputs it supplies</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">data-engineer</td><td class="mono">ik_claim_emit</td><td>claim · ETL_R/M/C</td><td>source SQL result as <code class="k">fields</code>, <code class="k">input_data=</code> registered upstream</td></tr>
+      <tr><td class="mono">analyst</td><td class="mono">ik_claim_emit</td><td>claim · D · draft/published</td><td><code class="k">fields{name:(val,fmt)}</code>, <code class="k">selection</code>, <code class="k">coverage</code></td></tr>
+      <tr><td class="mono">researcher</td><td class="mono">ik_research_emit / ik_skill_use_emit</td><td>research / skill_use · untiered</td><td><code class="k">query</code>, <code class="k">source</code>, <code class="k">snapshot{}</code> (SEARCH leg)</td></tr>
+      <tr><td class="mono">operator</td><td class="mono">ik_intervention_emit</td><td>intervention · draft/published</td><td><code class="k">intent{}</code>, <code class="k">realized{}</code></td></tr>
+      <tr><td class="mono">critic</td><td class="mono">apply_critique <span class="chip c-gap">gap</span></td><td>— (see tab 5)</td><td><code class="k">CritiqueState{severity,status,reason}</code> — in-memory only</td></tr>
+      <tr><td class="mono">renderer</td><td class="mono">— (audited)</td><td>chart.vl.json + narrative.md</td><td>Altair spec + prose; gate audits, doesn’t write</td></tr>
+      <tr><td class="mono">evaluator</td><td class="mono">—</td><td>eval-report</td><td>golden=audited-truth, run cohorts</td></tr>
+      <tr><td class="mono">annotator</td><td class="mono">append_event</td><td>annotation events</td><td>layer-A flags, off-glossary tags</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===== 2 ANATOMY ===== -->
+<section class="tab" id="anatomy">
+  <h2>Record anatomy <span class="t">caller supplies · gate injects</span></h2>
+  <p class="lede2">The four record types share a base. The honest split: most fields the <b>caller passes</b>; the fingerprints + provenance source are <b>gate-injected</b> (<span class="inj">olive</span>) — set inside <code class="fl">_record_emit</code> (emit.py:490–549), never by the agent.</p>
+
+  <h3>claim — the common case</h3>
+  <table>
+    <thead><tr><th>Field</th><th>Type</th><th>Req?</th><th>Who sets</th><th>Notes · line</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">claim_id</td><td class="req">str</td><td class="yes">yes</td><td>caller</td><td>regex <code class="k">^[A-Z]{2,5}-(D|R|C|I|V|X|ETL_[RCM])-\d{3,}$</code> schema.py:117</td></tr>
+      <tr><td class="mono">fields</td><td class="req">dict[str,FieldEntry]</td><td class="yes">yes</td><td>caller</td><td><code class="k">{name:(value,fmt_hint)}</code> — 3 forms accepted, normalized schema.py:42</td></tr>
+      <tr><td class="mono">tier</td><td class="req">draft|published</td><td class="no">no</td><td>caller</td><td>default draft; published needs full fp set schema.py:121</td></tr>
+      <tr><td class="mono">selection</td><td class="req">SelectionParams</td><td class="no">no</td><td>caller</td><td>date_window/baseline/grain/filters — V15 cross-check</td></tr>
+      <tr><td class="mono">coverage / coverage_warning</td><td class="req">CoverageInfo / str</td><td class="no">no*</td><td>caller</td><td>*warning required if published + n&lt;30/partial (V14)</td></tr>
+      <tr><td class="mono">cites</td><td class="req">list[str]</td><td class="no">no</td><td>caller</td><td>research/skill_use record_ids; must exist + correct type (V20)</td></tr>
+      <tr><td class="mono">supersedes</td><td class="req">str|None</td><td class="no">no</td><td>caller</td><td>target must exist or reject emit.py:109</td></tr>
+      <tr><td class="mono">narrative_ref</td><td class="req">str|None</td><td class="no">no</td><td>caller</td><td>passive pointer to narrative.md — never opened by gate schema.py:105</td></tr>
+      <tr style="background:#f5faf3"><td class="mono inj">data_fingerprint</td><td class="req">str</td><td>—</td><td class="inj">GATE</td><td>sha256(input_data or record) emit.py:492</td></tr>
+      <tr style="background:#f5faf3"><td class="mono inj">data_fingerprint_source</td><td class="req">registered_input|payload</td><td>—</td><td class="inj">GATE</td><td>from input_data presence; published+payload→reject (V22) schema.py:20</td></tr>
+      <tr style="background:#f5faf3"><td class="mono inj">record_fingerprint</td><td class="req">str</td><td>—</td><td class="inj">GATE</td><td>sha256(canonical record) emit.py:548</td></tr>
+      <tr style="background:#f5faf3"><td class="mono inj">tier_downgrade_reason</td><td class="req">str</td><td>—</td><td class="inj">GATE</td><td>set only on downgrade emit.py:298</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid g3">
+    <div class="card"><h3 style="margin-top:0">intervention</h3>
+      <ul class="tight">
+        <li><code class="k">intervention_id</code> str</li>
+        <li><code class="k">intent{description,params}</code> req</li>
+        <li><code class="k">realized{status,details}</code> — required for published (V19)</li>
+        <li>status ∈ applied|partial|failed</li>
+        <li>+ gate-injected fingerprints</li>
+      </ul>
+      <p class="cap">schema.py:164 · emit.py:668</p></div>
+    <div class="card"><h3 style="margin-top:0">research</h3>
+      <ul class="tight">
+        <li><code class="k">research_id, query, source</code> req</li>
+        <li><code class="k">snapshot{}</code> req — non-empty else reject</li>
+        <li><code class="k">snapshot_ref</code> (label only)</li>
+        <li><span class="inj">snapshot_fingerprint</span> injected</li>
+        <li>untiered (knowledge V20)</li>
+      </ul>
+      <p class="cap">schema.py:192 · emit.py:704</p></div>
+    <div class="card"><h3 style="margin-top:0">skill_use</h3>
+      <ul class="tight">
+        <li><code class="k">skill_use_id, tool, source</code> req</li>
+        <li><code class="k">snapshot{}</code> req</li>
+        <li>e.g. tool=tavily, source=tavily-api</li>
+        <li><span class="inj">snapshot_fingerprint</span> injected</li>
+        <li>untiered</li>
+      </ul>
+      <p class="cap">schema.py:230 · emit.py:748</p></div>
+  </div>
+
+  <h3>The <code class="k">fields</code> dict — three forms in, one shape out</h3>
+  <div class="code"><pre><span class="cm"># caller may pass any of these three forms (ik_claim_emit normalizes, emit.py:635)</span>
+fields = {
+  <span class="str">"repeat_value_multiple"</span>: <span class="nu">2.3</span>,                          <span class="cm"># bare value</span>
+  <span class="str">"charleston_share"</span>:      (<span class="nu">0.61</span>, <span class="str">"%.0f%%"</span>),             <span class="cm"># (value, fmt_hint)</span>
+  <span class="str">"gmv"</span>:                   {<span class="str">"value"</span>: <span class="nu">9500000</span>, <span class="str">"fmt_hint"</span>: <span class="str">"$,.0f"</span>}, <span class="cm"># explicit</span>
+}
+<span class="cm"># on disk in record.json (FieldEntry, extra='forbid' schema.py:52):</span>
+<span class="str">"fields"</span>: {
+  <span class="str">"repeat_value_multiple"</span>: {<span class="str">"value"</span>: <span class="nu">2.3</span>, <span class="str">"fmt_hint"</span>: <span class="kw">null</span>},
+  <span class="str">"charleston_share"</span>:      {<span class="str">"value"</span>: <span class="nu">0.61</span>, <span class="str">"fmt_hint"</span>: <span class="str">"%.0f%%"</span>},
+  <span class="str">"gmv"</span>:                   {<span class="str">"value"</span>: <span class="nu">9500000</span>, <span class="str">"fmt_hint"</span>: <span class="str">"$,.0f"</span>}
+}</pre></div>
+</section>
+
+<!-- ===== 3 WORKED ===== -->
+<section class="tab" id="worked">
+  <h2>Worked example <span class="t">Dock Blocks · repeat-customer value + Charleston risk</span></h2>
+  <p class="lede2"><b>Q:</b> “Are repeat customers worth more, and is Charleston concentration a risk?” Two claims, one cited benchmark.
+    Watch <code class="k">DOCK-D-128</code> go from a bare draft to a published, content-addressed record — and what the gate <i>adds</i>.</p>
+
+  <h3>1 · researcher snapshots an external benchmark → <code class="k">DOCK-X-007</code></h3>
+  <div class="code"><pre><span class="kw">ref_x</span> = <span class="fn">ik_research_emit</span>(
+  <span class="str">"DOCK-X-007"</span>, <span class="str">"hbr.org/repeat-ltv"</span>, query=<span class="str">"repeat customer LTV multiple retail"</span>,
+  source=<span class="str">"hbr"</span>, snapshot={<span class="str">"finding"</span>: <span class="str">"repeat buyers 2-3x first-order value"</span>, <span class="str">"n"</span>: <span class="nu">12</span>},
+  timestamp=<span class="str">"2026-06-08T09:00:00+00:00"</span>, run_state=state, run_dir=run_dir,
+)  <span class="cm"># → records/DOCK-X-007/snapshot.json (immutable) + snapshot_fingerprint injected</span></pre></div>
+
+  <h3>2 · analyst emits the claim — draft first, then published</h3>
+  <div class="code"><pre><span class="cm"># draft: no input_data → data_fingerprint_source = "payload" (self-derived, V22)</span>
+<span class="kw">ref</span> = <span class="fn">ik_claim_emit</span>(
+  <span class="str">"DOCK-D-128"</span>, {<span class="str">"repeat_value_multiple"</span>: (<span class="nu">2.3</span>, <span class="str">"x"</span>)},
+  cites=[<span class="str">"DOCK-X-007"</span>], run_state=state, run_dir=run_dir,
+)
+<span class="cm"># promote to published: real input_data registered + coverage warning for thin n</span>
+<span class="kw">ref2</span> = <span class="fn">ik_claim_emit</span>(
+  <span class="str">"DOCK-D-128b"</span>, {<span class="str">"repeat_value_multiple"</span>: (<span class="nu">2.3</span>, <span class="str">"x"</span>)},
+  tier=<span class="hl">"published"</span>, audience=<span class="str">"board"</span>, cites=[<span class="str">"DOCK-X-007"</span>],
+  supersedes=<span class="str">"DOCK-D-128"</span>,                       <span class="cm"># correction = new record (V3)</span>
+  input_data=cohort_parquet_bytes,               <span class="cm"># → source = "registered_input"</span>
+  coverage={<span class="str">"n"</span>: <span class="nu">412</span>}, selection={<span class="str">"date_window"</span>: <span class="str">"2025Q4"</span>, <span class="str">"baseline"</span>: <span class="str">"first_order"</span>},
+  run_state=state, run_dir=run_dir,
+)</pre></div>
+
+  <h3>3 · what the gate added — before / after</h3>
+  <div class="ba-grid">
+    <div>
+      <div class="rec draft">
+        <div class="rhead"><span>DOCK-D-128</span><span>draft</span></div>
+        <div class="frow"><span class="fk">record_type</span><span class="fv dim">claim</span></div>
+        <div class="frow"><span class="fk">tier</span><span class="fv dim">draft</span></div>
+        <div class="frow"><span class="fk">fields.repeat_value_multiple</span><span class="fv">[2.3,"x"]</span></div>
+        <div class="frow"><span class="fk">cites</span><span class="fv">["DOCK-X-007"]</span></div>
+        <div class="frow"><span class="fk">data_fingerprint_source</span><span class="fv dim">payload</span></div>
+        <div class="frow"><span class="fk">supersedes</span><span class="fv dim">null</span></div>
+        <span class="badge b-gate">caller passed 4 fields</span>
+      </div>
+    </div>
+    <div class="ba-arrow">→</div>
+    <div>
+      <div class="rec pub kept">
+        <div class="rhead"><span>DOCK-D-128b</span><span>published · board</span></div>
+        <div class="frow"><span class="fk">tier</span><span class="fv add">published</span></div>
+        <div class="frow"><span class="fk">data_fingerprint_source</span><span class="fv add">registered_input</span></div>
+        <div class="frow"><span class="fk">data_fingerprint</span><span class="fv add">sha256:11ab…</span></div>
+        <div class="frow"><span class="fk">record_fingerprint</span><span class="fv add">sha256:9f3c…</span></div>
+        <div class="frow"><span class="fk">coverage.n</span><span class="fv carry">412</span></div>
+        <div class="frow"><span class="fk">supersedes</span><span class="fv carry">DOCK-D-128</span></div>
+        <span class="badge b-inj">gate injected fingerprints + tier</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>4 · field delta — caller vs gate</h3>
+  <table class="delta">
+    <thead><tr><th>Field</th><th>draft (caller)</th><th>published (after gate)</th><th>Rule</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">tier</td><td class="tag-keep">draft</td><td class="tag-add">published</td><td class="rule">caller raised it; gate verified full fp set (V6)</td></tr>
+      <tr><td class="mono">data_fingerprint_source</td><td class="tag-keep">payload</td><td class="tag-add">registered_input</td><td class="rule">input_data supplied → real provenance (V22) schema.py:20</td></tr>
+      <tr><td class="mono">data_fingerprint</td><td class="mono">sha256(record)</td><td class="tag-add">sha256(input_data)</td><td class="rule">gate-injected emit.py:492</td></tr>
+      <tr><td class="mono">record_fingerprint</td><td class="tag-carry">sha256:…</td><td class="tag-carry">sha256:…</td><td class="rule">always injected, content-address emit.py:548</td></tr>
+      <tr><td class="mono">supersedes</td><td class="tag-keep">null</td><td class="tag-add">DOCK-D-128</td><td class="rule">correction = new record, target checked emit.py:109</td></tr>
+      <tr><td class="mono">coverage_warning</td><td class="tag-keep">—</td><td class="tag-keep">not needed (n=412≥30)</td><td class="rule">would reject if thin + missing (V14)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5 · what materialized on disk</h3>
+  <div class="filetree">
+runs/2026-06-08_dockblocks/
+├── <span class="w">records.jsonl</span>          <span class="cm"># 3 projection rows (128, 128b, X-007)  store.py:176</span>
+├── <span class="w">claims.jsonl</span>           <span class="cm"># claim view (omits cites/supersedes!)  store.py:211</span>
+├── <span class="w">run.json</span>               <span class="cm"># fingerprint set + critiqueRounds  runstate.py:354</span>
+└── records/
+    ├── DOCK-X-007/  <span class="w">record.json</span> <span class="w">snapshot.json</span>   <span class="cm"># cited benchmark</span>
+    ├── DOCK-D-128/  <span class="w">record.json</span>                  <span class="cm"># draft, immutable, kept</span>
+    └── DOCK-D-128b/ <span class="w">record.json</span>  <span class="a">narrative.md</span> <span class="a">chart.vl.json</span>  <span class="cm"># published; .md/.vl.json gate-AUDITED, not written</span>
+  </div>
+  <div class="callout cut"><b>Honest note:</b> the <span class="mono">claims.jsonl</span> projection row drops <span class="mono">cites</span> + <span class="mono">supersedes</span> (store.py:196–208) — the edges live only inside the full <span class="mono">record.json</span>. That’s why there’s no cheap graph query yet (tab 5).</div>
+</section>
+
+<!-- ===== 4 API CHAIN ===== -->
+<section class="tab" id="apichain">
+  <h2>API-ingestion chain <span class="t">research docs → data-eng extract → critic coverage</span></h2>
+  <p class="lede2">The target you asked about: data-eng querying live APIs (Meta Marketing, Shopify Admin GraphQL) <b>through the gate chain</b>, not ad-hoc scripts.
+    Today’s reality in the sibling repo is ad-hoc (<code class="k">search_docs.mjs</code>, <code class="k">extract_g4f7_attribution.py</code>). Here’s how it maps onto records — and what’s still a <span class="chip c-gap">gap</span>.</p>
+
+  <div class="lane-wrap">
+    <div class="lane-head">
+      <div class="lh prod">researcher — fetch API docs</div>
+      <div class="lh gate">gate — knowledge record</div>
+      <div class="lh disk">data-engineer — extract</div>
+    </div>
+    <div class="lstep">
+      <div class="cellbox prod"><div class="ct">search_docs.mjs → ik_skill_use_emit</div>
+        <span class="ml">tool="shopify-admin-docs"</span>
+        <span class="ml">query="orders + customer LTV endpoints"</span>
+        <span class="ml">snapshot={endpoints:[…], graphql_types:[…]}</span></div>
+      <div class="cellbox gate"><div class="ct">skill_use record → snapshot.json</div>
+        <span class="ml">immutable, fingerprinted store.py:107</span>
+        <span class="ml">becomes the AVAILABLE-endpoints index</span></div>
+      <div class="cellbox disk"><div class="ct">extract → ik_claim_emit</div>
+        <span class="ml">input_data=&lt;graphql response bytes&gt;</span>
+        <span class="ml">cites=["SKU-shopify-docs"] (V20)</span>
+        <span class="ml">source=registered_input (V22)</span></div>
+    </div>
+    <div class="lconn"><span class="cr">↘</span><span>↓</span><span class="cl">↙</span></div>
+    <div class="lstep">
+      <div class="cellbox prod" style="grid-column:1 / -1;border-left-color:var(--rose)"><div class="ct">critic — “did they miss an important API?” <span class="chip c-gap">gap: needs build</span></div>
+        <span class="ml">compares USED endpoints (claim.cites → skill_use.snapshot.endpoints actually queried) vs AVAILABLE (the docs index)</span>
+        <span class="ml">today apply_critique (runstate.py:139) does NO traversal + persists nothing — so this critique can't yet be computed or stored. See tab 5 + readiness-brief.md</span></div>
+    </div>
+  </div>
+
+  <h3>Mapping the real ad-hoc scripts → gate records</h3>
+  <table>
+    <thead><tr><th>Today (ad-hoc, growth_insights)</th><th>→ gate record</th><th>What it gives</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">search_docs.mjs (Shopify doc search)</td><td><code class="k">skill_use</code> record + snapshot</td><td>immutable endpoint index, citable, fingerprinted</td></tr>
+      <tr><td class="mono">extract_g4f7_attribution.py (API pull → df)</td><td><code class="k">claim</code> w/ input_data + cites</td><td>real data_fingerprint, provenance to the docs used</td></tr>
+      <tr><td class="mono">(no equivalent)</td><td><code class="k">critic</code> coverage critique</td><td>“missed-API” check: used vs available <span class="chip c-gap">gap</span></td></tr>
+    </tbody>
+  </table>
+  <div class="callout conv"><b>Why this is the payoff:</b> once the doc-fetch is a <span class="mono">skill_use</span> snapshot and the extraction a <span class="mono">claim</span> that <span class="mono">cites</span> it, the chain is queryable — the critic can ask “which available endpoints were never queried for this task?” That requires (a) critique persistence + (b) the cites/edge graph — both currently gaps. The opus readiness-brief sequences this; see tab 5.</div>
+</section>
+
+<!-- ===== 5 HONEST ===== -->
+<section class="tab" id="honest">
+  <h2>What’s real vs convention vs cut <span class="t">no papering over gaps</span></h2>
+  <p class="lede2">The reason this kit exists is to stop hallucinated numbers shipping — so the explainer holds itself to the same bar. Here is exactly what the <b>code enforces</b> vs what only <b>agent.md describes</b> vs what was <b>cut</b>.</p>
+
+  <table>
+    <thead><tr><th>Capability</th><th>Status</th><th>Evidence (file:line)</th></tr></thead>
+    <tbody>
+      <tr><td>Validate → fingerprint → immutable write</td><td><span class="chip c-real">real</span></td><td>emit.py:432, store.py:65/79 (overwrite refused)</td></tr>
+      <tr><td>Content-address (sha256 canonical)</td><td><span class="chip c-real">real</span></td><td>fingerprint.py:77</td></tr>
+      <tr><td>Supersession target-exists check</td><td><span class="chip c-real">real</span></td><td>emit.py:109 + test_supersession.py</td></tr>
+      <tr><td>Critique severity gate (open-high blocks published)</td><td><span class="chip c-real">real</span></td><td>runstate.py:139 + test_critique_gate.py</td></tr>
+      <tr><td>L5 token→claim / L6 prose lint</td><td><span class="chip c-real">real</span></td><td>audit.py:152 / 242</td></tr>
+      <tr><td>Provisional-feature draft lock (V18)</td><td><span class="chip c-real">real</span></td><td>feature.py:84</td></tr>
+      <tr style="background:#fdf7ec"><td>Critique <b>persistence</b> (who/what/when, on disk)</td><td><span class="chip c-gap">gap</span></td><td>apply_critique writes nothing; only bumps int critiqueRounds runstate.py:166. CritiqueState in-memory runstate.py:93</td></tr>
+      <tr style="background:#fdf7ec"><td>Critic over <b>chains</b> (cites/supersedes ancestors)</td><td><span class="chip c-gap">gap</span></td><td>zero graph traversal anywhere in src/; convention only in critic/agent.md</td></tr>
+      <tr style="background:#fdf7ec"><td>Queryable claim-graph / edge store</td><td><span class="chip c-gap">gap</span></td><td>records.jsonl/claims.jsonl omit cites/refutes/supports store.py:196</td></tr>
+      <tr style="background:#fdf7ec"><td>check_critic_edges / input_claims / supersedes_chain</td><td><span class="chip c-conv">unwired</span></td><td>exist validation/__init__.py:73/119/270 but ZERO call sites in gate</td></tr>
+      <tr style="background:#fdf7ec"><td>Run / ingest_search·url·skill layer</td><td><span class="chip c-gap">gap</span></td><td>Run class referenced by researcher but not in src/ (two-systems gap)</td></tr>
+      <tr style="background:#f1f0eb"><td>narrative.md embeds inline chart.vl.json</td><td><span class="chip c-cut">no / cut</span></td><td>separate siblings, audited independently audit.py:299; inline <code class="k">&lt;ClaimChart&gt;</code> was T15, CUT 2026-06-08</td></tr>
+      <tr style="background:#f1f0eb"><td>EvidenceAdapter (markdown render read-end)</td><td><span class="chip c-cut">deferred</span></td><td>render_adapters.py:1 "Deferred"; VegaLiteAdapter is the shipped surface</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout risk"><b>The critic answer, plainly (your Q3):</b> the critic can critique a chain only by <i>convention</i> — it reads <span class="mono">claims.jsonl</span> and names <span class="mono">input_claims</span> itself. The gate enforces no cross-record traversal, and <span class="mono">apply_critique</span> persists nothing but a counter. So “critiques persisted + connected” is a <b>build target</b>, not shipped. Same for the API-coverage critique in tab 4.</div>
+  <div class="callout real"><b>What’s next:</b> an opus readiness-brief (<code class="k">docs/e2e-explainer/readiness-brief.md</code>) sequences these gaps into buildable §T tasks and 1–2 workflows — wiring the dead validation guards first (cheapest real win), then critique persistence + the cites/edge graph that unlocks both chain-critique and the API-coverage check.</div>
+</section>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>insight-kit e2e v2 (practical) · branch docs/e2e-explainer · all file:line from this worktree</span>
+  <span>tabs 1–5 · companion to v1 reference explainer</span>
+</div></footer>
+
+<script>
+(function(){
+  var nav=document.getElementById('tabnav');
+  var btns=[].slice.call(nav.querySelectorAll('button'));
+  var tabs=[].slice.call(document.querySelectorAll('section.tab'));
+  function show(id){
+    btns.forEach(function(b){b.classList.toggle('active',b.dataset.tab===id);});
+    tabs.forEach(function(t){t.classList.toggle('active',t.id===id);});
+    window.scrollTo({top:0});
+  }
+  nav.addEventListener('click',function(e){var b=e.target.closest('button');if(b)show(b.dataset.tab);});
+  document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+    var i=parseInt(e.key,10); if(i>=1&&i<=btns.length)show(btns[i-1].dataset.tab);
+  });
+})();
+</script>
+</body>
+</html>
