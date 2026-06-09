@@ -85,7 +85,7 @@ Module `insight_kit.platform.orchestration.debate` does not exist yet. Card move
 - Builder count N — 2, 3, 4? Cost-quality elbow not measured.
 - Builder model — sonnet 4.6 vs sonnet 4.8? Pre-empts the same question for council.
 - Synthesis step — single opus pass or a 2nd debate round? Defaulting to single pass; revisit if synth quality is the bottleneck.
-- Cite-graph TR4 — requires T29 critic edges to be live in the consumer repo. `growth_insights` status: T29 shipped on `insight-kit` gate, consumer wiring TBC.
+- Cite-graph TR4 — requires T29 critic edges to be live in the consumer repo. `consumer-repo` status: T29 shipped on `insight-kit` gate, consumer wiring TBC.
 
 ## Cross-refs
 

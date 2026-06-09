@@ -355,7 +355,7 @@ footer a:hover{color:var(--clay)}
       summary:'Stopped checking eval artifacts into git. Switched bun install from global to per-project pattern; container builds now reproducible.' },
     { id:'G04', col:'done', tag:'cred', size:'m',
       title:'Signet → Infisical login cred chain',
-      summary:'Migrated cred lookup so harness pulls from self-hosted Infisical (https://infisical.lan.ds.ke) via Signet wrapper. Avoids token-leak path through env.' },
+      summary:'Migrated cred lookup so harness pulls from self-hosted Infisical (https://infisical.internal.example.com) via Signet wrapper. Avoids token-leak path through env.' },
     { id:'G05', col:'done', tag:'htmlkit', size:'s',
       title:'html-kit renumbering: 01-15 with consistent prefix',
       summary:'Re-paginated the .html-kit/ tree so the index cards align numerically; downstream tooling that greps NN_*.html now works.' },
@@ -372,7 +372,7 @@ footer a:hover{color:var(--clay)}
     // ---------- BLOCKED / FUTURE ----------
     { id:'T21', col:'done', tag:'telemetry', size:'l',
       title:'Wire e2e trace OOB (omp sessions + parser + dashboard)',
-      summary:'Telemetry stack decision closed: Laminar (self-host on lan.ds.ke for gRPC + cloud fallback). Parser shipped (insight_kit.integrations.omp.session_parser, B1). Back-emit helpers shipped (insight_kit.platform.observability.lmnr.emit_session_spans, B2). Dashboard = Laminar UI; per-run sessions keyed by git SHA pending wire-up in growth_insights lmnr_harness.main().' },
+      summary:'Telemetry stack decision closed: Laminar (self-host on internal.example.com for gRPC + cloud fallback). Parser shipped (insight_kit.integrations.omp.session_parser, B1). Back-emit helpers shipped (insight_kit.platform.observability.lmnr.emit_session_spans, B2). Dashboard = Laminar UI; per-run sessions keyed by git SHA pending wire-up in consumer-repo lmnr_harness.main().' },
     { id:'T24', col:'next', tag:'eval', size:'l',
       title:'Agent-as-judge + Harbor connection',
       summary:'Harness the run-level judge into the Harbor RL signal loop. Unblocked: D01 shipped (semantic gradient now meaningful). Next: wire score.py → Harbor reward function, decide signal shape (raw 0..1 vs delta-vs-baseline).' },

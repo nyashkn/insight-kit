@@ -99,7 +99,7 @@ def _critic_invoke_msg() -> str:
 
 class TestBasicParsing:
     def test_parses_sample_fixture(self):
-        """Parse the real anonymised fixture from growth_insights Phase A."""
+        """Parse the real anonymised fixture from consumer-repo Phase A."""
         fixture = FIXTURE_DIR / "omp_session_sample.jsonl"
         assert fixture.exists(), f"Fixture missing: {fixture}"
         turns = parse_session(fixture)

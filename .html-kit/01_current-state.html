@@ -142,12 +142,12 @@ a.g-link:hover,a.g-link:focus{color:var(--clay);border-bottom-color:var(--clay);
 <div class="wrap">
 
 <section class="hero">
-  <div class="eyebrow">2026-05-14 · grounded in nairomarket/growth_insights</div>
+  <div class="eyebrow">2026-05-14 · grounded in your-business/consumer-repo</div>
   <h1 class="display">insight-kit, as it <em>actually runs</em> today.</h1>
   <p style="font-size:18px;color:var(--g700);max-width:74ch">
     Before the Hamilton refactor: what does an analyst loop look like on disk? This page walks
     the lifecycle, then peels open 6 real runs from
-    <code>nairomarket/growth_insights/data/<a class="g-link" href="#g-agent-runs">agent_runs</a>/</code> — Shopify ingest, Meta worker, analyst
+    <code>your-business/consumer-repo/data/<a class="g-link" href="#g-agent-runs">agent_runs</a>/</code> — Shopify ingest, Meta worker, analyst
     council, critic, initiative wiring — so a newcomer can read one page and understand the shape
     insight-kit is asking Hamilton to compose with.
   </p>
@@ -172,7 +172,7 @@ a.g-link:hover,a.g-link:focus{color:var(--clay);border-bottom-color:var(--clay);
 
 <h2><span class="num">§1</span>The lifecycle in one breath</h2>
 <p>
-insight-kit lives at <code>nairomarket/growth_insights/src/growth_insights/provenance/</code>. The
+insight-kit lives at <code>your-business/consumer-repo/src/consumer-repo/provenance/</code>. The
 unit of work is a <strong><a class="g-link" href="#g-run">Run</a></strong>: a topic + agent + timestamped directory under
 <code>data/agent_runs/&lt;run_id&gt;/</code>. Inside one Run, the analyst (a) imports
 <code>Run</code>, (b) opens a context, (c) ingests inputs, (d) computes, (e) emits <a class="g-link" href="#g-parquet">parquet</a> artifacts,
@@ -182,7 +182,7 @@ of <code>script.py</code>. Validation (Layers A/B/C) runs inline + post-hoc.
 </p>
 
 <pre class="code">  # the canonical idiom (paraphrased from real scripts)
-  from growth_insights.provenance import Run
+  from consumer-repo.provenance import Run
 
   with Run(topic="shopify_orders_bulk", agent="human") as run:
       orders_df = run.ingest_jsonl("data/raw/shopify/orders_bulk.jsonl")
@@ -295,7 +295,7 @@ This trips up newcomers. <a class="g-link" href="#g-layer-abc">Layer A/B/C</a> i
 <h2><span class="num">§4</span>Walking 6 real runs</h2>
 <p>
 The runs below all live under
-<code>nairomarket/growth_insights/data/agent_runs/</code>. Open any one for a complete worked
+<code>your-business/consumer-repo/data/agent_runs/</code>. Open any one for a complete worked
 example.
 </p>
 
@@ -495,15 +495,15 @@ node candidate after the refactor.
 <table>
 <thead><tr><th>Concern</th><th>Path</th></tr></thead>
 <tbody>
-<tr><td class="sev-keep">Run / Claim impl</td><td><code>nairomarket/growth_insights/src/growth_insights/provenance/</code></td></tr>
-<tr><td class="sev-keep">Goal catalog</td><td><code>nairomarket/growth_insights/<a class="g-link" href="#g-kit-root">.insight-kit</a>/goals/</code> (via kit-root walk)</td></tr>
-<tr><td class="sev-keep">All runs</td><td><code>nairomarket/growth_insights/data/agent_runs/</code> (45 runs as of 2026-05-14)</td></tr>
-<tr><td class="sev-keep">Initiatives log</td><td><code>nairomarket/growth_insights/data/initiatives_log.jsonl</code></td></tr>
-<tr><td class="sev-keep">DuckDB views builder</td><td><code>nairomarket/growth_insights/scripts/build_duckdb_views.py</code></td></tr>
-<tr><td class="sev-keep">Preflight (Layer 1–6)</td><td><code>nairomarket/growth_insights/scripts/preflight_check.py</code></td></tr>
-<tr><td class="sev-keep">Analyst/critic runner</td><td><code>nairomarket/growth_insights/scripts/run_analyst_critic.py</code></td></tr>
-<tr><td class="sev-keep">Evidence pages</td><td><code>nairomarket/growth_insights/reports/pages/{levers,initiatives,funnel,metrics,insights}/</code></td></tr>
-<tr><td class="sev-keep">DuckDB warehouse</td><td><code>nairomarket/growth_insights/data/warehouse.duckdb</code></td></tr>
+<tr><td class="sev-keep">Run / Claim impl</td><td><code>your-business/consumer-repo/src/consumer-repo/provenance/</code></td></tr>
+<tr><td class="sev-keep">Goal catalog</td><td><code>your-business/consumer-repo/<a class="g-link" href="#g-kit-root">.insight-kit</a>/goals/</code> (via kit-root walk)</td></tr>
+<tr><td class="sev-keep">All runs</td><td><code>your-business/consumer-repo/data/agent_runs/</code> (45 runs as of 2026-05-14)</td></tr>
+<tr><td class="sev-keep">Initiatives log</td><td><code>your-business/consumer-repo/data/initiatives_log.jsonl</code></td></tr>
+<tr><td class="sev-keep">DuckDB views builder</td><td><code>your-business/consumer-repo/scripts/build_duckdb_views.py</code></td></tr>
+<tr><td class="sev-keep">Preflight (Layer 1–6)</td><td><code>your-business/consumer-repo/scripts/preflight_check.py</code></td></tr>
+<tr><td class="sev-keep">Analyst/critic runner</td><td><code>your-business/consumer-repo/scripts/run_analyst_critic.py</code></td></tr>
+<tr><td class="sev-keep">Evidence pages</td><td><code>your-business/consumer-repo/reports/pages/{levers,initiatives,funnel,metrics,insights}/</code></td></tr>
+<tr><td class="sev-keep">DuckDB warehouse</td><td><code>your-business/consumer-repo/data/warehouse.duckdb</code></td></tr>
 </tbody>
 </table>
 
@@ -564,7 +564,7 @@ node candidate after the refactor.
     <dd>The unit of work in insight-kit. A timestamped directory under <code>data/agent_runs/&lt;run_id&gt;/</code> that records a topic, agent, all inputs, all outputs, and all claims produced in one execution context.</dd>
 
     <dt id="g-agent-runs">agent_runs/</dt>
-    <dd>Root directory holding every Run produced by the project: <code>nairomarket/growth_insights/data/agent_runs/</code>. 45 runs as of 2026-05-14; Evidence.dev and DuckDB treat this as a single queryable timeline.</dd>
+    <dd>Root directory holding every Run produced by the project: <code>your-business/consumer-repo/data/agent_runs/</code>. 45 runs as of 2026-05-14; Evidence.dev and DuckDB treat this as a single queryable timeline.</dd>
 
     <dt id="g-manifest">manifest.json</dt>
     <dd>Written at Run close. Contains: run header (topic, agent, timestamps), <code>InputRecord[]</code>, <code>OutputRecord[]</code>, <code>ApiCall[]</code>, code SHA, git state, and runtime telemetry. The authoritative record of what a Run did.</dd>

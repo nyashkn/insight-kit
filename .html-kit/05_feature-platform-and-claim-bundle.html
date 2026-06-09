@@ -807,7 +807,7 @@ dlt already maintains <code>.dlt/pipeline_state.json</code> with per-source-per-
   <div class="label">Verdict · 2026-05-14</div>
   <h3>Ship bundle + features as v0. Layer the rest behind feature flags.</h3>
   <ol>
-    <li><strong>Week 1.</strong> Claim bundle on disk (<code>claims/{id}/</code> dir). Three fingerprints. Page-import syntax in renderer. Migrate 5 existing growth_insights claims as smoke test.</li>
+    <li><strong>Week 1.</strong> Claim bundle on disk (<code>claims/{id}/</code> dir). Three fingerprints. Page-import syntax in renderer. Migrate 5 existing consumer-repo claims as smoke test.</li>
     <li><strong>Week 2-3.</strong> Feature catalog (<code>features/</code>). Naming-lint hook. Analyst gets <code>list_features</code> / <code>describe_feature</code> / <code>find_claims</code> tools. data_eng owns merges.</li>
     <li><strong>Week 3-4.</strong> Altair plumbing: <code>&lt;VegaLite&gt;</code> wrapper (~30 LoC Svelte), <code>vl-convert</code> in critic tool surface, Playwright page-screenshot. Vision critic catches axis-flip / wrong-series.</li>
     <li><strong>Week 4.</strong> Linked claims: <code>parameterize_from_claim</code>, claim registry, supersession banner. Cross-claim Pandera invariants (annual = sum of monthly).</li>

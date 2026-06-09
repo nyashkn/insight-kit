@@ -1,6 +1,6 @@
 [project]
 name = "insight-kit"
-version = "0.1.6"
+version = "0.1.7"
 description = "Provenance-first agent insights kit — Run + Claim + DAG primitives for traceable analyst/critic loops."
 readme = "README.md"
 license = { text = "MIT" }
@@ -22,6 +22,7 @@ dependencies = [
     "pyarrow>=15",
     "duckdb>=1.5",
     "jsonschema>=4.20",
+    "mistune>=3.0",
 ]
 
 [project.optional-dependencies]

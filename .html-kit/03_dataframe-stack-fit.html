@@ -166,7 +166,7 @@ footer a{color:var(--g500);text-decoration:underline}
   <line class="flow" x1="440" y1="136" x2="440" y2="152"/>
   <rect class="layer" x="40" y="152" width="800" height="44" rx="4"/>
   <text class="layer-label" x="58" y="174">At-rest · parquet · duckdb · S3</text>
-  <text class="layer-sub"   x="58" y="188">data/parquet/nairomarket.duckdb · agent_runs/*/inputs/*.parquet</text>
+  <text class="layer-sub"   x="58" y="188">data/parquet/your-business.duckdb · agent_runs/*/inputs/*.parquet</text>
 
   <line class="flow" x1="440" y1="196" x2="440" y2="212"/>
   <rect class="layer acc" x="40" y="212" width="390" height="60" rx="4"/>
@@ -289,7 +289,7 @@ footer a{color:var(--g500);text-decoration:underline}
 <div>
 <h3>Why it exists</h3>
 <p><a class="g-link" href="#g-narwhals">Narwhals</a> is a thin compatibility layer over pandas/polars/modin/cudf/pyarrow. One node body, swap engine at <code>Driver.Builder()</code> time. Useful when you don't know which engine wins, or when analysts work in pandas + production runs polars.</p>
-<p>For growth_insights: keeps analysts in pandas (notebooks) while letting prod ingest go polars without rewriting cohort logic.</p>
+<p>For consumer-repo: keeps analysts in pandas (notebooks) while letting prod ingest go polars without rewriting cohort logic.</p>
 </div>
 <div class="code"><pre><span class="kw">import</span> narwhals <span class="kw">as</span> nw
 <span class="kw">from</span> narwhals.typing <span class="kw">import</span> IntoDataFrame

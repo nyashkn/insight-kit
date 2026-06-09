@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Hamilton cache — walkthrough on a growth_insights pipeline</title>
+<title>Hamilton cache — walkthrough on a consumer-repo pipeline</title>
 <style>
 :root{
   --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
@@ -137,7 +137,7 @@ a.g-link:hover,a.g-link:focus{color:var(--clay);border-bottom-color:var(--clay);
     Hamilton's cache is the structural answer to the analyst's exploratory loop: 5 throwaway
     <code>.py</code> + 1 final annotated module. When the analyst tweaks one node, only that node
     and its descendants recompute. Everything upstream is a cache hit. This page shows what that
-    looks like on a five-node growth_insights pipeline — first run, edit-cohort-filter, edit-input,
+    looks like on a five-node consumer-repo pipeline — first run, edit-cohort-filter, edit-input,
     edit-config — with concrete fingerprints.
   </p>
   <div class="tldr">
@@ -368,7 +368,7 @@ each threshold then costs only the three downstream nodes.
     <div class="tag">today (no cache)</div>
     <h4>5 throwaway .py + 1 final module</h4>
     <p style="font-size:13.5px;color:var(--g700);max-width:none">
-      The pattern documented at <code>nairomarket/growth_insights/CLAUDE.md</code> — analyst spikes
+      The pattern documented at <code>your-business/consumer-repo/CLAUDE.md</code> — analyst spikes
       five exploratory scripts, each re-reads the same parquet, each computes the same join, each
       writes its own claims. Sequencing is bash, sha tracking is manual, "this run is broken, let
       me edit and re-run" means re-running everything from disk.

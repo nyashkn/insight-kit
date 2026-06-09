@@ -313,39 +313,19 @@ def _chart_embed_html(chart_id: str, spec: dict[str, Any]) -> str:
 
 
 def _markdown_to_html_paragraphs(text: str) -> str:
-    """Minimal markdown-to-HTML: wrap non-blank lines in <p> blocks.
+    """Render narrative markdown to HTML via mistune.
 
-    This is intentionally minimal — the narrative is trusted prose with
-    ClaimNum values already resolved. Full markdown rendering is out of scope
-    for this slice.
+    Configured with raw-HTML pass-through (escape=False) so the chart embed
+    snippets that compose_record splices in for <ClaimChart> tags survive
+    intact. Plugins: GFM tables, strikethrough, task lists.
     """
-    lines = text.split("\n")
-    out: list[str] = []
-    para: list[str] = []
+    import mistune
 
-    def flush_para() -> None:
-        if para:
-            out.append("<p>" + " ".join(para) + "</p>")
-            para.clear()
-
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("# "):
-            flush_para()
-            out.append(f"<h1>{stripped[2:]}</h1>")
-        elif stripped.startswith("## "):
-            flush_para()
-            out.append(f"<h2>{stripped[3:]}</h2>")
-        elif stripped.startswith("### "):
-            flush_para()
-            out.append(f"<h3>{stripped[4:]}</h3>")
-        elif stripped == "":
-            flush_para()
-        else:
-            para.append(stripped)
-
-    flush_para()
-    return "\n".join(out)
+    md = mistune.create_markdown(
+        escape=False,
+        plugins=["table", "strikethrough", "task_lists", "url"],
+    )
+    return md(text)
 
 
 def compose_record(run_dir: Path, record_id: str) -> str:

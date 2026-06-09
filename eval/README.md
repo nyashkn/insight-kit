@@ -4,7 +4,7 @@
 score gate, omp session parser, Laminar tracing helpers, analyst prompt
 skeleton. Consumer repos wire them into their own containerised eval pipeline.
 
-`growth_insights` is the reference consumer — its `deploy/eval/` Dockerfile +
+`consumer-repo` is the reference consumer — its `deploy/eval/` Dockerfile +
 shim modules show the canonical wiring (git+ssh dep pin, BuildKit SSH mount,
 founder-context kwarg injection).
 
@@ -112,11 +112,11 @@ no empty heading leaks through.
 - Composite/derived claims reference upstream `claim_id`s in the `cites` array,
   NOT in `query_path`.
 
-## Reference consumer — `growth_insights`
+## Reference consumer — `consumer-repo`
 
 ### Pinning insight-kit
 
-`growth_insights/pyproject.toml`:
+`consumer-repo/pyproject.toml`:
 
 ```toml
 [project]
@@ -135,7 +135,7 @@ ref resolves identically on host and in container.
 
 ### Docker — BuildKit SSH mount
 
-`growth_insights/deploy/eval/Dockerfile`:
+`consumer-repo/deploy/eval/Dockerfile`:
 
 ```dockerfile
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -150,7 +150,7 @@ COPY . .
 RUN --mount=type=ssh uv sync --frozen
 ```
 
-Build invocation (`growth_insights/deploy/eval/run-eval.sh`):
+Build invocation (`consumer-repo/deploy/eval/run-eval.sh`):
 
 ```sh
 DOCKER_BUILDKIT=1 docker build \
@@ -164,7 +164,7 @@ material lands in the image layer.
 
 ### Wiring the analyst prompt
 
-`growth_insights/src/growth_insights/analyst/runner.py`:
+`consumer-repo/src/consumer-repo/analyst/runner.py`:
 
 ```python
 from insight_kit.narrative.analyst_prompt import render_analyst_prompt
@@ -175,7 +175,7 @@ _FOUNDER_CONTEXT = (
 )
 
 def build_prompt(self) -> str:
-    data_scope = format_data_scope_md(self.goal)   # nairomarket-specific
+    data_scope = format_data_scope_md(self.goal)   # your-business-specific
     header = render_analyst_prompt(
         goal_slug=self._goal_slug(),
         question=self.goal["question"],
@@ -188,7 +188,7 @@ def build_prompt(self) -> str:
 
 ### Wiring the score gate + telemetry
 
-`growth_insights/deploy/eval/lmnr_harness.py`:
+`consumer-repo/deploy/eval/lmnr_harness.py`:
 
 ```python
 from insight_kit.platform.eval.score import score
@@ -211,11 +211,11 @@ def main() -> None:
 ## Constraints — non-negotiable
 
 - **Never touch the shared `LMNR_PROJECT_API_KEY` Infisical secret.** Used by
-  25+ consumers across `kg_rust` and `kg_rust_embed_first`. Use a dedicated
+  25+ consumers across `consumer-repo` and `consumer-repo-2`. Use a dedicated
   key (e.g. `LMNR_PROJECT_API_KEY_INSIGHT_KIT`) injected as
   `LMNR_PROJECT_API_KEY` only inside the eval container.
 - **gRPC `LMNR_BASE_URL` is scheme+host with NO port in the URL string.**
-  `"https://laminar-grpc.lan.ds.ke"` ✓, `"https://laminar-grpc.lan.ds.ke:443"` ✗.
+  `"https://laminar-grpc.internal.example.com"` ✓, `"https://laminar-grpc.internal.example.com:443"` ✗.
   Port goes in `LMNR_GRPC_PORT`.
 - **Telemetry must NEVER fail the eval run.** All `emit_*` helpers swallow
   exceptions internally; consumer code that calls them should still wrap in

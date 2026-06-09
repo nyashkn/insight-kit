@@ -140,7 +140,7 @@ footer{margin-top:80px;font-family:var(--mono);font-size:11.5px;color:var(--g500
     The pattern visible in <code>dockblocks-ops/.insight-kit</code> (48 runs, Apr–May 2026)
     is a hand-sequenced exploratory loop with heavy boilerplate. Hamilton is a
     DAG framework with native lifecycle hooks, tags, materialisers, caching, and a notebook→prod story.
-    A prior memory already records the decision to build <a class="g-link" href="#g-growth-insights"><code>growth_insights v2</code></a> on Hamilton — this artifact
+    A prior memory already records the decision to build <a class="g-link" href="#g-growth-insights"><code>consumer-repo v2</code></a> on Hamilton — this artifact
     is the architecture-level <em>how, what to keep, what to drop, what's the lift</em>.
   </p>
   <div class="tldr">
@@ -417,7 +417,7 @@ Everything else in Hamilton (executors, materialisers, plugins) is opt-in cherry
   <div class="card"><div class="tag">OPENLINEAGE</div><h4>h_openlineage plugin</h4><p>Free emission to OpenLineage / Marquez / OpenMetadata if you ever need an external lineage catalog (already noted in prior decision memory).</p></div>
   <div class="card"><div class="tag">MATERIALISERS</div><h4>Declarative I/O</h4><p><code>@save_to.parquet</code> / <code>@load_from.parquet</code> + <code>@save_to.duckdb</code>: build_duckdb_views.py mostly disappears.</p></div>
   <div class="card"><div class="tag">SUBDAG</div><h4>Reusable critic / council patterns</h4><p><code>@subdag</code> + <code>@parameterize</code> = "critic-of(claim_X) across 5 angles" as a one-liner. Today this is 5 scripts.</p></div>
-  <div class="card"><div class="tag">NOTEBOOK</div><h4>Same code, notebook to prod</h4><p>Hamilton's hello-world story is "write functions in .py, iterate in notebook, ship the same module". Matches insight-kit's "5 exploratory .py + 1 final annotated module" pattern documented for growth_insights.</p></div>
+  <div class="card"><div class="tag">NOTEBOOK</div><h4>Same code, notebook to prod</h4><p>Hamilton's hello-world story is "write functions in .py, iterate in notebook, ship the same module". Matches insight-kit's "5 exploratory .py + 1 final annotated module" pattern documented for consumer-repo.</p></div>
 </div>
 
 <h2 id="sec35"><span class="num">§3.5</span>Going deeper — claims <em>as</em> tagged nodes</h2>
@@ -633,7 +633,7 @@ Claims still emit with the same IDs through the same <code>InsightKitHook</code>
 <p>
 Pivot. The integration's value isn't a faster council megabatch. It's a <strong><a class="g-link" href="#g-intervention-loop">closed-loop intervention
 engine</a></strong>. The pattern is already half-built in
-<a class="g-link" href="#g-initiatives-log"><code>nairomarket/growth_insights/data/initiatives_log.jsonl</code></a> — every record is an intervention
+<a class="g-link" href="#g-initiatives-log"><code>your-business/consumer-repo/data/initiatives_log.jsonl</code></a> — every record is an intervention
 (<code>G4-2026-05-04</code>, <code>F7-2026-05-05</code>, <code>DIAG-DISMISS-2026-05-05</code>) that was
 <em>executed</em> (Meta Marketing API POST, customer-file hash + upload, Events-Manager kebab-click)
 and is now <em>waiting</em> for a checkpoint date to be re-measured.
@@ -725,7 +725,7 @@ post — only the data window changes. The cache + fingerprint guarantees the co
 
 <h3>What that means concretely</h3>
 <ul>
-  <li><strong>One module per lever.</strong> <code>nairomarket/growth_insights/interventions/g4_exclusion.py</code> holds: baseline fn, execute fn, post fn, delta fn, critic fn. All five share upstream <code>meta_insights(adset_ids, window)</code>.</li>
+  <li><strong>One module per lever.</strong> <code>your-business/consumer-repo/interventions/g4_exclusion.py</code> holds: baseline fn, execute fn, post fn, delta fn, critic fn. All five share upstream <code>meta_insights(adset_ids, window)</code>.</li>
   <li><strong><a class="g-link" href="#g-side-effect-node">Side effects are first-class nodes.</a></strong> The Meta API POST is a Hamilton node tagged <code>@tag(side_effect="meta_api", idempotency_key=…)</code>. The hook records the request + response into the run dir. A second <code>execute()</code> with the same idempotency key cache-hits and refuses to re-POST.</li>
   <li><strong>Checkpoint = second Driver run, same module.</strong> <code>ik checkpoint &lt;initiative_id&gt;</code> calls <code>Driver.execute([compute_post_cpa, measure_intervention, critic_intervention_verdict])</code> with <code>window="14d_post"</code>. The cache holds the baseline; only post + delta + critic compute.</li>
   <li><strong>initiatives_log.jsonl becomes a materializer output, not a hand-edited file.</strong> A custom <code>InitiativeLogSaver</code> appends one record per execute, updates the same record on checkpoint.</li>
@@ -755,7 +755,7 @@ post — only the data window changes. The cache + fingerprint guarantees the co
 <h3>What the founder-meeting action list (<code>04b_post_meeting_actions_2026-04-30.md</code>) becomes</h3>
 <p>
 Ten greenlit actions, each one a candidate intervention module: <em>Verify Meta CAPI</em>, <em>Wire customer-file exclusions on 9 unsuppressed adsets</em>, <em>Lock pre-Google-relaunch baseline</em>, <em>Build 25-34 male adset with +30% ramp</em>, <em>24h post-purchase nudge</em>, <em>Re-frame G5 CSR-attribution</em>, <em>Verify Apr-2025 AOV anomaly</em>, <em>Send rev-share framework</em>, <em>Top-100-SKU concentration</em>, <em>COD-to-delivered rate</em>.
-Each becomes a module under <code>growth_insights/interventions/</code> with the same 5-node shape.
+Each becomes a module under <code>consumer-repo/interventions/</code> with the same 5-node shape.
 The founder review meeting then has a single artifact: the <strong>delta dashboard</strong> in Evidence.dev that reads <code>initiatives_log</code> + claims and answers "what did we do, what moved, what didn't" — generated, not assembled.
 </p>
 
@@ -767,7 +767,7 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
 <tr><td class="sev-add"><code>ik run &lt;module&gt;</code> CLI</td><td>new in <code>src/insight_kit/cli/</code></td><td>~½ day — opens Run(), builds Driver, executes, closes Run.</td></tr>
 <tr><td class="sev-add">Materialiser bridging Run.path()</td><td>new <code>insight_kit/hamilton/materializers.py</code></td><td>~½ day — <code>RunScopedParquetSaver</code> that resolves output paths to <code>.insight-kit/runs/&lt;id&gt;/output/&lt;layer&gt;/</code>.</td></tr>
 <tr><td class="sev-add">Subdag/parameterize templates</td><td>new <code>insight_kit/patterns/council.py</code></td><td>~1 day — reusable council + critic subdags.</td></tr>
-<tr><td class="sev-add">Intervention-loop pilot · retrofit G4 + F7</td><td><code>nairomarket/growth_insights/interventions/g4_exclusion.py, f7_audience_refresh.py</code></td><td>~1.5 days — wrap existing API-POST scripts as Hamilton modules, capture frozen baselines as claims, run checkpoint Driver on 2026-05-19 + 2026-05-12, emit delta + critic claims. Closes the loop on records already in <code>initiatives_log.jsonl</code>.</td></tr>
+<tr><td class="sev-add">Intervention-loop pilot · retrofit G4 + F7</td><td><code>your-business/consumer-repo/interventions/g4_exclusion.py, f7_audience_refresh.py</code></td><td>~1.5 days — wrap existing API-POST scripts as Hamilton modules, capture frozen baselines as claims, run checkpoint Driver on 2026-05-19 + 2026-05-12, emit delta + critic claims. Closes the loop on records already in <code>initiatives_log.jsonl</code>.</td></tr>
 <tr><td class="sev-add">Custom <code>InitiativeLogSaver</code> materializer</td><td>new <code>insight_kit/hamilton/materializers.py</code></td><td>~½ day — appends/updates <code>initiatives_log.jsonl</code> records on execute / checkpoint.</td></tr>
 <tr><td class="sev-add"><code>ik checkpoint &lt;initiative_id&gt;</code> CLI</td><td><code>src/insight_kit/cli/</code></td><td>~½ day — resolves initiative, builds Driver on the intervention module, executes post + delta + critic nodes with cached baseline.</td></tr>
 <tr><td class="sev-add">Side-effect-node convention + idempotency key</td><td><code>src/insight_kit/hamilton/sideeffect.py</code></td><td>~½ day — <code>@tag(side_effect=…, idempotency_key=…)</code>; hook records request+response; cache refuses double-POST.</td></tr>
@@ -787,7 +787,7 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
     <li><strong>Default path — conservative (~4 dev days).</strong> insight-kit stays the source of truth for Run, Claim, Manifest, Goals, Layer A/B/C, agents.yaml, claims_registry.yaml, Evidence seam. Hamilton owns the compute graph + lifecycle. <code>InsightKitHook</code> already exists at <code>adapter.py:67</code> — promote it from optional to default.</li>
     <li><strong>Replace the per-run procedural <code>script.py</code></strong> with one declarative Hamilton module per analysis topic. Spikes remain free-form in <code>spikes/</code>.</li>
     <li><strong>Cherry-pick:</strong> <code>@tag</code>, <code>@parameterize</code>, <code>@subdag</code>, <code>@check_output</code>, lifecycle hooks, <code>HamiltonCacheAdapter</code>, materialisers. <strong>Skip:</strong> Ray/Dask/Spark, h_openlineage, h_mlflow — re-evaluate when there is a real catalog or distributed need.</li>
-    <li><strong>The real pilot — intervention loop (see §5.5).</strong> Retrofit <code>G4-2026-05-04</code> and <code>F7-2026-05-05</code> from <code>initiatives_log.jsonl</code> as Hamilton modules under <code>growth_insights/interventions/</code>. Frozen baselines become claims; checkpoint dates (2026-05-19, 2026-05-12) trigger automatic post-metric + delta + critic claims. Closes the loop on intervention records already on the calendar — no new analysis, just makes the system measure itself. <strong>Ship signal:</strong> by 2026-05-19, <code>initiatives_log.jsonl</code> shows <code>post_metric_value</code> + <code>delta_pct</code> + <code>status="DONE"</code> filled in by a Driver run, not a human edit; the founder-comms email at <code>2026-05-19_founder_g4_f7_update.md</code> renders from those claims, not from a hand-curated markdown.</li>
+    <li><strong>The real pilot — intervention loop (see §5.5).</strong> Retrofit <code>G4-2026-05-04</code> and <code>F7-2026-05-05</code> from <code>initiatives_log.jsonl</code> as Hamilton modules under <code>consumer-repo/interventions/</code>. Frozen baselines become claims; checkpoint dates (2026-05-19, 2026-05-12) trigger automatic post-metric + delta + critic claims. Closes the loop on intervention records already on the calendar — no new analysis, just makes the system measure itself. <strong>Ship signal:</strong> by 2026-05-19, <code>initiatives_log.jsonl</code> shows <code>post_metric_value</code> + <code>delta_pct</code> + <code>status="DONE"</code> filled in by a Driver run, not a human edit; the founder-comms email at <code>2026-05-19_founder_g4_f7_update.md</code> renders from those claims, not from a hand-curated markdown.</li>
     <li><strong>Available — deep refactor (~2 weeks, opt-in per module, see §3.5).</strong> Collapse Claim/Run/Manifest/Goals/Layers into Hamilton tags + adapters. Net ~40% smaller insight-kit. <em>Only after intervention-loop pilot lands.</em> Each module can pick its level; a repo can hold both side by side.</li>
     <li><strong>Then scale.</strong> The 10 founder-greenlit actions from <code>docs/sprint3/04b_post_meeting_actions_2026-04-30.md</code> each become an intervention module. Evidence.dev renders a single delta dashboard reading <code>initiatives_log</code> + claims: what was done, when, what moved, what didn't, what's still measuring. The product becomes the closed loop, not the analysis.</li>
     <li><strong>Do not move into Hamilton, either path:</strong> Goal lifecycle, Annotations post-hoc job, Layer C cross-project scanner, council prompt dispatch — they don't fit the DAG.</li>
@@ -821,7 +821,7 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
   <div class="card" style="border-top:3px solid var(--clay)">
     <div class="tag">D · Provenance loop</div>
     <h4><a href="provenance-loop.html">Closing the hallucination loop</a></h4>
-    <p style="font-size:13px;color:var(--g700);max-width:none">Real growth_insights bugs (sign flip, 5160% vs 51.6%, partial-month MER). Six-layer defense: <code>&lt;ClaimNum&gt;</code>, <code>&lt;ClaimChart&gt;</code>, L6 preflight, post-render diff, inline <code>critiques[]</code>.</p>
+    <p style="font-size:13px;color:var(--g700);max-width:none">Real consumer-repo bugs (sign flip, 5160% vs 51.6%, partial-month MER). Six-layer defense: <code>&lt;ClaimNum&gt;</code>, <code>&lt;ClaimChart&gt;</code>, L6 preflight, post-render diff, inline <code>critiques[]</code>.</p>
   </div>
   <div class="card" style="border-top:3px solid var(--clay)">
     <div class="tag">E · Feature platform</div>
@@ -931,7 +931,7 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
       <dd>Hamilton materializer that writes a node's output DataFrame to a Parquet file at a declared path. Replaces imperative <code>Run.emit_metric()</code> calls; the materializer owns the I/O.</dd>
 
       <dt id="g-initiatives-log">initiatives_log.jsonl</dt>
-      <dd>JSONL register at <code>nairomarket/growth_insights/data/initiatives_log.jsonl</code>. Each record is one founder-greenlit intervention with baseline metric, checkpoint date, and (eventually) post-metric + delta filled by a Driver run.</dd>
+      <dd>JSONL register at <code>your-business/consumer-repo/data/initiatives_log.jsonl</code>. Each record is one founder-greenlit intervention with baseline metric, checkpoint date, and (eventually) post-metric + delta filled by a Driver run.</dd>
 
       <dt id="g-baseline-claim">baseline claim</dt>
       <dd>A <code>raw</code>-tier claim emitted at T0 of an intervention, locking the pre-action metric value. Content-addressed by the cache adapter so it cannot drift even if the measurement code is re-run later.</dd>
@@ -951,8 +951,8 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
       <dt id="g-resultbuilder">ResultBuilder</dt>
       <dd>Hamilton adapter that serializes the execution trace after <code>Driver.execute()</code> completes. In the deep-refactor path, this writes <code>manifest.json</code> instead of <code>Run.__exit__</code>.</dd>
 
-      <dt id="g-growth-insights">growth_insights</dt>
-      <dd>The <code>nairomarket/growth_insights/</code> analysis package. v2 is being built on Hamilton. Contains <code>interventions/</code> (per-lever Hamilton modules), <code>data/initiatives_log.jsonl</code>, and the Evidence.dev delta dashboard.</dd>
+      <dt id="g-growth-insights">consumer-repo</dt>
+      <dd>The <code>your-business/consumer-repo/</code> analysis package. v2 is being built on Hamilton. Contains <code>interventions/</code> (per-lever Hamilton modules), <code>data/initiatives_log.jsonl</code>, and the Evidence.dev delta dashboard.</dd>
 
       <dt id="g-evidence-seam">Evidence.dev seam</dt>
       <dd>The reporting layer: Hamilton <code>@save_to.parquet</code> writes artifacts → <code>build_duckdb_views.py</code> mounts them as DuckDB views → Evidence SQL pages query those views → markdown pages render charts and claim badges.</dd>

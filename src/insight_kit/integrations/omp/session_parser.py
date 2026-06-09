@@ -9,7 +9,7 @@ Persona boundary detection:
   labelled persona="critic". Turns before = "analyst". Pre-turn-1 setup
   events (session/model_change/thinking_level_change) = "system".
 
-Schema reference: see growth_insights/deploy/eval/omp_session_schema.md
+Schema reference: see consumer-repo/deploy/eval/omp_session_schema.md
 for the full reverse-engineered schema (v3, omp 15.2.4).
 """
 from __future__ import annotations
