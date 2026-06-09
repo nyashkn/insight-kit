@@ -16,6 +16,9 @@ build/
 .DS_Store
 .insight-kit/runs/
 .insight-kit/duckdb/
+.insight-kit/secrets.local.yaml
 
 node_modules/
 bun.lockb
+.html-kit/_archive/
+.playwright-cli/

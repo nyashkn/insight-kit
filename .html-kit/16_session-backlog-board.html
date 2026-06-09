@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Session backlog board — insight-kit · 2026-05-23 → 25</title>
+<style>
+:root {
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC;
+  --olive:#788C5D; --sage:#A8B89A; --rose:#C97B7B;
+  --g100:#F0EEE6; --g200:#E6E3DA; --g300:#D1CFC5;
+  --g500:#87867F; --g700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1680px;margin:0 auto;padding:0 28px 80px}
+
+/* topbar — same as 14_ */
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--g200);z-index:30}
+.topbar-inner{max-width:1680px;margin:0 auto;padding:13px 28px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.brand span{color:var(--clay)}
+nav.crumbs{display:flex;gap:18px;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.1em}
+nav.crumbs a{color:var(--g500);border:none;text-decoration:none}
+nav.crumbs a.active{color:var(--slate)}
+nav.crumbs a:hover{color:var(--clay)}
+
+/* hero — magazine voice */
+.hero{padding:48px 0 28px;border-bottom:1px solid var(--g200)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--g500)}
+h1.display{font-family:var(--serif);font-weight:500;font-size:clamp(34px,4.6vw,52px);line-height:1.06;letter-spacing:-.018em;margin:.25em 0 .2em}
+h1.display em{font-style:italic;color:var(--clay)}
+.sub{font-family:var(--serif);font-size:18px;line-height:1.55;color:var(--g700);max-width:78ch;margin-top:14px}
+.sub em{font-style:italic;color:var(--clay)}
+.tldr{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 4px}
+.pill{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:5px 11px;border:1px solid var(--g300);border-radius:999px;background:var(--paper);color:var(--g700)}
+.pill.clay{background:var(--clay);border-color:var(--clay);color:#fff}
+.pill.olive{background:var(--olive);border-color:var(--olive);color:#fff}
+.pill.oat{background:var(--oat);border-color:var(--oat);color:var(--slate)}
+.pill.slate{background:var(--slate);border-color:var(--slate);color:var(--ivory)}
+
+/* toolbar — sticky controls (below topbar) */
+.toolbar{position:sticky;top:53px;z-index:8;background:var(--ivory);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:14px 0 10px;margin:18px 0 6px;border-bottom:1.5px solid var(--g200)}
+.summary{font-family:var(--mono);font-size:12px;color:var(--g700)}
+.summary b{color:var(--slate);font-weight:600}
+.summary .dot{color:var(--g300);margin:0 4px}
+.spacer{flex:1}
+button.btn{font-family:var(--mono);font-size:11.5px;border-radius:999px;
+  padding:7px 14px;cursor:pointer;letter-spacing:.04em}
+button.primary{background:var(--slate);color:var(--ivory);border:1.5px solid var(--slate)}
+button.primary:hover{background:var(--g700)}
+button.primary.copied{background:var(--olive);border-color:var(--olive)}
+button.ghost{background:transparent;color:var(--g700);border:1.5px solid var(--g200)}
+button.ghost:hover{border-color:var(--g500);color:var(--slate)}
+button.add{background:var(--clay);color:var(--paper);border:1.5px solid var(--clay)}
+button.add:hover{background:var(--clay-d);border-color:var(--clay-d)}
+
+/* filter chips */
+.filter-bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  padding:8px 0 12px;margin-bottom:10px;border-bottom:1px solid var(--g200);
+  font-family:var(--mono);font-size:11px}
+.filter-bar .group{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.filter-bar .group-label{color:var(--g500);text-transform:uppercase;letter-spacing:.06em;font-size:10px;margin-right:4px}
+.filter-bar button.chip{background:var(--paper);border:1px solid var(--g200);color:var(--slate);
+  padding:4px 9px;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:11px}
+.filter-bar button.chip:hover{border-color:var(--g500)}
+.filter-bar button.chip.active{background:var(--slate);color:var(--paper);border-color:var(--slate)}
+
+/* board — 4 columns */
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start}
+@media(max-width:1100px){.board{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){.board{grid-template-columns:1fr}}
+.col{background:var(--paper);border:1.5px solid var(--g200);border-radius:12px;overflow:hidden;
+  display:flex;flex-direction:column;min-height:280px}
+.col[data-col="done"]{border-top:3px solid var(--olive)}
+.col[data-col="next"]{border-top:3px solid var(--clay)}
+.col[data-col="blocked"]{border-top:3px solid #D9A441}
+.col[data-col="discovered"]{border-top:3px solid var(--slate)}
+.col.dragover{outline:2px dashed var(--clay);outline-offset:-6px;background:#FBF6F2}
+.col-head{position:sticky;top:0;z-index:1;background:var(--paper);
+  display:flex;align-items:baseline;gap:8px;padding:12px 14px 9px;border-bottom:1.5px solid var(--g100)}
+.col-head h2{font-family:var(--serif);font-weight:500;font-size:15px;margin:0;letter-spacing:-.01em}
+.col-head .count{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--g500);
+  background:var(--g100);border:1.5px solid var(--g200);border-radius:999px;padding:1px 8px;min-width:26px;text-align:center}
+.col-body{padding:9px 9px 7px;display:flex;flex-direction:column;gap:9px;flex:1;min-height:60px}
+.col-foot{border-top:1.5px solid var(--g100);padding:7px 14px 10px;
+  font-family:var(--mono);font-size:10.5px;color:var(--g500);line-height:1.45}
+
+/* card */
+.ticket{position:relative;background:var(--paper);border:1.5px solid var(--g200);
+  border-radius:9px;padding:10px 11px 9px;cursor:grab;user-select:none;
+  transition:border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease}
+.ticket:hover{border-color:var(--g500);box-shadow:0 1px 3px rgba(20,20,19,.07)}
+.ticket:active{cursor:grabbing}
+.ticket.dragging{opacity:.4}
+.ticket.dim{opacity:.22}
+.ticket.has-annot{border-color:var(--olive)}
+.ticket-top{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
+.tid{font-family:var(--mono);font-size:10px;color:var(--g500);letter-spacing:.02em}
+.tag{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  border-radius:999px;padding:1px 7px 2px;border:1px solid transparent;cursor:pointer}
+.tag-eval         { background:#F1E9DB; color:#7d5a1b; border-color:#E3DACC }
+.tag-telemetry    { background:#DEE3EA; color:#3D5470; border-color:#C4CDDA }
+.tag-observability{ background:#E4DDF0; color:#5B4A86; border-color:#CFC4E2 }
+.tag-cred         { background:#F3D9D2; color:#8B2C18; border-color:#E5B6A8 }
+.tag-htmlkit      { background:#E8EDE0; color:#5C6F44; border-color:#CFDAC0 }
+.tag-discovered   { background:#2C2C2A; color:#E3DACC; border-color:#2C2C2A }
+.tag-orch         { background:#F5E2D8; color:var(--clay-d); border-color:#E8C9BA }
+.tag-untagged     { background:var(--g100); color:var(--g500); border-color:var(--g200) }
+.size{margin-left:auto;font-family:var(--mono);font-size:9px;text-transform:uppercase;
+  letter-spacing:.06em;border-radius:4px;padding:2px 7px 1px;border:1.5px solid var(--g200)}
+.size-s{background:var(--paper);color:var(--g500)}
+.size-m{background:var(--g100);color:var(--g700)}
+.size-l{background:#F5E2D8;color:var(--clay-d);border-color:#E8C9BA}
+.ttitle{font-size:13px;line-height:1.35;color:var(--slate);font-weight:500;margin-bottom:4px}
+.tsumm{font-size:11.5px;line-height:1.45;color:var(--g500)}
+.tlinks{margin-top:6px;font-family:var(--mono);font-size:10.5px}
+.tlinks a{color:var(--clay);text-decoration:none;border-bottom:1px dotted var(--clay-d)}
+.tlinks a:hover{color:var(--clay-d)}
+.tblocks{margin-top:4px;font-family:var(--mono);font-size:10px;color:var(--rose);text-transform:uppercase;letter-spacing:.05em}
+
+/* annotation indicator (olive dot, top-right) */
+.annot-dot{position:absolute;top:7px;right:8px;z-index:3;
+  background:var(--olive);color:#FFF;font-family:var(--mono);font-weight:600;
+  border:1.5px solid var(--ivory);box-shadow:0 0 0 1px var(--olive)}
+.annot-dot.dot1{width:10px;height:10px;border-radius:999px;font-size:0}
+.annot-dot.dotN{min-width:17px;height:17px;border-radius:999px;
+  font-size:9px;line-height:14px;text-align:center;padding:0 4px}
+.ticket.dim .annot-dot{opacity:1}
+
+/* annotation popup form (per-card, expands on click) */
+.annot-strip{display:none;margin-top:9px;padding:8px 8px 6px;
+  border-top:1px dashed var(--g200);background:#FBF8F3;border-radius:0 0 6px 6px}
+.ticket.expanded .annot-strip{display:block}
+.annot-strip .row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.annot-strip .chip{font-family:var(--mono);font-size:10px;background:var(--paper);
+  border:1px solid var(--g200);color:var(--g700);padding:3px 8px;border-radius:4px;
+  cursor:pointer;letter-spacing:.02em}
+.annot-strip .chip:hover{border-color:var(--clay)}
+.annot-strip .chip.on{background:var(--olive);color:var(--paper);border-color:var(--olive)}
+.annot-strip textarea{width:100%;min-height:48px;padding:7px 9px;
+  font-family:var(--mono);font-size:11px;line-height:1.4;color:var(--g700);
+  background:var(--paper);border:1px solid var(--g200);border-radius:5px;resize:vertical}
+.annot-strip textarea:focus{outline:none;border-color:var(--clay)}
+.annot-strip .log{margin-top:6px;display:flex;flex-direction:column;gap:3px}
+.annot-strip .log .entry{font-family:var(--mono);font-size:10.5px;color:var(--g700);
+  background:var(--paper);border-left:2px solid var(--olive);padding:3px 7px;border-radius:0 4px 4px 0;
+  display:flex;gap:6px;align-items:center}
+.annot-strip .log .entry .ts{color:var(--g500);font-size:9.5px;margin-left:auto}
+.annot-strip .log .entry .rm{background:transparent;border:none;color:var(--g500);
+  cursor:pointer;font-family:var(--mono);font-size:11px;padding:0 4px}
+.annot-strip .log .entry .rm:hover{color:var(--rose)}
+.annot-strip .actions{display:flex;gap:6px;margin-top:4px}
+.annot-strip button.save{background:var(--slate);color:var(--ivory);border:none;
+  padding:5px 11px;border-radius:4px;font-family:var(--mono);font-size:10.5px;cursor:pointer}
+.annot-strip button.save:hover{background:var(--g700)}
+.annot-strip button.collapse{background:transparent;color:var(--g500);border:none;
+  font-family:var(--mono);font-size:10.5px;cursor:pointer;margin-left:auto}
+
+/* export modal */
+.modal-bg{position:fixed;inset:0;background:rgba(20,20,19,.5);display:none;z-index:60;align-items:center;justify-content:center}
+.modal-bg.on{display:flex}
+.modal{background:var(--ivory);border:1.5px solid var(--g300);border-radius:12px;
+  padding:18px 22px 14px;width:min(720px,92vw);max-height:84vh;display:flex;flex-direction:column;gap:10px}
+.modal h3{font-family:var(--serif);font-weight:500;margin:0;font-size:18px}
+.modal textarea{width:100%;flex:1;min-height:340px;font-family:var(--mono);font-size:11.5px;
+  border:1px solid var(--g200);border-radius:6px;padding:10px 12px;background:var(--paper);
+  color:var(--g700);resize:vertical}
+.modal .row{display:flex;gap:8px;align-items:center}
+
+/* add-card form */
+.add-form{display:none;margin-top:14px;padding:14px 18px;background:var(--paper);
+  border:1.5px dashed var(--g300);border-radius:10px}
+.add-form.on{display:block}
+.add-form .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:9px}
+.add-form label{display:flex;flex-direction:column;gap:3px;font-family:var(--mono);font-size:10.5px;color:var(--g500);letter-spacing:.05em;text-transform:uppercase}
+.add-form input,.add-form select,.add-form textarea{font-family:var(--sans);font-size:12.5px;
+  border:1px solid var(--g200);border-radius:5px;padding:6px 9px;background:var(--paper)}
+.add-form textarea{font-size:12px;min-height:48px;resize:vertical;grid-column:1/-1}
+.add-form .actions{display:flex;gap:8px;justify-content:flex-end}
+
+footer{margin-top:50px;font-family:var(--mono);font-size:11px;color:var(--g500);letter-spacing:.05em;text-align:center;padding-top:22px;border-top:1px solid var(--g200)}
+footer a{color:var(--g500);border:none;text-decoration:none}
+footer a:hover{color:var(--clay)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit <span>×</span> session backlog</span>
+    <nav class="crumbs">
+      <a href="00_index.html">00 · Index</a>
+      <a href="14_agentic-coding-observability.html">14 · Observability</a>
+      <a href="15_t17-smoke-1pt0-critic.html">15 · T17 critic</a>
+      <a href="16_session-backlog-board.html" class="active">16 · Session board</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="eyebrow">Session board · 2026-05-23 → 25 · drag · annotate · persist</div>
+  <h1 class="display">Three days of work, <em>laid flat</em>.</h1>
+  <p class="sub">
+    A backlog isn't a roadmap — it's a <em>memory</em>. Done, next, blocked, and what we noticed
+    while building. Cards drag between columns. Annotations save locally. Export the board state as
+    JSON when you're ready to hand off to tomorrow's session.
+  </p>
+  <div class="tldr">
+    <span class="pill clay" id="hero-total">— cards</span>
+    <span class="pill olive" id="hero-done">— done</span>
+    <span class="pill oat" id="hero-next">— next</span>
+    <span class="pill" id="hero-blocked">— blocked</span>
+    <span class="pill slate" id="hero-disc">— discovered</span>
+  </div>
+</section>
+
+<div class="toolbar">
+  <div class="summary" id="summary">loading…</div>
+  <div class="spacer"></div>
+  <button class="btn ghost" id="btnNew">+ add card</button>
+  <button class="btn ghost" id="btnReset" title="Restore default column layout for built-in cards">reset layout</button>
+  <button class="btn ghost" id="btnExport">export JSON</button>
+  <button class="btn primary" id="btnCopy">copy state</button>
+</div>
+
+<div class="filter-bar">
+  <div class="group">
+    <span class="group-label">tag</span>
+    <span id="filterTags"></span>
+  </div>
+  <div class="group">
+    <span class="group-label">size</span>
+    <span id="filterSizes"></span>
+  </div>
+</div>
+
+<div class="add-form" id="addForm">
+  <div class="grid">
+    <label>tid <input id="afTid" placeholder="T27 or D05" /></label>
+    <label>title <input id="afTitle" placeholder="Short headline" /></label>
+    <label>tag
+      <select id="afTag">
+        <option value="eval">eval</option>
+        <option value="telemetry">telemetry</option>
+        <option value="observability">observability</option>
+        <option value="cred">cred/infra</option>
+        <option value="htmlkit">html-kit</option>
+        <option value="orch">orch</option>
+        <option value="discovered">discovered</option>
+      </select>
+    </label>
+    <label>size
+      <select id="afSize"><option value="s">S</option><option value="m" selected>M</option><option value="l">L</option></select>
+    </label>
+    <label>column
+      <select id="afCol">
+        <option value="done">done</option>
+        <option value="next" selected>next</option>
+        <option value="blocked">blocked</option>
+        <option value="discovered">discovered</option>
+      </select>
+    </label>
+    <label>link (optional) <input id="afLink" placeholder="path/to/artifact.html or commit sha" /></label>
+    <label style="grid-column:1/-1">summary
+      <textarea id="afSumm" placeholder="1-2 sentences. why does this matter?"></textarea>
+    </label>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" id="afCancel">cancel</button>
+    <button class="btn add" id="afSave">add card</button>
+  </div>
+</div>
+
+<div class="board" id="board"></div>
+
+<footer>
+  insight-kit · session board · 2026-05-25 · <a href="00_index.html">back to index</a>
+</footer>
+
+</div>
+
+<!-- export modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Board state — paste into next session</h3>
+    <div class="row" style="font-family:var(--mono);font-size:11px;color:var(--g500)">
+      Includes column placement, custom cards, and all annotations. Persisted in <code>localStorage</code> under <code>insight-kit-board-v1</code>.
+    </div>
+    <textarea id="exportTa" readonly></textarea>
+    <div class="row">
+      <button class="btn primary" id="exportCopy">copy to clipboard</button>
+      <button class="btn ghost" id="exportClose" style="margin-left:auto">close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---------- data ----------
+  var COLUMNS = [
+    { key:'done',       label:'Done',                rationale:'Shipped this session. Link to artifact / commit when relevant.' },
+    { key:'next',       label:'Next up',             rationale:'Ready to claim. No external blocker. Pick one, ship it.' },
+    { key:'blocked',    label:'Blocked / Future',    rationale:'Has explicit prerequisite OR unclear trigger. Note the blocker on the card.' },
+    { key:'discovered', label:'Discovered (new)',    rationale:'Surfaced THIS session, not yet a formal task. Promote to next / blocked when scoped.' }
+  ];
+
+  var TAGS = ['eval','telemetry','observability','cred','htmlkit','orch','discovered'];
+  var SIZES = ['s','m','l'];
+
+  var ITEMS = [
+    // ---------- DONE (formal tasks) ----------
+    { id:'T16', col:'done', tag:'eval', size:'s',
+      title:'Verify model output limits via models.dev',
+      summary:'Fact-checked pi --list-models output against models.dev for max tokens / context. Reference data now sits next to provider config.' },
+    { id:'T17', col:'done', tag:'cred', size:'s',
+      title:'Configure opencode-go provider (subscription)',
+      summary:'Wired Anthropic + OpenAI providers with subscription credentials; opencode-go is now the omp invocation surface inside the eval container.' },
+    { id:'T18', col:'done', tag:'eval', size:'m',
+      title:'Swap pi → omp in container Dockerfile',
+      summary:'Replaced pi with omp in the eval-harness container. T17 smoke jumped 0.83 → 1.00 on the same prompt. Commit 9f5b23d.',
+      link:'15_t17-smoke-1pt0-critic.html', linkLabel:'critic read →' },
+    { id:'T19', col:'done', tag:'observability', size:'l',
+      title:'Research OSS multi-agent observability stack',
+      summary:'14 platforms scored on 8 axes for an omp harness on Bun/TS + Python/Hamilton. Agent observability ≠ LLM observability.',
+      link:'14_agentic-coding-observability.html', linkLabel:'artifact 14 →' },
+    { id:'T20', col:'done', tag:'htmlkit', size:'m',
+      title:'Refactor docs/hamilton-synthesis → .html-kit/NN_*.html',
+      summary:'Numbered + relocated all hamilton-synthesis docs under .html-kit/ with consistent prefix; index links updated.' },
+    { id:'T22', col:'done', tag:'observability', size:'s',
+      title:'Evaluate omp-stats package',
+      summary:'omp-stats bundled in omp v15.2.4 — confirmed present, sufficient for in-harness run telemetry without extra dep.' },
+    { id:'T26', col:'done', tag:'eval', size:'m',
+      title:'Opus critic explainer for T17 score jump',
+      summary:'Single-page critic doc: why 1.00 happened (one socket stayed open), why three variables changed at once makes n=1 weak.',
+      link:'15_t17-smoke-1pt0-critic.html', linkLabel:'artifact 15 →' },
+
+    // ---------- DONE (undocumented work surfaced from git) ----------
+    { id:'G01', col:'done', tag:'eval', size:'s',
+      title:'T17 in-container analyst→critic tracer',
+      summary:'Wired analyst→critic tracer inside the container (commit 6b73452). Predecessor of the omp swap; first time the tracer round-tripped without auth chain breaks.' },
+    { id:'G02', col:'done', tag:'eval', size:'s',
+      title:'score.py: id → claim_id field fix',
+      summary:'Renamed legacy id field to claim_id in score.py so structural completeness check matches the live claims.jsonl schema.' },
+    { id:'G03', col:'done', tag:'cred', size:'s',
+      title:'.gitignore /.eval-out/ + bun per-project install',
+      summary:'Stopped checking eval artifacts into git. Switched bun install from global to per-project pattern; container builds now reproducible.' },
+    { id:'G04', col:'done', tag:'cred', size:'m',
+      title:'Signet → Infisical login cred chain',
+      summary:'Migrated cred lookup so harness pulls from self-hosted Infisical (https://infisical.lan.ds.ke) via Signet wrapper. Avoids token-leak path through env.' },
+    { id:'G05', col:'done', tag:'htmlkit', size:'s',
+      title:'html-kit renumbering: 01-15 with consistent prefix',
+      summary:'Re-paginated the .html-kit/ tree so the index cards align numerically; downstream tooling that greps NN_*.html now works.' },
+
+    // ---------- NEXT UP ----------
+    { id:'T23', col:'next', tag:'eval', size:'m',
+      title:'LSP-validated code writes (omp --no-lsp flip)',
+      summary:'Validate Hamilton DAG aspects of generated code via omp --no-lsp flip — gives us a typed editing surface for the analyst sub-agent.' },
+    { id:'T25', col:'next', tag:'orch', size:'l',
+      title:'Multi-agent debate orchestration (opus deep + sonnet builders)',
+      summary:'Opus runs the deep critique, N sonnet builders argue. Needs a concrete decision-fork trigger before this earns its run cost.',
+      blocks:'needs trigger spec' },
+
+    // ---------- BLOCKED / FUTURE ----------
+    { id:'T21', col:'blocked', tag:'telemetry', size:'l',
+      title:'Wire e2e trace OOB (omp sessions + parser + dashboard)',
+      summary:'Stand up omp session export, write the parser, ship a dashboard. Blocked by the telemetry decision (Phoenix vs Langfuse vs roll-your-own).',
+      blocks:'blocked by telemetry stack decision (see #19)' },
+    { id:'T24', col:'blocked', tag:'eval', size:'l',
+      title:'Agent-as-judge + Harbor connection',
+      summary:'Harness the run-level judge into the Harbor RL signal loop. Blocked by score.py semantic hardening (D01) — judging on structural completeness alone produces a weak gradient.',
+      blocks:'blocked by D01 (score.py semantic hardening)' },
+
+    // ---------- DISCOVERED (this session) ----------
+    { id:'D01', col:'discovered', tag:'discovered', size:'l',
+      title:'score.py semantic hardening',
+      summary:'Add claim-id regex check, citation cross-validation, length-distribution priors. Today\'s score.py is structural-completeness only. Blocks T24 — RL on structural-only signal will overfit to format.',
+      link:'15_t17-smoke-1pt0-critic.html', linkLabel:'critic § on this →' },
+    { id:'D02', col:'discovered', tag:'discovered', size:'l',
+      title:'24-run isolation factorial (8 cells × 3 trials)',
+      summary:'Attribute the 0.83 → 1.00 jump to agent / channel / model. Three variables changed at once in T18 — n=1 cannot tell us which one mattered. Blocks any honest RL signal.',
+      link:'15_t17-smoke-1pt0-critic.html', linkLabel:'design in §4 →',
+      blocks:'blocks RL on eval signal' },
+    { id:'D03', col:'discovered', tag:'discovered', size:'m',
+      title:'JWT lifecycle on slow runs',
+      summary:'Smoke run = 9m53s, JWT TTL ≈ 10min. Cred layer is a hidden failure mode for any run that drifts past the cap. Either refresh mid-run or hard-cap run timeout below TTL.' },
+    { id:'D04', col:'discovered', tag:'discovered', size:'s',
+      title:'Score.py docstring vs framing alignment',
+      summary:'score.py docstring says "structural completeness only" — but team treats 1.0 as success. Communicate the distinction in harness output + docs so 1.00 is not over-claimed.' }
+  ];
+
+  // ---------- localStorage ----------
+  var LS_KEY = 'insight-kit-board-v1';
+  function loadState(){
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
+    catch(e){ return {}; }
+  }
+  function saveState(s){ localStorage.setItem(LS_KEY, JSON.stringify(s)); }
+  var state = loadState();
+  state.cols       = state.cols       || {};   // { tid: colKey }
+  state.annots     = state.annots     || {};   // { tid: [{ts, tags:[], note}] }
+  state.custom     = state.custom     || [];   // user-added cards
+  state.filters    = state.filters    || { tag:null, size:null };
+
+  // merge custom items into ITEMS (deduped by id)
+  state.custom.forEach(function(ci){
+    if (!ITEMS.find(function(x){ return x.id === ci.id; })) ITEMS.push(ci);
+  });
+  // apply persisted column moves
+  ITEMS.forEach(function(it){ if (state.cols[it.id]) it.col = state.cols[it.id]; });
+
+  var DEFAULTS = ITEMS.filter(function(it){ return !state.custom.find(function(c){return c.id===it.id;}); })
+                      .map(function(it){ return { id:it.id, col:it.col }; });
+
+  var dragId = null;
+  var openId = null;
+
+  // ---------- helpers ----------
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtTs(ts){
+    var d = new Date(ts), p = function(n){ return n<10?'0'+n:''+n; };
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+  }
+  function annotCount(id){ return (state.annots[id] || []).length; }
+  function tagLabel(t){
+    if (t === 'cred') return 'cred/infra';
+    if (t === 'htmlkit') return 'html-kit';
+    if (t === 'orch') return 'orch';
+    return t;
+  }
+  function sizeLabel(s){ return s.toUpperCase(); }
+
+  // ---------- build board scaffold ----------
+  var board = document.getElementById('board');
+  var colBodies = {}, colCounts = {};
+  COLUMNS.forEach(function(c){
+    var col = document.createElement('section');
+    col.className = 'col';
+    col.dataset.col = c.key;
+    var head = document.createElement('div');
+    head.className = 'col-head';
+    var h2 = document.createElement('h2'); h2.textContent = c.label;
+    var count = document.createElement('span'); count.className = 'count';
+    head.appendChild(h2); head.appendChild(count);
+    var body = document.createElement('div'); body.className = 'col-body';
+    var foot = document.createElement('div'); foot.className = 'col-foot'; foot.textContent = c.rationale;
+    col.appendChild(head); col.appendChild(body); col.appendChild(foot);
+    board.appendChild(col);
+    colBodies[c.key] = body;
+    colCounts[c.key] = count;
+
+    col.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('dragover');
+    });
+    col.addEventListener('dragleave', function(e){
+      if (!col.contains(e.relatedTarget)) col.classList.remove('dragover');
+    });
+    col.addEventListener('drop', function(e){
+      e.preventDefault();
+      col.classList.remove('dragover');
+      if (!dragId) return;
+      var t = ITEMS.find(function(x){ return x.id === dragId; });
+      if (t && t.col !== c.key){
+        t.col = c.key;
+        state.cols[t.id] = c.key;
+        saveState(state);
+        render();
+      }
+    });
+  });
+
+  // ---------- card builder ----------
+  function makeCard(t){
+    var card = document.createElement('article');
+    card.className = 'ticket';
+    card.draggable = true;
+    card.dataset.id = t.id;
+    if (annotCount(t.id)) card.classList.add('has-annot');
+    var f = state.filters;
+    if ((f.tag && t.tag !== f.tag) || (f.size && t.size !== f.size)) card.classList.add('dim');
+
+    var top = document.createElement('div'); top.className = 'ticket-top';
+    var tid = document.createElement('span'); tid.className = 'tid'; tid.textContent = t.id;
+    var tag = document.createElement('button');
+    tag.type = 'button';
+    tag.className = 'tag tag-' + t.tag;
+    tag.textContent = tagLabel(t.tag);
+    tag.title = 'filter by ' + t.tag;
+    tag.addEventListener('click', function(e){
+      e.stopPropagation();
+      state.filters.tag = (state.filters.tag === t.tag) ? null : t.tag;
+      saveState(state);
+      renderFilterBar(); render();
+    });
+    var size = document.createElement('span');
+    size.className = 'size size-' + t.size;
+    size.textContent = sizeLabel(t.size);
+    top.appendChild(tid); top.appendChild(tag); top.appendChild(size);
+
+    var title = document.createElement('div'); title.className = 'ttitle'; title.textContent = t.title;
+    var summ  = document.createElement('div'); summ.className = 'tsumm';  summ.textContent  = t.summary || '';
+    card.appendChild(top); card.appendChild(title); card.appendChild(summ);
+
+    if (t.link){
+      var l = document.createElement('div'); l.className = 'tlinks';
+      l.innerHTML = '<a href="'+esc(t.link)+'" target="_blank" rel="noopener">'+esc(t.linkLabel||t.link)+'</a>';
+      card.appendChild(l);
+    }
+    if (t.blocks){
+      var b = document.createElement('div'); b.className = 'tblocks'; b.textContent = '⚑ ' + t.blocks;
+      card.appendChild(b);
+    }
+
+    // olive dot (annotation indicator)
+    var ac = annotCount(t.id);
+    if (ac){
+      var dot = document.createElement('span');
+      dot.className = 'annot-dot ' + (ac > 1 ? 'dotN' : 'dot1');
+      if (ac > 1) dot.textContent = ac;
+      dot.title = ac + ' annotation' + (ac>1?'s':'');
+      card.appendChild(dot);
+    }
+
+    // annotation strip (collapsed by default; click card to expand)
+    var strip = document.createElement('div'); strip.className = 'annot-strip';
+    strip.innerHTML =
+      '<div class="row">' +
+        '<button class="chip" data-act="ttag" data-v="impl-note">impl-note</button>' +
+        '<button class="chip" data-act="ttag" data-v="blocker">blocker</button>' +
+        '<button class="chip" data-act="ttag" data-v="defer">defer</button>' +
+        '<button class="chip" data-act="ttag" data-v="question">question</button>' +
+        '<button class="chip" data-act="ttag" data-v="next-step">next-step</button>' +
+      '</div>' +
+      '<textarea placeholder="implementation note for next session…"></textarea>' +
+      '<div class="actions">' +
+        '<button class="save" data-act="save">save annotation</button>' +
+        '<button class="collapse" data-act="collapse">close</button>' +
+      '</div>' +
+      '<div class="log"></div>';
+    card.appendChild(strip);
+
+    // expand on card click (outside the strip & chips)
+    card.addEventListener('click', function(e){
+      if (e.target.closest('.annot-strip')) return;
+      if (e.target.closest('.tag') || e.target.closest('.size')) return;
+      if (e.target.closest('a')) return;
+      var nowOpen = !card.classList.contains('expanded');
+      document.querySelectorAll('.ticket.expanded').forEach(function(c){ if (c !== card) c.classList.remove('expanded'); });
+      card.classList.toggle('expanded', nowOpen);
+      if (nowOpen){ openId = t.id; renderLog(strip, t.id); }
+      else openId = null;
+    });
+
+    // strip interactions
+    var pickedTags = new Set();
+    strip.addEventListener('click', function(e){
+      var btn = e.target.closest('button'); if (!btn) return;
+      e.stopPropagation();
+      var act = btn.dataset.act;
+      if (act === 'ttag'){
+        var v = btn.dataset.v;
+        if (pickedTags.has(v)){ pickedTags.delete(v); btn.classList.remove('on'); }
+        else { pickedTags.add(v); btn.classList.add('on'); }
+      } else if (act === 'save'){
+        var ta = strip.querySelector('textarea');
+        var note = (ta.value || '').trim();
+        if (!note && pickedTags.size === 0) return;
+        state.annots[t.id] = state.annots[t.id] || [];
+        state.annots[t.id].push({
+          ts: Date.now(),
+          tags: Array.from(pickedTags),
+          note: note
+        });
+        saveState(state);
+        ta.value = '';
+        pickedTags.clear();
+        strip.querySelectorAll('.chip.on').forEach(function(b){ b.classList.remove('on'); });
+        render();
+        // re-open the same card after re-render
+        var rec = document.querySelector('.ticket[data-id="' + t.id + '"]');
+        if (rec){
+          rec.classList.add('expanded');
+          renderLog(rec.querySelector('.annot-strip'), t.id);
+        }
+      } else if (act === 'collapse'){
+        card.classList.remove('expanded'); openId = null;
+      } else if (btn.classList.contains('rm')){
+        var idx = parseInt(btn.dataset.idx, 10);
+        var arr = state.annots[t.id] || [];
+        arr.splice(idx, 1);
+        if (!arr.length) delete state.annots[t.id]; else state.annots[t.id] = arr;
+        saveState(state);
+        render();
+        var rec2 = document.querySelector('.ticket[data-id="' + t.id + '"]');
+        if (rec2){ rec2.classList.add('expanded'); renderLog(rec2.querySelector('.annot-strip'), t.id); }
+      }
+    });
+
+    // dnd
+    card.addEventListener('dragstart', function(e){
+      dragId = t.id;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', t.id);
+    });
+    card.addEventListener('dragend', function(){
+      dragId = null;
+      card.classList.remove('dragging');
+      document.querySelectorAll('.col.dragover').forEach(function(el){ el.classList.remove('dragover'); });
+    });
+
+    return card;
+  }
+
+  function renderLog(strip, id){
+    var log = strip.querySelector('.log');
+    var arr = state.annots[id] || [];
+    if (!arr.length){ log.innerHTML = ''; return; }
+    log.innerHTML = arr.map(function(e, idx){
+      var tags = (e.tags||[]).map(function(t){ return '#'+esc(t); }).join(' ');
+      return '<div class="entry">' +
+        '<span>' + (tags || '<i style="color:var(--g500)">note</i>') + '</span>' +
+        '<span>' + esc(e.note) + '</span>' +
+        '<span class="ts">' + esc(fmtTs(e.ts)) + '</span>' +
+        '<button class="rm" data-idx="' + idx + '" title="delete">×</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ---------- render ----------
+  function render(){
+    COLUMNS.forEach(function(c){ colBodies[c.key].innerHTML = ''; });
+    var counts = {}; COLUMNS.forEach(function(c){ counts[c.key] = 0; });
+    // stable ordering: discovered first within column for D01-04 visibility, else as defined
+    ITEMS.forEach(function(t){
+      if (!colBodies[t.col]) t.col = 'next';
+      colBodies[t.col].appendChild(makeCard(t));
+      counts[t.col] += 1;
+    });
+    COLUMNS.forEach(function(c){ colCounts[c.key].textContent = counts[c.key]; });
+
+    var total = ITEMS.length;
+    var annotItems = Object.keys(state.annots).filter(function(k){ return (state.annots[k]||[]).length; }).length;
+    var sum = document.getElementById('summary');
+    sum.innerHTML = '<b>' + total + '</b> cards' +
+      COLUMNS.map(function(c){ return '<span class="dot">·</span><b>' + counts[c.key] + '</b> ' + c.key; }).join('');
+    if (annotItems) sum.innerHTML += '<span class="dot">·</span><b style="color:var(--olive)">' + annotItems + '</b> annotated';
+
+    // hero pills
+    document.getElementById('hero-total').textContent   = total + ' cards';
+    document.getElementById('hero-done').textContent    = counts.done    + ' done';
+    document.getElementById('hero-next').textContent    = counts.next    + ' next';
+    document.getElementById('hero-blocked').textContent = counts.blocked + ' blocked';
+    document.getElementById('hero-disc').textContent    = counts.discovered + ' discovered';
+  }
+
+  // ---------- filter bar ----------
+  function renderFilterBar(){
+    var f = state.filters;
+    var tw = document.getElementById('filterTags');
+    var sw = document.getElementById('filterSizes');
+    tw.innerHTML = TAGS.map(function(t){
+      return '<button type="button" class="chip' + (f.tag===t?' active':'') + '" data-tag="'+t+'">'+tagLabel(t)+'</button>';
+    }).join('') + '<button type="button" class="chip' + (f.tag?'':' active') + '" data-tag="">all</button>';
+    sw.innerHTML = SIZES.map(function(s){
+      return '<button type="button" class="chip' + (f.size===s?' active':'') + '" data-size="'+s+'">'+sizeLabel(s)+'</button>';
+    }).join('') + '<button type="button" class="chip' + (f.size?'':' active') + '" data-size="">all</button>';
+  }
+  document.getElementById('filterTags').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    state.filters.tag = b.dataset.tag || null; saveState(state);
+    renderFilterBar(); render();
+  });
+  document.getElementById('filterSizes').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    state.filters.size = b.dataset.size || null; saveState(state);
+    renderFilterBar(); render();
+  });
+
+  // ---------- toolbar buttons ----------
+  document.getElementById('btnReset').addEventListener('click', function(){
+    if (!confirm('Reset column placement for built-in cards? (Custom cards + annotations are kept.)')) return;
+    DEFAULTS.forEach(function(d){
+      var it = ITEMS.find(function(x){ return x.id === d.id; });
+      if (it) it.col = d.col;
+      delete state.cols[d.id];
+    });
+    saveState(state);
+    render();
+  });
+
+  document.getElementById('btnExport').addEventListener('click', function(){
+    openExport();
+  });
+  document.getElementById('btnCopy').addEventListener('click', function(){
+    var btn = this;
+    var s = buildExport();
+    navigator.clipboard.writeText(s).then(function(){
+      btn.classList.add('copied'); btn.textContent = 'copied ✓';
+      setTimeout(function(){ btn.classList.remove('copied'); btn.textContent = 'copy state'; }, 1400);
+    }).catch(function(){ openExport(); });
+  });
+
+  function buildExport(){
+    var payload = {
+      generated_at: new Date().toISOString(),
+      columns: COLUMNS.map(function(c){ return c.key; }),
+      cards: ITEMS.map(function(t){
+        return {
+          id: t.id, col: t.col, tag: t.tag, size: t.size,
+          title: t.title, summary: t.summary,
+          link: t.link || null, blocks: t.blocks || null,
+          annotations: state.annots[t.id] || []
+        };
+      })
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  function openExport(){
+    document.getElementById('exportTa').value = buildExport();
+    document.getElementById('modalBg').classList.add('on');
+  }
+  document.getElementById('exportClose').addEventListener('click', function(){
+    document.getElementById('modalBg').classList.remove('on');
+  });
+  document.getElementById('exportCopy').addEventListener('click', function(){
+    var ta = document.getElementById('exportTa');
+    ta.select(); document.execCommand('copy');
+    var btn = this;
+    btn.classList.add('copied'); btn.textContent = 'copied ✓';
+    setTimeout(function(){ btn.classList.remove('copied'); btn.textContent = 'copy to clipboard'; }, 1400);
+  });
+  document.getElementById('modalBg').addEventListener('click', function(e){
+    if (e.target === this) this.classList.remove('on');
+  });
+
+  // ---------- add card ----------
+  var addForm = document.getElementById('addForm');
+  document.getElementById('btnNew').addEventListener('click', function(){ addForm.classList.toggle('on'); });
+  document.getElementById('afCancel').addEventListener('click', function(){ addForm.classList.remove('on'); });
+  document.getElementById('afSave').addEventListener('click', function(){
+    var id = (document.getElementById('afTid').value || '').trim();
+    var title = (document.getElementById('afTitle').value || '').trim();
+    if (!id || !title){ alert('tid and title required'); return; }
+    if (ITEMS.find(function(x){ return x.id === id; })){ alert('tid already exists: '+id); return; }
+    var link = (document.getElementById('afLink').value || '').trim();
+    var item = {
+      id: id,
+      col: document.getElementById('afCol').value,
+      tag: document.getElementById('afTag').value,
+      size: document.getElementById('afSize').value,
+      title: title,
+      summary: (document.getElementById('afSumm').value || '').trim(),
+      link: link || undefined,
+      linkLabel: link ? (link.length > 36 ? link.slice(0,33)+'…' : link) : undefined,
+      custom: true
+    };
+    ITEMS.push(item);
+    state.custom.push(item);
+    saveState(state);
+    addForm.classList.remove('on');
+    // clear fields
+    ['afTid','afTitle','afSumm','afLink'].forEach(function(k){ document.getElementById(k).value = ''; });
+    render();
+  });
+
+  // ---------- boot ----------
+  renderFilterBar();
+  render();
+})();
+</script>
+</body>
+</html>

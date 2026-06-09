@@ -1,37 +1,32 @@
 # Skills setup
 
-Symlink the skills in this directory into your local Claude Code skills dir so
-the AI loop can discover them.
+Symlink the skills in `.agents/skills/` into your Claude Code (or compatible) skills dir.
 
-## macOS / Linux
+For the full bootstrap procedure (council clone, kit init, verification), see [docs/agents-bootstrap.md](../docs/agents-bootstrap.md).
 
-Skills are organized in subdirectories, each containing a `SKILL.md` file. Symlink directories:
+## Quick install (macOS / Linux)
 
 ```bash
-cd /Users/njui/Documents/dev_work/naisiae_lema/insight-kit
+SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+mkdir -p "$SKILLS_DIR"
+cd /path/to/insight-kit
 for d in .agents/skills/*/; do
-  skill_name="$(basename "$d")"
-  ln -sf "$(realpath "$d")" "$HOME/.claude/skills/$skill_name"
+  ln -sf "$(realpath "$d")" "$SKILLS_DIR/$(basename "$d")"
 done
 ```
 
-After symlinking, restart Claude Code OR run `/find-skills` to refresh.
+After symlinking, restart Claude Code or run `/find-skills` to refresh.
+
+For Cursor / other harnesses, set `CLAUDE_SKILLS_DIR` to the harness's skills dir before running the loop.
 
 ## Windows
 
 Symlinks aren't reliable on Windows. Copy directories instead:
 
 ```powershell
-Copy-Item -Path .agents\skills\* -Destination $env:USERPROFILE\.claude\skills\ -Recurse -Force
+Copy-Item -Path .agents\\skills\\* -Destination $env:USERPROFILE\\.claude\\skills\\ -Recurse -Force
 ```
 
-CI/agents need the skill directories copied (not symlinked) into the runner's `~/.claude/skills/`.
+## CI
 
-## Verification
-
-```bash
-ls -d ~/.claude/skills/{preflight,viz-evidence-authoring}
-cat ~/.claude/skills/preflight/SKILL.md | head -5
-```
-
-Should show both skill directories with `SKILL.md` files.
+CI runners need directories copied (not symlinked). See [docs/agents-bootstrap.md § CI environment variable setup](../docs/agents-bootstrap.md#ci-environment-variable-setup) for the full GitHub Actions excerpt.

@@ -28,7 +28,8 @@
           "critic",
           "renderer",
           "evaluator",
-          "operator"
+          "operator",
+          "annotator"
         ]
       },
       "minItems": 1,
@@ -119,19 +120,37 @@
     },
     "default_role_for": {
       "type": "object",
-      "description": "Maps work-phase keywords to a default role (optional). Values must be one of the 7 canonical role names.",
-      "additionalProperties": {
-        "type": "string",
-        "enum": [
-          "data-engineer",
-          "analyst",
-          "researcher",
-          "critic",
-          "renderer",
-          "evaluator",
-          "operator"
-        ]
-      }
+      "description": "Maps work-phase keywords to a default role (optional). Values must be one of the 8 canonical role names. Allowed keys cover both verb (analyze) and noun (analysis) forms of canonical phases.",
+      "patternProperties": {
+        "^(analyze|analysis|critique|critic|ingest|ingestion|render|visualization|evaluate|evaluation|annotate|annotation|operate|orchestration|hypothesis|validation)$": {
+          "type": "string",
+          "enum": [
+            "data-engineer",
+            "analyst",
+            "researcher",
+            "critic",
+            "renderer",
+            "evaluator",
+            "operator",
+            "annotator"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "kit_version": {
+      "type": "string",
+      "description": "Version of insight-kit that initialized this kit. Compared against installed version at Run init."
+    },
+    "secrets": {
+      "type": "object",
+      "description": "Environment-variable-style secrets loaded from .insight-kit/secrets.local.yaml (gitignored).",
+      "patternProperties": {
+        "^[A-Z_][A-Z0-9_]*$": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

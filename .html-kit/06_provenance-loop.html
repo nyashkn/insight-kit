@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Provenance loop · text + charts</title>
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;--sage:#A8B89A;--rose:#C97B7B;
+  --g100:#F0EEE6;--g200:#E6E3DA;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --serif:ui-serif,Georgia,'Times New Roman',serif;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Monaco,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--ivory);color:var(--g700);line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:var(--clay);text-decoration:none}
+a:hover{color:var(--clay-d)}
+code{font-family:var(--mono);font-size:0.92em;background:var(--g100);padding:1px 5px;border-radius:3px;color:var(--g700)}
+
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.95);backdrop-filter:blur(6px);border-bottom:1px solid var(--g200);z-index:50}
+.topbar-inner{max-width:1600px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.topbar .brand{font-family:var(--serif);font-size:17px;color:var(--slate);font-weight:500}
+.topbar nav{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;letter-spacing:0.04em;text-transform:uppercase}
+.topbar nav a{color:var(--g500)}
+.topbar nav a.active{color:var(--slate);border-bottom:2px solid var(--clay);padding-bottom:2px}
+
+.wrap{max-width:1600px;margin:0 auto;padding:0 32px 100px}
+.page-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:32px}
+.page-grid > main{min-width:0}
+@media(min-width:1280px){.page-grid{grid-template-columns:minmax(0,1fr) 280px}}
+
+.hero{padding:48px 0 24px;max-width:920px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--g500);margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:500;font-size:40px;line-height:1.12;color:var(--slate);letter-spacing:-0.01em;margin-bottom:14px}
+.lede{font-size:16px;color:var(--g700);max-width:820px;margin-bottom:16px}
+
+section{margin:38px 0;scroll-margin-top:80px}
+h2{font-family:var(--serif);font-weight:500;font-size:26px;color:var(--slate);margin-bottom:10px;letter-spacing:-0.005em}
+h2 .num{display:inline-block;font-family:var(--mono);font-size:13px;color:var(--clay);letter-spacing:0.06em;margin-right:10px;vertical-align:middle}
+h3{font-family:var(--serif);font-weight:500;font-size:18px;color:var(--slate);margin:16px 0 8px}
+h4{font-family:var(--sans);font-weight:600;font-size:14.5px;color:var(--slate);margin:14px 0 6px}
+p{margin-bottom:10px;max-width:820px;font-size:14.5px}
+.lead{font-size:15px;color:var(--g700);margin-bottom:12px;max-width:820px}
+
+/* bug strip */
+.bugs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:14px 0}
+@media(max-width:900px){.bugs{grid-template-columns:1fr}}
+.bug{background:var(--paper);border-left:3px solid var(--rose);padding:12px 14px;border-radius:0 6px 6px 0;font-size:13px;min-width:0;overflow-wrap:anywhere}
+.bug .id{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--rose);margin-bottom:5px}
+.bug .num-good{color:var(--olive);font-family:var(--mono);font-weight:600}
+.bug .num-bad{color:var(--rose);font-family:var(--mono);font-weight:600;text-decoration:line-through}
+
+/* layer cards */
+.layers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+@media(max-width:900px){.layers{grid-template-columns:1fr}}
+.layer{background:var(--paper);border:1.5px solid var(--g300);border-radius:10px;padding:18px 20px;min-width:0}
+.layer .code{max-width:100%}
+.layer.acc{border-color:var(--clay)}
+.layer .h{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.layer .h .num{font-family:var(--mono);font-size:11px;color:var(--clay);letter-spacing:0.06em}
+.layer .h h3{margin:0;font-size:18px}
+.layer .role{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--g500);margin-bottom:8px}
+
+.code{background:var(--slate);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:10px 0}
+.code pre{font-family:var(--mono);font-size:12px;line-height:1.55;color:#E6E3DA;white-space:pre}
+.kw{color:#D97757}.fn{color:#A8B89A}.cm{color:#87867F;font-style:italic}.st{color:#E3DACC}.dec{color:#C97B7B}.num{color:#788C5D}.bad{color:#C97B7B;font-weight:700}
+
+/* council */
+.council{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+@media(max-width:900px){.council{grid-template-columns:1fr}}
+.persona{background:var(--paper);border-left:3px solid var(--clay);padding:12px 14px;border-radius:0 6px 6px 0;min-width:0;overflow-wrap:anywhere}
+.persona .name{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--clay);margin-bottom:5px}
+.persona .name .role{color:var(--g500);font-weight:400}
+.persona p{font-size:13px;margin:0;max-width:none;line-height:1.5}
+.persona.synth{border-color:var(--olive);background:var(--g100);grid-column:1 / -1}
+.persona.synth .name{color:var(--olive)}
+
+/* flow */
+.flow-wrap{background:var(--paper);border:1px solid var(--g300);border-radius:8px;padding:18px;overflow-x:auto;margin:16px 0}
+svg.flow{display:block;min-width:1120px;height:auto;font-family:var(--sans)}
+
+/* verdict */
+.verdict{background:var(--oat);border:1.5px solid var(--clay);border-radius:12px;padding:22px 26px;margin:28px 0;max-width:920px}
+.verdict .label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--clay-d);margin-bottom:6px}
+.verdict h3{font-family:var(--serif);font-size:20px;color:var(--slate);margin-bottom:8px}
+.verdict ol{padding-left:22px;font-size:14px;color:var(--g700)}
+.verdict ol li{margin:5px 0}
+
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;background:var(--paper);border:1px solid var(--g200);border-radius:6px;overflow:hidden}
+th{background:var(--g100);text-align:left;padding:10px 12px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--g700);border-bottom:1px solid var(--g300);font-weight:600}
+td{padding:9px 12px;border-bottom:1px solid var(--g200);vertical-align:top;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+td code{font-size:11.5px}
+
+.callout{background:var(--g100);border-left:3px solid var(--olive);padding:12px 16px;margin:12px 0;font-size:13.5px;border-radius:0 6px 6px 0;max-width:920px}
+.callout .lbl{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--olive);margin-bottom:4px}
+
+a.g-link{color:var(--g700);border-bottom:1px dotted var(--clay);cursor:help;text-decoration:none}
+a.g-link:hover{color:var(--clay-d);background:var(--g100)}
+.glossary-rail{display:none}
+@media(min-width:1280px){.glossary-rail{display:block;position:sticky;top:78px;align-self:start;max-height:calc(100vh - 100px);overflow-y:auto;padding:24px 4px 24px 18px;border-left:1px solid var(--g200);font-size:13px}}
+.glossary-rail.is-open{display:block;position:relative;top:0;border-left:none;background:var(--paper);border:1px solid var(--g300);border-radius:8px;padding:18px;margin:18px 0;max-height:none}
+.glossary-rail h4{font-family:var(--serif);font-size:15px;color:var(--slate);margin-bottom:12px}
+.glossary-rail dl{margin:0}
+.glossary-rail dt{font-family:var(--mono);font-size:11.5px;color:var(--clay);margin-top:12px;font-weight:600}
+.glossary-rail dt:first-child{margin-top:0}
+.glossary-rail dd{margin:3px 0 0;font-size:12.5px;color:var(--g700);line-height:1.5}
+.glossary-rail dt:target{background:var(--oat);padding:2px 5px;border-radius:3px;margin-left:-5px}
+.glossary-toggle-wrap{display:block;margin:18px 0;text-align:center}
+@media(min-width:1280px){.glossary-toggle-wrap{display:none}}
+.glossary-toggle{font-family:var(--mono);font-size:12px;background:var(--paper);border:1px solid var(--g300);padding:8px 16px;border-radius:6px;cursor:pointer;color:var(--g700)}
+
+footer{margin-top:36px;padding-top:20px;border-top:1px solid var(--g200);font-size:12.5px;color:var(--g500);font-family:var(--mono)}
+footer a{color:var(--g500);text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit × Hamilton</span>
+    <nav>
+      <a href="index.html">01 · Synthesis</a>
+      <a href="current-state.html">02 · Current state</a>
+      <a href="cache-walkthrough.html">03 · Cache</a>
+      <a href="hamilton.html">04 · Hamilton</a>
+      <a href="evidence-sdk.html">A · Evidence SDK</a>
+      <a href="pandera-fit.html">B · Pandera</a>
+      <a href="dataframe-stack-fit.html">C · DF stack</a>
+      <a href="provenance-loop.html" class="active">D · Provenance loop</a>
+      <a href="feature-platform-and-claim-bundle.html">E · Feature platform</a>
+      <a href="agent-team-orchestration.html">F · Orchestration</a>
+      <a href="pi-harness-redesign.html">G · pi-harness</a>
+      <a href="glossary.html">05 · Glossary</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+<div class="page-grid">
+<main>
+
+<section class="hero">
+  <div class="eyebrow">decision brief · 2026-05-14</div>
+  <h1>Closing the text + charts hallucination loop</h1>
+  <p class="lede">
+    Real growth_insights bugs: <code>health.md</code> showed <span style="font-family:var(--mono);color:var(--rose)">+115,070 KES</span> when the truth was <span style="font-family:var(--mono);color:var(--olive)">−11,079 KES</span> — sign flipped. <code>g4_retargeting_leak.md</code> rendered <span style="font-family:var(--mono);color:var(--rose)">5160%</span> for what should have been <span style="font-family:var(--mono);color:var(--olive)">51.6%</span>. <code>monthly_pl</code> displayed <span style="font-family:var(--mono);color:var(--rose)">MER 9.26x</span> built on partial-month spend. Each cost a revision sprint. This page proposes a closed loop: <a class="g-link" href="#g-claimnum"><code>&lt;ClaimNum&gt;</code></a> · <a class="g-link" href="#g-prov-rail">ProvenanceRail</a> · <a class="g-link" href="#g-preflight">L6 preflight</a> · <a class="g-link" href="#g-postdiff">post-render diff</a>.
+  </p>
+</section>
+
+<section id="bugs">
+<h2><span class="num">§1</span>The bugs — ground truth</h2>
+<p class="lead">From <code>docs/sprint3/03_page_numbers_audit.md</code>. All four wrong simultaneously on one line of <code>health.md</code>:</p>
+<div class="bugs">
+  <div class="bug">
+    <div class="id">C-1 · monthly_pl</div>
+    <div>Jan-2026 MER displayed <span class="num-bad">9.26x</span>; truth <span class="num-good">~2.0x full month</span>. Spend table joined last 7 days only.</div>
+  </div>
+  <div class="bug">
+    <div class="id">C-2 · ltv_cac DataTable</div>
+    <div>Column <code>new_customers</code> dropped from final SELECT — table renders blank for every row; narrative cites "÷ 211 new customers", invisible.</div>
+  </div>
+  <div class="bug">
+    <div class="id">C-3 · g4_retargeting_leak</div>
+    <div><code>fmt=pct1</code> applied to pre-multiplied value: <span class="num-bad">5160%</span> shown; truth <span class="num-good">51.6%</span>. Bug in TWO places (Column + BarChart yFmt).</div>
+  </div>
+  <div class="bug">
+    <div class="id">C-4 · health.md (worst)</div>
+    <div>Four hardcoded KPIs all wrong on one line: <span class="num-bad">+115,070</span> vs <span class="num-good">−11,079</span> — SIGN FLIP. Story reversed.</div>
+  </div>
+  <div class="bug">
+    <div class="id">commit log</div>
+    <div>Recurring fixes: <code>fix(charts) explicit yFmt/xFmt</code>, <code>sprint2: reconcile cross-page contradictions per Socrates audit</code>, <code>sprint3 fixes: critical audit issues</code>.</div>
+  </div>
+  <div class="bug">
+    <div class="id">memory 5ad60555</div>
+    <div>User already designed half the fix in 2026-04-30: "Zero hardcoded numbers. Writer references claim_id; every number click-through to run."</div>
+  </div>
+</div>
+<p>Three failure classes: <strong>(a) stale literals</strong> (health.md), <strong>(b) format mismatches</strong> (g4 5160%), <strong>(c) silently wrong claims</strong> (monthly_pl partial-month → wrong MER). Each needs different defenses.</p>
+</section>
+
+<section id="council">
+<h2><span class="num">§2</span>Council · 6 voices</h2>
+<div class="council">
+  <div class="persona">
+    <div class="name">Feynman · <span class="role">first principles</span></div>
+    <p>The number <code>+115,070</code> entered the system as a <em>string literal</em>. Once a literal, no downstream check distinguishes correct from incorrect. Fix: <strong>eliminate the channel</strong>. Numbers never exist as string literals in source prose. A claim ref is a pointer resolved at render time against ground truth.</p>
+  </div>
+  <div class="persona">
+    <div class="name">Kahneman · <span class="role">cognitive bypass</span></div>
+    <p>Writer pastes a number it didn't compute because <strong>contextual plausibility</strong> wins: number from prompt examples + prior runs in context window → System 1 pattern-match. Checklists fail under load. Need System 2 guard at machine speed: <code>&lt;ClaimNum&gt;</code> that refuses to render if claim missing.</p>
+  </div>
+  <div class="persona">
+    <div class="name">Karpathy · <span class="role">empirical eval</span></div>
+    <p>Regression test = numeric diff post-build. Extract every numeric token from rendered HTML (outside <code>&lt;code&gt;</code>), join against <code>claims.jsonl</code>, assert 100% provenance coverage. <code>5160%</code> would have flagged instantly — no claim has that field. Cheap, fast, addresses the failure mode.</p>
+  </div>
+  <div class="persona">
+    <div class="name">Taleb · <span class="role">tail risk</span></div>
+    <p><strong>Sign flips are catastrophic</strong> (health.md +115k → −11k inverts the decision). Prioritize defense on sign-bearing numbers (net, delta, comparison) > denominators inflating ratios (partial-month MER) > absolute magnitudes. Critic agent catches wrong-baseline claims at the source — DOCK-C-007 vs D-005.</p>
+  </div>
+  <div class="persona">
+    <div class="name">Rams · <span class="role">simplicity</span></div>
+    <p>Invisible when correct. Author writes <code>&lt;ClaimNum claim_id="X" field="y"/&gt;</code>, preview shows formatted number, no lookup. Friction appears only at build-fail (claim missing). The g4 double-fix collapses to one fix: <code>fmt</code> lives on the component, value lives in claim.</p>
+  </div>
+  <div class="persona">
+    <div class="name">Sun Tzu · <span class="role">adversarial</span></div>
+    <p>LLM finds path of least resistance. If <code>&lt;ClaimNum fallback="2.36x"/&gt;</code> is allowed, fallback becomes new hardcode vector — <strong>strip the attribute</strong>. LLM will write "approximately 2.36x" in prose near a tag → preflight must reject ALL bare numeric literals in prose, not just mismatches.</p>
+  </div>
+  <div class="persona synth">
+    <div class="name">Synth · <span class="role">verdict</span></div>
+    <p><strong>Two-layer enforcement, both machine-checked, both blocking on board-facing pages:</strong> (a) Numbers originate ONLY from <code>(run_id, claim_id, field)</code> triples in <code>claims.jsonl</code>; rendered via <code>&lt;ClaimNum&gt;</code> component that hard-errors on missing claim. (b) L6 preflight regex over <code>reports/pages/**/*.md</code> rejects ANY bare numeric literal in narrative prose (outside fences / outside <code>&lt;ClaimNum&gt;</code>). Belt-and-suspenders: post-render diff scans HTML output, asserts 100% of numeric tokens trace to claims. Critic agent surfaces challenges as <code>critique</code> field on claim → ProvenanceRail flags non-ignorably.</p>
+  </div>
+</div>
+</section>
+
+<section id="mech">
+<h2><span class="num">§3</span>Six-layer mechanism — technical spec</h2>
+
+<div class="layers">
+
+<div class="layer acc">
+  <div class="h"><span class="num">L1</span><h3>Claim is the only source of numbers</h3></div>
+  <div class="role">claims.jsonl · per run</div>
+  <p>Every numeric fact emitted as <code>(claim_id, field, value, fmt_hint, run_id, coverage_warnings[])</code>. Multiple fields per claim OK. <code>coverage_warnings</code> e.g. <code>partial_month</code>, <code>n_lt_30</code>, <code>baseline_cherry_picked</code> surface upstream caveats.</p>
+<div class="code"><pre>{
+  <span class="kw">"claim_id"</span>: <span class="st">"MD-D-005"</span>,
+  <span class="kw">"tier"</span>: <span class="st">"D"</span>,
+  <span class="kw">"statement"</span>: <span class="st">"March 2026 net cash result"</span>,
+  <span class="kw">"fields"</span>: {
+    <span class="kw">"net_cash_kes"</span>:   { <span class="kw">"value"</span>: <span class="bad">-11079</span>, <span class="kw">"fmt"</span>: <span class="st">"kes_signed"</span> },
+    <span class="kw">"mer"</span>:            { <span class="kw">"value"</span>: <span class="num">2.19</span>,   <span class="kw">"fmt"</span>: <span class="st">"xFactor"</span> },
+    <span class="kw">"gmv_kes"</span>:        { <span class="kw">"value"</span>: <span class="num">1152766</span>,<span class="kw">"fmt"</span>: <span class="st">"kes"</span> },
+    <span class="kw">"ad_spend_kes"</span>:   { <span class="kw">"value"</span>: <span class="num">525332</span>, <span class="kw">"fmt"</span>: <span class="st">"kes"</span> }
+  },
+  <span class="kw">"coverage_warnings"</span>: [],
+  <span class="kw">"run_id"</span>: <span class="st">"2026-04-26_0917_analyst-funnel_g2-levers"</span>,
+  <span class="kw">"input_claims"</span>: [<span class="st">"DOCK-ETL_M-001"</span>]
+}</pre></div>
+</div>
+
+<div class="layer acc">
+  <div class="h"><span class="num">L2</span><h3>&lt;ClaimNum&gt; component · no fallback</h3></div>
+  <div class="role">renderer surface</div>
+  <p>Single tag binds <code>claim_id + field</code>. Resolves at build. <strong>No <code>fallback=</code> attribute</strong> (Sun Tzu rule). Wraps in <code>&lt;span data-prov="run_id:claim_id:field"&gt;</code> for rail click-through. Missing claim = hard build error.</p>
+<div class="code"><pre><span class="cm">// in any .md page</span>
+&lt;ClaimNum claim_id=<span class="st">"MD-D-005"</span> field=<span class="st">"net_cash_kes"</span>/&gt;
+<span class="cm">// renders: -11,079 KES · with provenance attr</span>
+
+<span class="cm">// FORBIDDEN — won't typecheck</span>
+&lt;ClaimNum claim_id=<span class="st">"MD-D-005"</span> field=<span class="st">"net_cash_kes"</span> <span class="bad">fallback=</span><span class="st">"+115,070"</span>/&gt;
+
+<span class="cm">// fmt override allowed — uses field's fmt by default</span>
+&lt;ClaimNum claim_id=<span class="st">"MD-D-005"</span> field=<span class="st">"net_cash_kes"</span> fmt=<span class="st">"kes_short"</span>/&gt;</pre></div>
+  <p style="font-size:13px;margin-top:8px"><strong>Solves:</strong> health.md sign flip (literal can't exist) · g4 5160% (fmt comes from claim spec, not page tag).</p>
+</div>
+
+<div class="layer acc">
+  <div class="h"><span class="num">L3</span><h3>&lt;ClaimChart&gt; — chart spec from V-claim</h3></div>
+  <div class="role">renderer · viz layer</div>
+  <p>V-tier claims store chart spec JSON. <code>&lt;ClaimChart claim_id="V-001"/&gt;</code> resolves type / x / y / encoding / fmt from claim. Axis fmt + value fmt come from claim, not page. The g4 double-fix (Column <code>fmt=pct1</code> AND BarChart <code>yFmt=pct1</code>) collapses — fix the V-claim once.</p>
+<div class="code"><pre>{
+  <span class="kw">"claim_id"</span>: <span class="st">"V-001"</span>, <span class="kw">"tier"</span>: <span class="st">"V"</span>,
+  <span class="kw">"viz"</span>: {
+    <span class="kw">"type"</span>: <span class="st">"BarChart"</span>,
+    <span class="kw">"data_source"</span>: <span class="st">"channel_spend_dist"</span>,
+    <span class="kw">"x"</span>: <span class="st">"channel"</span>, <span class="kw">"y"</span>: <span class="st">"pct_of_total_spend"</span>,
+    <span class="kw">"yFmt"</span>: <span class="st">"num1"</span>,   <span class="cm">// view returns 51.6 not 0.516</span>
+    <span class="kw">"ySuffix"</span>: <span class="st">"%"</span>
+  },
+  <span class="kw">"input_claims"</span>: [<span class="st">"MD-ETL_M-014"</span>]
+}</pre></div>
+</div>
+
+<div class="layer acc">
+  <div class="h"><span class="num">L4</span><h3>L6 preflight · narrative literal lint</h3></div>
+  <div class="role">pre-build · CI blocking</div>
+  <p>Regex over <code>reports/pages/**/*.md</code>. Rejects bare numeric literals in narrative prose (lines outside fenced code blocks, outside <code>&lt;ClaimNum&gt;</code>/<code>&lt;ClaimChart&gt;</code>/<code>{{ claim:… }}</code> markers). Pattern: <code>[\d][\d,\.]*[%xX]?</code>. Year tokens (<code>2024-2026</code>) allow-listed.</p>
+<div class="code"><pre><span class="cm"># scripts/ik_preflight_L6_narrative_literals.py</span>
+<span class="kw">import</span> re, sys, pathlib
+
+LITERAL = re.compile(<span class="st">r"(?&lt;![\w.])([+\-]?\d[\d,]*(?:\.\d+)?[%xX]?)(?![\w])"</span>)
+ALLOW  = {<span class="st">"2024"</span>, <span class="st">"2025"</span>, <span class="st">"2026"</span>}
+
+<span class="kw">def</span> <span class="fn">scan</span>(path):
+    src = path.read_text().splitlines()
+    in_fence = <span class="kw">False</span>; fails = []
+    <span class="kw">for</span> i, line <span class="kw">in</span> <span class="fn">enumerate</span>(src, <span class="num">1</span>):
+        <span class="kw">if</span> line.lstrip().startswith(<span class="st">"```"</span>): in_fence = <span class="kw">not</span> in_fence; <span class="kw">continue</span>
+        <span class="kw">if</span> in_fence: <span class="kw">continue</span>
+        <span class="kw">if</span> <span class="st">"&lt;ClaimNum"</span> <span class="kw">in</span> line <span class="kw">or</span> <span class="st">"&lt;ClaimChart"</span> <span class="kw">in</span> line: <span class="kw">continue</span>
+        <span class="kw">for</span> m <span class="kw">in</span> LITERAL.finditer(line):
+            <span class="kw">if</span> m.group(<span class="num">1</span>) <span class="kw">in</span> ALLOW: <span class="kw">continue</span>
+            fails.append((path, i, m.group(<span class="num">1</span>), line.strip()))
+    <span class="kw">return</span> fails
+
+fails = [f <span class="kw">for</span> p <span class="kw">in</span> pathlib.Path(<span class="st">"reports/pages"</span>).rglob(<span class="st">"*.md"</span>) <span class="kw">for</span> f <span class="kw">in</span> scan(p)]
+<span class="kw">if</span> fails:
+    <span class="kw">for</span> p, ln, lit, ctx <span class="kw">in</span> fails:
+        <span class="fn">print</span>(<span class="st">f"L6 FAIL {p}:{ln}  literal={lit!r}  near: {ctx[:80]}"</span>)
+    sys.exit(<span class="num">2</span>)</pre></div>
+  <p style="font-size:13px;margin-top:8px"><strong>Catches:</strong> the four hardcoded KPIs on health.md line 9 before build starts.</p>
+</div>
+
+<div class="layer acc">
+  <div class="h"><span class="num">L5</span><h3>Post-render diff · HTML token audit</h3></div>
+  <div class="role">post-build · CI blocking</div>
+  <p>Belt-and-suspenders. After Evidence builds, parse rendered HTML, extract every numeric token outside <code>&lt;code&gt;</code>/<code>&lt;pre&gt;</code>/<code>data-prov</code>-wrapped spans, join against <code>claims.jsonl</code>. Tolerance ±0.5% for rounding. Anything unmatched → fail. <strong>This is what catches a claim that resolves to a stale value.</strong></p>
+<div class="code"><pre><span class="cm"># scripts/ik_postrender_numeric_audit.py</span>
+<span class="kw">from</span> bs4 <span class="kw">import</span> BeautifulSoup
+<span class="kw">import</span> json, re, pathlib, sys
+
+claims = json.loads(pathlib.Path(<span class="st">"claims.jsonl"</span>).read_text())
+known  = {(c[<span class="st">"claim_id"</span>], f, v[<span class="st">"value"</span>])
+          <span class="kw">for</span> c <span class="kw">in</span> claims <span class="kw">for</span> f, v <span class="kw">in</span> c.get(<span class="st">"fields"</span>, {}).items()}
+
+TOKEN = re.compile(<span class="st">r"[+\-]?\d[\d,]*(?:\.\d+)?"</span>)
+<span class="kw">def</span> <span class="fn">walk</span>(html):
+    soup = BeautifulSoup(html, <span class="st">"lxml"</span>)
+    <span class="kw">for</span> tag <span class="kw">in</span> soup(<span class="st">"code"</span>): tag.extract()       <span class="cm"># skip code blocks</span>
+    <span class="kw">for</span> tag <span class="kw">in</span> soup(<span class="st">"pre"</span>):  tag.extract()
+    <span class="kw">for</span> el <span class="kw">in</span> soup.find_all(attrs={<span class="st">"data-prov"</span>: <span class="kw">True</span>}):
+        el.extract()                                  <span class="cm"># trusted (came from claim)</span>
+    <span class="kw">return</span> TOKEN.findall(soup.get_text())
+
+orphans = [t <span class="kw">for</span> p <span class="kw">in</span> pathlib.Path(<span class="st">"reports/build"</span>).rglob(<span class="st">"*.html"</span>)
+              <span class="kw">for</span> t <span class="kw">in</span> walk(p.read_text())
+              <span class="kw">if</span> <span class="kw">not</span> any(<span class="fn">close</span>(<span class="fn">float</span>(t.replace(<span class="st">","</span>,<span class="st">""</span>)), v, <span class="num">0.005</span>)
+                     <span class="kw">for</span> _, _, v <span class="kw">in</span> known)]
+<span class="kw">if</span> orphans: <span class="fn">print</span>(orphans); sys.exit(<span class="num">2</span>)</pre></div>
+  <p style="font-size:13px;margin-top:8px"><strong>Catches:</strong> g4's <code>5160%</code> rendered token (no claim has 5160) · stale claim ref that resolves to old value · narrative drift around <code>&lt;ClaimNum&gt;</code> tags.</p>
+</div>
+
+<div class="layer acc">
+  <div class="h"><span class="num">L6</span><h3>Critic challenge surfaces in ProvenanceRail</h3></div>
+  <div class="role">critic agent · claim layer</div>
+  <p>DOCK-C-007 challenges DOCK-D-005 for cherry-picked baseline. Today: floats as separate claim. <strong>Proposed:</strong> critique writes a record onto the challenged claim: <code>{challenger_run_id, statement, severity, resolution_status}</code>. ProvenanceRail renders these as a visible flag on every page citing D-005 — <em>non-ignorable but non-blocking</em>. Human decides resolution.</p>
+<div class="code"><pre>{
+  <span class="kw">"claim_id"</span>: <span class="st">"MD-D-005"</span>,
+  <span class="kw">"fields"</span>: { ... },
+  <span class="kw">"critiques"</span>: [
+    {
+      <span class="kw">"critique_id"</span>: <span class="st">"MD-C-007"</span>,
+      <span class="kw">"by_run"</span>: <span class="st">"2026-04-26_0909_critic-data-quality_critic-pass"</span>,
+      <span class="kw">"severity"</span>: <span class="st">"medium"</span>,
+      <span class="kw">"statement"</span>: <span class="st">"baseline cherry-picked from high-season week"</span>,
+      <span class="kw">"resolution"</span>: <span class="st">"open"</span>     <span class="cm">// → renders ⚠ in rail</span>
+    }
+  ]
+}</pre></div>
+</div>
+
+</div>
+</section>
+
+<section id="loop">
+<h2><span class="num">§4</span>The closed loop · text + charts</h2>
+<div class="flow-wrap">
+<svg class="flow" viewBox="0 0 1180 420" role="img" aria-label="Provenance closed loop">
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+  <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C97B7B"/></marker>
+</defs>
+
+<!-- lane bands -->
+<rect x="0" y="20" width="1180" height="80" fill="#F0EEE6"/>
+<rect x="0" y="160" width="1180" height="80" fill="#F0EEE6"/>
+<rect x="0" y="300" width="1180" height="100" fill="#F0EEE6"/>
+<text x="10" y="40" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">data → claims</text>
+<text x="10" y="180" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">authoring · text + charts</text>
+<text x="10" y="320" style="font-family:var(--mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;fill:#87867F">enforcement gates</text>
+
+<!-- L1 claims emit -->
+<g transform="translate(70,50)">
+  <rect width="200" height="44" rx="3" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">analyst · critic emit claims</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">claims.jsonl + critiques</text>
+</g>
+<!-- duckdb materialize -->
+<g transform="translate(310,50)">
+  <rect width="180" height="44" rx="3" fill="#FFFFFF" stroke="#788C5D" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">duckdb view</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">claims_manifest · V-specs</text>
+</g>
+<!-- V-claim specs -->
+<g transform="translate(530,50)">
+  <rect width="180" height="44" rx="3" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">V-claim → chart spec</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">type · x · y · fmt · suffix</text>
+</g>
+
+<!-- renderer authors page (narrative spine) -->
+<g transform="translate(120,190)">
+  <rect width="220" height="44" rx="3" fill="#FFFFFF" stroke="#141413" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">renderer authors .md prose</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">layout_type + narrative</text>
+</g>
+<!-- ClaimNum -->
+<g transform="translate(380,190)">
+  <rect width="180" height="44" rx="3" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">&lt;ClaimNum/&gt; tags</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">numeric facts · no literals</text>
+</g>
+<!-- ClaimChart -->
+<g transform="translate(600,190)">
+  <rect width="180" height="44" rx="3" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">&lt;ClaimChart/&gt; tags</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">type+axes from V-claim</text>
+</g>
+<!-- ProvenanceRail -->
+<g transform="translate(820,190)">
+  <rect width="220" height="44" rx="3" fill="#FFFFFF" stroke="#A8B89A" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">&lt;ProvenanceRail/&gt;</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">critiques + supersedes ⚠</text>
+</g>
+
+<!-- L4 preflight -->
+<g transform="translate(120,330)">
+  <rect width="220" height="50" rx="3" fill="#FFFFFF" stroke="#C97B7B" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">L6 preflight regex</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">bare-literal lint · exit 2</text>
+  <text x="9" y="44" style="font-size:9px;fill:#788C5D;font-family:var(--mono)">PRE-BUILD · BLOCKING</text>
+</g>
+<!-- evidence build -->
+<g transform="translate(390,330)">
+  <rect width="180" height="50" rx="3" fill="#FFFFFF" stroke="#141413" stroke-width="1"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">bun run sources + dev</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">resolve claims · render HTML</text>
+</g>
+<!-- L5 postdiff -->
+<g transform="translate(620,330)">
+  <rect width="240" height="50" rx="3" fill="#FFFFFF" stroke="#C97B7B" stroke-width="1.5"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">L5 post-render diff</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">HTML tokens ↔ claims.jsonl</text>
+  <text x="9" y="44" style="font-size:9px;fill:#788C5D;font-family:var(--mono)">POST-BUILD · BLOCKING</text>
+</g>
+<!-- PR -->
+<g transform="translate(900,330)">
+  <rect width="140" height="50" rx="3" fill="#FFFFFF" stroke="#141413" stroke-width="1"/>
+  <text x="9" y="18" style="font-size:11px;font-weight:600;fill:#141413">PR · audience: board</text>
+  <text x="9" y="32" style="font-size:9.5px;fill:#3D3D3A;font-family:var(--mono)">merges → publish</text>
+</g>
+
+<!-- edges -->
+<path d="M270 72 L310 72" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M490 72 L530 72" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M170 94 L170 190" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<text x="172" y="148" style="font-family:var(--mono);font-size:8.5px;fill:#87867F">resolve</text>
+
+<path d="M470 94 L470 190" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M620 94 L690 190" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M340 212 L380 212" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M560 212 L600 212" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M780 212 L820 212" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+
+<!-- to gates -->
+<path d="M230 234 L230 330" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M340 354 L390 354" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M570 354 L620 354" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+<path d="M860 354 L900 354" stroke="#87867F" stroke-width="1" fill="none" marker-end="url(#arr)"/>
+
+<!-- failure loops -->
+<path d="M230 380 L80 380 L80 212 L120 212" stroke="#C97B7B" stroke-width="1" fill="none" stroke-dasharray="4 3" marker-end="url(#arrR)"/>
+<text x="85" y="320" style="font-family:var(--mono);font-size:8.5px;fill:#C97B7B;text-transform:uppercase">L6 fail → rewrite prose w/ &lt;ClaimNum&gt;</text>
+
+<path d="M740 380 L740 410 L60 410 L60 72 L70 72" stroke="#C97B7B" stroke-width="1" fill="none" stroke-dasharray="4 3" marker-end="url(#arrR)"/>
+<text x="450" y="406" style="font-family:var(--mono);font-size:8.5px;fill:#C97B7B;text-transform:uppercase">L5 fail → claim wrong → re-run analyst/critic</text>
+</svg>
+</div>
+<p style="font-size:13px;color:var(--g500);margin-top:8px"><strong>Two failure loops, both red-dashed:</strong> L6 fail forces narrative rewrite (cheap, local). L5 fail forces upstream claim rerun (expensive, traces back to data). The latter is what catches the <code>monthly_pl</code> partial-month case — claim wrong → page renders wrong number → diff shows orphan → re-extract w/ proper date window → re-emit claim → re-render.</p>
+</section>
+
+<section id="rollout">
+<h2><span class="num">§5</span>Rollout — graded, not big-bang</h2>
+<table>
+<thead><tr><th>Page tier</th><th>Frontmatter</th><th>L6 preflight</th><th>L5 post-diff</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Board / investor</td><td><code>audience: board</code></td><td>blocking</td><td>blocking</td><td>sign flips here cost real $$</td></tr>
+<tr><td>Founder-facing</td><td><code>audience: founder</code></td><td>blocking</td><td>warn</td><td>numbers drive decisions; some draft tolerance</td></tr>
+<tr><td>Internal analyst</td><td><code>audience: internal</code></td><td>warn</td><td>off</td><td>velocity wins over rigor</td></tr>
+<tr><td>Exploratory · draft</td><td><code>status: draft</code></td><td>off</td><td>off</td><td>notebook iteration; no gate</td></tr>
+</tbody>
+</table>
+<p>Promotion <code>draft → published</code> = gate tightens automatically. PR template checks <code>audience</code> field on touched pages.</p>
+</section>
+
+<section id="effort">
+<h2><span class="num">§6</span>Effort to ship — phased</h2>
+<table>
+<thead><tr><th>Phase</th><th>Deliverable</th><th>Effort</th><th>Cumulative defense</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>&lt;ClaimNum&gt;</code> component + claim <code>fields</code> dict schema migration</td><td>~2 d</td><td>literals can be replaced</td></tr>
+<tr><td>2</td><td>L6 preflight regex + CI hook on board pages</td><td>~½ d</td><td>health.md class blocked pre-build</td></tr>
+<tr><td>3</td><td><code>&lt;ClaimChart&gt;</code> + V-claim spec schema</td><td>~3 d</td><td>g4 double-fix class collapsed</td></tr>
+<tr><td>4</td><td>L5 post-render diff w/ BeautifulSoup + tolerance match</td><td>~2 d</td><td>orphan tokens blocked post-build</td></tr>
+<tr><td>5</td><td>Critic <code>critiques[]</code> on claim · ProvenanceRail surface</td><td>~2 d</td><td>baseline cherry-pick visible non-ignorably</td></tr>
+<tr><td>6</td><td>Migration script: literal → <code>&lt;ClaimNum&gt;</code> across existing pages (LLM-assisted, manual review)</td><td>~1 wk</td><td>existing 12 pages clean</td></tr>
+</tbody>
+</table>
+<p>Total: <strong>~2.5 weeks</strong> for full closed loop. Phase 1+2 alone (~3 d) blocks the health.md class — biggest single defensive win.</p>
+</section>
+
+<section id="migration">
+<h2><span class="num">§6.5</span>Migration: existing C-claims → inline critiques</h2>
+
+<p class="lead">Today, critic challenges float as independent sibling entries in their own run's <code>claims.jsonl</code> — DOCK-C-007 lives in the <code>critic-data-quality_critic-pass</code> run, far from DOCK-D-005 in the analyst run it challenges. The provenance-loop spec (§3 L6) proposes a single canonical home: a <code>critiques[]</code> array embedded directly on the challenged D-claim. Moving the challenge inline makes it non-ignorable: any reader, tool, or ProvenanceRail rendering D-005 sees the open challenge without cross-referencing a second run, and downstream code that reads by <code>claim_id</code> gets the full picture from one record.</p>
+
+<h3>Before vs After</h3>
+<table>
+<thead><tr><th>State</th><th>Claim ID</th><th>Location</th><th>What you see</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>Before — D-claim</strong></td>
+  <td><code>DOCK-D-005</code></td>
+  <td><code>2026-04-26_0917_analyst-funnel_g2-levers/claims.jsonl</code></td>
+  <td>Full numeric fields, no <code>critiques</code> key. Reader has no indication a challenge exists unless they also scan the critic run.</td>
+</tr>
+<tr>
+  <td><strong>Before — C-claim</strong></td>
+  <td><code>DOCK-C-007</code></td>
+  <td><code>2026-04-26_0909_critic-data-quality_critic-pass/claims.jsonl</code></td>
+  <td>Standalone entry with <code>"tier":"C"</code>, <code>"refutes":["DOCK-D-005"]</code>, and a statement about cherry-picked baseline. Invisible to any code reading D-005 directly.</td>
+</tr>
+<tr>
+  <td><strong>After migration</strong></td>
+  <td><code>DOCK-D-005</code></td>
+  <td><code>2026-04-26_0917_analyst-funnel_g2-levers/claims.jsonl</code></td>
+  <td>Same D-claim, now with <code>critiques:[…]</code> populated. C-007's content is embedded inline. ProvenanceRail renders ⚠ on every page citing D-005. Original C-007 entry kept with <code>"superseded_by_inline":true</code> for audit.</td>
+</tr>
+</tbody>
+</table>
+
+<h3>After shape — DOCK-D-005 with inline critique</h3>
+<div class="code"><pre>{
+  <span class="kw">"claim_id"</span>: <span class="st">"DOCK-D-005"</span>,
+  <span class="kw">"tier"</span>: <span class="st">"D"</span>,
+  <span class="kw">"statement"</span>: <span class="st">"March 2026 net cash result"</span>,
+  <span class="kw">"fields"</span>: {
+    <span class="kw">"net_cash_kes"</span>: { <span class="kw">"value"</span>: <span class="num">-11079</span>, <span class="kw">"fmt"</span>: <span class="st">"kes_signed"</span> },
+    <span class="kw">"mer"</span>:          { <span class="kw">"value"</span>: <span class="num">2.19</span>,   <span class="kw">"fmt"</span>: <span class="st">"xFactor"</span> }
+  },
+  <span class="kw">"run_id"</span>: <span class="st">"2026-04-26_0917_analyst-funnel_g2-levers"</span>,
+  <span class="kw">"critiques"</span>: [
+    {
+      <span class="kw">"critique_id"</span>:         <span class="st">"DOCK-C-007"</span>,
+      <span class="kw">"by_run"</span>:              <span class="st">"2026-04-26_0909_critic-data-quality_critic-pass"</span>,
+      <span class="kw">"severity"</span>:            <span class="st">"medium"</span>,
+      <span class="kw">"statement"</span>:           <span class="st">"baseline cherry-picked from high-season week"</span>,
+      <span class="kw">"resolution"</span>:          <span class="st">"open"</span>,      <span class="cm">// → ProvenanceRail renders ⚠</span>
+      <span class="kw">"original_c_claim_id"</span>: <span class="st">"DOCK-C-007"</span>
+    }
+  ]
+}</pre></div>
+
+<h3>Running the migration script</h3>
+<div class="code"><pre><span class="cm"># 1. Dry run first — see exactly what will change, nothing written</span>
+<span class="fn">python</span> scripts/ik_migrate_critic_inline.py .insight-kit/runs/ --dry-run
+
+<span class="cm"># 2. Inspect the output, then commit the diff of the dry-run plan</span>
+<span class="cm">#    so you have a record before making changes.</span>
+
+<span class="cm"># 3. Run for real</span>
+<span class="fn">python</span> scripts/ik_migrate_critic_inline.py .insight-kit/runs/
+
+<span class="cm"># 4. Review .jsonl.bak files created alongside each modified claims.jsonl</span>
+<span class="cm">#    e.g. .insight-kit/runs/2026-04-26_0917_analyst-funnel_g2-levers/claims.jsonl.bak</span>
+
+<span class="cm"># 5. Commit only the .jsonl changes (not the .bak files — add *.jsonl.bak to .gitignore)</span>
+<span class="fn">git</span> diff --stat .insight-kit/runs/
+<span class="fn">git</span> add .insight-kit/runs/
+<span class="fn">git</span> commit -m <span class="st">"feat(claims): migrate C-tier critiques inline on D-claims (§6.5)"</span>
+
+<span class="cm"># Script is idempotent — safe to re-run; already-embedded critiques are skipped.</span></pre></div>
+
+<div class="callout">
+  <div class="lbl">Warning — irreversible without .bak files</div>
+  The migration rewrites <code>claims.jsonl</code> lines in-place. A <code>.jsonl.bak</code> sibling is created before the first write to each file. <strong>Do not delete the .bak files until the migrated state has been reviewed and committed.</strong> If anything looks wrong after a real run, restore with:
+  <code style="display:block;margin-top:6px">cp .insight-kit/runs/&lt;run&gt;/claims.jsonl.bak .insight-kit/runs/&lt;run&gt;/claims.jsonl</code>
+  Always run <code>--dry-run</code> first, review every printed line, then proceed. Treat the git diff after migration as the definitive audit record.
+</div>
+
+<h3>What stays unchanged</h3>
+<p>The original C-claim entries in their respective <code>claims.jsonl</code> files are <strong>preserved for audit</strong> — the script only sets <code>"superseded_by_inline": true</code> on them so tooling can distinguish active from archived critic claims. The D-claim's <code>claim_id</code> is untouched: any downstream code, ProvenanceRail lookup, or <code>&lt;ClaimNum claim_id="DOCK-D-005"&gt;</code> reference continues to resolve correctly. The only structural addition is the <code>critiques[]</code> array on the D-claim — all existing fields are preserved verbatim.</p>
+</section>
+
+<section id="verdict">
+<div class="verdict">
+  <div class="label">Verdict · 2026-05-14</div>
+  <h3>Two layers, six gates, zero literal numbers in narrative prose.</h3>
+  <ol>
+    <li><strong>Single source:</strong> every number originates from <code>(run_id, claim_id, field)</code>. Migrate claim schema to <code>fields: dict[str, {value, fmt}]</code>.</li>
+    <li><strong>One component, no fallback:</strong> <code>&lt;ClaimNum&gt;</code> + <code>&lt;ClaimChart&gt;</code>. Strip any escape hatch attribute — Sun Tzu rule.</li>
+    <li><strong>L6 preflight:</strong> regex over <code>reports/pages/**/*.md</code> rejects bare numeric literals in prose. Pre-build, blocking, ~½ day to ship.</li>
+    <li><strong>L5 post-render diff:</strong> extract HTML tokens, join against claims, fail on orphans. Catches stale-claim case.</li>
+    <li><strong>Critic critiques on the claim:</strong> non-ignorable rail flag. Catches cherry-picked baselines at the source.</li>
+    <li><strong>Graded rollout:</strong> blocking on <code>audience: board</code>, warning on internal, off on draft. Promotion tightens gates.</li>
+  </ol>
+</div>
+</section>
+
+<div class="glossary-toggle-wrap"><button class="glossary-toggle" data-glossary-toggle>Show glossary ↓</button></div>
+
+<footer>
+  insight-kit × Hamilton · provenance loop · 2026-05-14<br>
+  refs: <code>nairomarket/growth_insights/docs/sprint3/03_page_numbers_audit.md</code> · signet memory <code>5ad60555</code> · <a href="evidence-sdk.html">evidence-sdk</a> · <a href="pandera-fit.html">pandera fit</a>
+</footer>
+
+</main>
+
+<aside class="glossary-rail" id="glossary">
+<h4>Glossary</h4>
+<dl>
+<dt id="g-claimnum">&lt;ClaimNum/&gt;</dt>
+<dd>Renderer component. <code>claim_id + field</code> → numeric render, fmt from claim. No <code>fallback=</code> attribute. Missing claim = hard build error.</dd>
+
+<dt id="g-claimchart">&lt;ClaimChart/&gt;</dt>
+<dd>Renderer component. V-tier claim → chart spec (type/x/y/axes/fmt). One claim, one chart — no per-page format duplication.</dd>
+
+<dt id="g-prov-rail">ProvenanceRail</dt>
+<dd>Right-rail or footer element that lists every <code>(run_id, claim_id, field)</code> rendered on the page + active critiques. Click-through to source run.</dd>
+
+<dt id="g-preflight">L6 preflight</dt>
+<dd>Pre-build lint. Regex rejects bare numeric literals in narrative prose outside fences / outside ClaimNum tags. Exit 2 on fail. Blocking on <code>audience: board</code>.</dd>
+
+<dt id="g-postdiff">L5 post-render diff</dt>
+<dd>Post-build audit. Extract HTML numeric tokens, join against <code>claims.jsonl</code> ±0.5%, fail on orphans. Catches stale-claim renders.</dd>
+
+<dt id="g-critique">critiques[] (on claim)</dt>
+<dd>Array of critic-emitted records on the challenged claim. Severity + statement + resolution. Rail renders ⚠ — non-ignorable but non-blocking.</dd>
+
+<dt id="g-coverage">coverage_warnings</dt>
+<dd>Claim-level flags surfacing upstream caveats: <code>partial_month</code>, <code>n_lt_30</code>, <code>baseline_cherry_picked</code>. Render in rail next to value.</dd>
+
+<dt id="g-data-prov">data-prov attr</dt>
+<dd>HTML span attribute wrapping every ClaimNum render: <code>data-prov="run_id:claim_id:field"</code>. Used by L5 diff to skip trusted tokens, used by rail for click-through.</dd>
+
+<dt id="g-audience">audience: frontmatter</dt>
+<dd>Page-level tag: <code>board</code> · <code>founder</code> · <code>internal</code> · draft. Drives gate strictness — board pages fail on any L6/L5 hit; draft pages skip both.</dd>
+
+<dt id="g-fmt-spec">fmt spec</dt>
+<dd>Format hint on claim field: <code>kes</code> · <code>kes_signed</code> · <code>pct1</code> · <code>num1</code> · <code>xFactor</code>. Drives both numeric rendering AND chart axis labels.</dd>
+</dl>
+</aside>
+
+</div>
+</div>
+
+<script>
+const tog = document.querySelector('[data-glossary-toggle]');
+const rail = document.querySelector('.glossary-rail');
+if(tog && rail){
+  tog.addEventListener('click', () => {
+    const open = rail.classList.toggle('is-open');
+    tog.textContent = open ? 'Hide glossary ↑' : 'Show glossary ↓';
+  });
+}
+document.querySelectorAll('a.g-link').forEach(a => {
+  a.addEventListener('click', () => {
+    if(window.innerWidth < 1280 && rail && !rail.classList.contains('is-open')){
+      rail.classList.add('is-open');
+      if(tog) tog.textContent = 'Hide glossary ↑';
+    }
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Glossary — insight-kit × Hamilton</title>
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+  --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;
+  --olive:#788C5D;--sage:#A8B89A;--rose:#C97B7B;
+  --g100:#F0EEE6;--g200:#E6E3DA;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.55}
+.wrap{max-width:1600px;margin:0 auto;padding:0 32px 140px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--g500)}
+h1.display{font-family:var(--serif);font-weight:500;font-size:clamp(38px,5.4vw,58px);line-height:1.06;letter-spacing:-.018em;margin:.3em 0 .25em}
+h1.display em{font-style:italic;color:var(--clay)}
+h2{font-family:var(--serif);font-weight:500;font-size:26px;letter-spacing:-.012em;margin:44px 0 12px;border-top:1px solid var(--g200);padding-top:24px;display:flex;align-items:baseline;gap:12px}
+h2 .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);padding:3px 8px;background:var(--g100);border-radius:4px}
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--g200);z-index:30}
+.topbar-inner{max-width:1600px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.brand span{color:var(--clay)}
+nav.crumbs{display:flex;gap:18px;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+nav.crumbs a{color:var(--g500);text-decoration:none}
+nav.crumbs a.active{color:var(--slate)}
+nav.crumbs a:hover{color:var(--clay)}
+.hero{padding:54px 0 18px;border-bottom:1px solid var(--g200)}
+.indexgrid{display:grid;grid-template-columns:1fr;gap:6px;margin:24px 0 8px;font-family:var(--mono);font-size:12.5px}
+@media(min-width:760px){.indexgrid{grid-template-columns:1fr 1fr 1fr}}
+.indexgrid a{color:var(--g700);text-decoration:none;padding:5px 8px;border-radius:4px}
+.indexgrid a:hover{color:var(--clay);background:var(--g100)}
+dl.terms{margin:0}
+dl.terms dt{font-family:var(--mono);font-size:14.5px;color:var(--slate);font-weight:600;margin-top:18px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+dl.terms dt .src{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);background:var(--g100);padding:2px 8px;border-radius:4px;font-weight:500}
+dl.terms dt .src.hk{background:var(--oat);color:var(--slate)}
+dl.terms dt .src.ik{background:#e7eedf;color:#3e553a}
+dl.terms dt .src.ev{background:#f1e0d6;color:#7a3f1f}
+dl.terms dt .src.cross{background:var(--slate);color:var(--ivory)}
+dl.terms dd{margin:4px 0 0;color:var(--g700);font-size:14.5px;max-width:74ch;padding-left:0}
+a{color:var(--clay)}
+code{font-family:var(--mono);font-size:.92em;background:var(--g100);padding:1px 5px;border-radius:4px;color:var(--g700)}
+footer{margin-top:80px;font-family:var(--mono);font-size:11.5px;color:var(--g500);letter-spacing:.06em}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 4px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--g500)}
+.legend .sw{display:inline-flex;align-items:center;gap:6px}
+.legend .swatch{display:inline-block;width:14px;height:14px;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit <span>×</span> hamilton</span>
+    <nav class="crumbs">
+      <a href="index.html">01 · Synthesis</a>
+      <a href="current-state.html">02 · Current state</a>
+      <a href="cache-walkthrough.html">03 · Cache walkthrough</a>
+      <a href="hamilton.html">04 · Hamilton deep dive</a>
+      <a href="evidence-sdk.html">A · Evidence SDK</a>
+      <a href="pandera-fit.html">B · Pandera</a>
+      <a href="dataframe-stack-fit.html">C · DF stack</a>
+      <a href="provenance-loop.html">D · Provenance loop</a>
+      <a href="feature-platform-and-claim-bundle.html">E · Feature platform</a>
+      <a href="agent-team-orchestration.html">F · Orchestration</a>
+      <a href="pi-harness-redesign.html">G · pi-harness</a>
+      <a href="glossary.html" class="active">05 · Glossary</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="eyebrow">terms used across both artifacts</div>
+  <h1 class="display">Glossary — <em>one place</em> for every term.</h1>
+  <div class="legend">
+    <span class="sw"><span class="swatch" style="background:var(--oat)"></span>Hamilton</span>
+    <span class="sw"><span class="swatch" style="background:#e7eedf"></span>insight-kit</span>
+    <span class="sw"><span class="swatch" style="background:#f1e0d6"></span>Evidence.dev</span>
+    <span class="sw"><span class="swatch" style="background:var(--slate)"></span>Cross-cutting</span>
+  </div>
+  <div class="indexgrid">
+    <a href="#adapter">Adapter / Hook</a>
+    <a href="#agent">Agent</a>
+    <a href="#annotation">Annotation</a>
+    <a href="#cache-adapter">CacheAdapter</a>
+    <a href="#caveat">Caveat</a>
+    <a href="#check-output">@check_output</a>
+    <a href="#claim">Claim</a>
+    <a href="#claim-id">Claim ID</a>
+    <a href="#claim-registry">claims_registry.yaml</a>
+    <a href="#claim-tier">Claim Tier</a>
+    <a href="#config-when">@config.when</a>
+    <a href="#council">Council persona</a>
+    <a href="#critic">Critic</a>
+    <a href="#dag">DAG</a>
+    <a href="#datasaver">DataSaver / DataLoader</a>
+    <a href="#driver">Driver</a>
+    <a href="#duckdb">DuckDB</a>
+    <a href="#evidence">Evidence.dev</a>
+    <a href="#executor">Executor</a>
+    <a href="#extract-columns">@extract_columns</a>
+    <a href="#final-vars">final_vars</a>
+    <a href="#fingerprint">Fingerprint</a>
+    <a href="#graph-validator">GraphValidator</a>
+    <a href="#node-validator">NodeValidator</a>
+    <a href="#result-builder">ResultBuilder</a>
+    <a href="#goal">Goal</a>
+    <a href="#h-plugin">h_* plugin</a>
+    <a href="#hook">Hook</a>
+    <a href="#input-claims">input_claims</a>
+    <a href="#input-record">InputRecord</a>
+    <a href="#kit-root">Kit root</a>
+    <a href="#layer-a">Layer A / B / C</a>
+    <a href="#layer-1-6">Layer 1–6 (preflight)</a>
+    <a href="#lifecycle">Lifecycle hook</a>
+    <a href="#lineage">Lineage</a>
+    <a href="#manifest">manifest.json</a>
+    <a href="#materialize">Materialize</a>
+    <a href="#namespace">Namespace</a>
+    <a href="#node">Node</a>
+    <a href="#openlineage">OpenLineage</a>
+    <a href="#output-record">OutputRecord</a>
+    <a href="#parameterize">@parameterize</a>
+    <a href="#parquet">Parquet</a>
+    <a href="#provenance">Provenance</a>
+    <a href="#run">Run</a>
+    <a href="#run-id">run_id</a>
+    <a href="#schema-drift">Schema drift</a>
+    <a href="#script-py">script.py</a>
+    <a href="#shim">Shim</a>
+    <a href="#subdag">@subdag</a>
+    <a href="#supersedes">supersedes</a>
+    <a href="#tag">@tag</a>
+    <a href="#topic">Topic</a>
+    <a href="#viz">viz / Evidence seam</a>
+  </div>
+</section>
+
+<h2>Glossary</h2>
+<dl class="terms">
+
+<dt id="adapter">Adapter <span class="src hk">hamilton</span></dt>
+<dd>Object passed to <code>Driver.Builder().with_adapters(...)</code> that implements one or more lifecycle-hook interfaces. <code>InsightKitHook</code> is one such adapter.</dd>
+
+<dt id="agent">Agent <span class="src ik">insight-kit</span></dt>
+<dd>A logical role declared in <code>agents.yaml</code> (e.g. <em>analyst-funnel</em>, <em>critic-data-quality</em>, <em>data-eng-bronze</em>). Each agent declares its allowed claim tiers and the council persona it invokes.</dd>
+
+<dt id="annotation">Annotation <span class="src ik">insight-kit</span></dt>
+<dd>Post-hoc meta-claim emitted by Kahneman or Socrates personas on an existing claim. Stored in <code>annotations.jsonl</code>. Signals: independence, confidence-justified, edge-supported, anchoring, batch_bias_assessment.</dd>
+
+<dt id="cache-adapter">HamiltonCacheAdapter <span class="src hk">hamilton</span></dt>
+<dd>Lifecycle hook that stores/retrieves node results in a result store keyed by a content-fingerprint. Behaviours: <code>DEFAULT</code>, <code>RECOMPUTE</code>, <code>DISABLE</code>, <code>IGNORE</code>.</dd>
+
+<dt id="caveat">Caveat <span class="src ik">insight-kit</span></dt>
+<dd>Required text attached to externally-sourced inputs (e.g. Tavily web search, scraped pages). Layer-A rule rejects external ingest with empty caveats.</dd>
+
+<dt id="check-output">@check_output <span class="src hk">hamilton</span></dt>
+<dd>Decorator that runs validators on a node's result after execution. Built-in validators: range, type, pandera schema. <code>importance="error"</code> raises; <code>"warning"</code> logs.</dd>
+
+<dt id="claim">Claim <span class="src ik">insight-kit</span></dt>
+<dd>The atomic provenance object insight-kit emits. Fields: <code>claim_id</code>, <code>tier</code>, <code>statement</code>, <code>value</code>, <code>confidence</code>, <code>caveats</code>, <code>input_claims</code>, <code>supports</code>, <code>refutes</code>, <code>supersedes</code>, <code>evidence_ref</code>, <code>emitter</code>.</dd>
+
+<dt id="claim-id">Claim ID <span class="src ik">insight-kit</span></dt>
+<dd>Namespaced identifier matching <code>^[A-Z]{2,5}-(D|R|C|I|V|X|ETL_[RCM])-\d{3,}$</code>. Example: <code>DOCK-D-001</code>, <code>NMK-BA-002</code>.</dd>
+
+<dt id="claim-registry">claims_registry.yaml <span class="src ik">insight-kit</span></dt>
+<dd>Per-project mapping of claim-ID prefixes to label, tier, emitter role, and description. Example: <code>BA → brevo-attribution / derived / council-attribution</code>.</dd>
+
+<dt id="claim-tier">Claim Tier <span class="src ik">insight-kit</span></dt>
+<dd>Enum: <code>raw</code>, <code>derived</code>, <code>critic</code>, <code>initiative</code>, <code>viz</code>, <code>counterfactual</code>, <code>etl_raw</code>, <code>etl_clean</code>, <code>etl_metric</code>.</dd>
+
+<dt id="config-when">@config.when <span class="src hk">hamilton</span></dt>
+<dd>Conditionally include or exclude a node based on Driver config. The cleanest way to toggle notebook-vs-prod paths without code duplication.</dd>
+
+<dt id="council">Council persona <span class="src ik">insight-kit</span></dt>
+<dd>A named reasoning style (meadows, socrates, karpathy, taleb, rams, aristotle, kahneman, munger, feynman, lao-tzu, …) invoked by an agent. Each persona produces its own claim or annotation.</dd>
+
+<dt id="critic">Critic <span class="src ik">insight-kit</span></dt>
+<dd>A tier of claim emitted by a critic agent that falsifies, partial-validates, or accepts a parent derived claim. Requires at least one <code>supports</code> or <code>refutes</code> edge (Layer-A rule).</dd>
+
+<dt id="dag">DAG <span class="src cross">cross</span></dt>
+<dd>Directed acyclic graph. In Hamilton: nodes = functions, edges = parameter-name matches. In insight-kit: claim ancestry via <code>input_claims</code>.</dd>
+
+<dt id="datasaver">DataSaver / DataLoader <span class="src hk">hamilton</span></dt>
+<dd>Abstract I/O adapter. Subclass to ride <code>@save_to.&lt;format&gt;</code> / <code>@load_from.&lt;format&gt;</code>. The integration plan introduces a <code>RunScopedParquetSaver</code> that resolves paths into <code>.insight-kit/runs/&lt;id&gt;/output/</code>.</dd>
+
+<dt id="driver">Driver <span class="src hk">hamilton</span></dt>
+<dd>Builder-pattern entry point. <code>driver.Builder().with_modules(...).with_adapters(...).with_executor(...).build()</code> produces a <code>Driver</code>; <code>.execute(...)</code> runs it.</dd>
+
+<dt id="duckdb">DuckDB <span class="src ev">evidence</span></dt>
+<dd>Embedded analytic database. Parquet snapshots in <code>.insight-kit/runs/.../output/</code> are mounted into a shared DuckDB warehouse via <code>scripts/build_duckdb_views.py</code>, which Evidence.dev queries.</dd>
+
+<dt id="evidence">Evidence.dev <span class="src ev">evidence</span></dt>
+<dd>SQL-first BI framework. Pages are <code>.md</code> with embedded SQL + chart components. The current seam to insight-kit is filesystem-based via DuckDB views and a local npm dep <code>@insight-kit/viz-evidence</code>.</dd>
+
+<dt id="executor">Executor <span class="src hk">hamilton</span></dt>
+<dd>Swappable backend that runs the DAG: <code>SynchronousLocalTaskExecutor</code>, <code>MultiProcessingExecutor</code>, <code>RayExecutor</code>, <code>DaskExecutor</code>, <code>SparkExecutor</code>.</dd>
+
+<dt id="extract-columns">@extract_columns <span class="src hk">hamilton</span></dt>
+<dd>Unpack a multi-column DataFrame into one node per column, so downstream nodes can depend on a specific column.</dd>
+
+<dt id="final-vars">final_vars <span class="src hk">hamilton</span></dt>
+<dd>The list of node names you ask the Driver to materialise. Hamilton walks ancestors and runs only what's needed.</dd>
+
+<dt id="fingerprint">Fingerprint <span class="src hk">hamilton</span></dt>
+<dd>Hash of (code body + upstream inputs + relevant config) used by <code>HamiltonCacheAdapter</code> as the cache key.</dd>
+
+<dt id="graph-validator">GraphValidator <span class="src hk">hamilton</span></dt>
+<dd>Adapter interface that runs at <code>Driver</code> build time over the entire <code>FunctionGraph</code>. In the deep-refactor option, insight-kit's Layer-A claim-ID regex, namespace, and critic-edge rules become a <code>InsightKitGraphValidator</code> that walks every node's tags and rejects malformed claim ids before any compute runs.</dd>
+
+<dt id="node-validator">NodeValidator <span class="src hk">hamilton</span></dt>
+<dd>Per-node validator that fires after a node executes — a lighter cousin of <code>@check_output</code>. Used in the deep refactor to check that <code>@tag(claim_id=…)</code> nodes return a payload compatible with the declared <code>claim_tier</code>.</dd>
+
+<dt id="result-builder">ResultBuilder <span class="src hk">hamilton</span></dt>
+<dd>Adapter that shapes the output of <code>Driver.execute()</code>. In the deep refactor, the <code>InsightKitResultBuilder</code> walks the executed nodes, harvests <code>@tag</code> metadata, and serializes the run as <code>manifest.json</code> + <code>claims.jsonl</code> — replacing the per-Run context manager's write logic.</dd>
+
+<dt id="goal">Goal <span class="src ik">insight-kit</span></dt>
+<dd>An analytical hypothesis declared in <code>.insight-kit/goals/catalog.yaml</code>. Fields: <code>statement</code>, <code>criteria</code>, <code>data_scope</code>, <code>horizon</code>, <code>owner</code>, <code>status</code>, <code>output_claims</code>. Lifecycle: open → closed via <code>open_queue.jsonl</code> / <code>closed.jsonl</code>.</dd>
+
+<dt id="h-plugin">h_* plugin <span class="src hk">hamilton</span></dt>
+<dd>Optional Hamilton plugin: <code>h_pandas</code>, <code>h_polars</code>, <code>h_dlt</code>, <code>h_ray</code>, <code>h_dask</code>, <code>h_spark</code>, <code>h_openlineage</code>, <code>h_mlflow</code>, <code>h_diskcache</code>, <code>h_mcp</code>, <code>h_narwhals</code>.</dd>
+
+<dt id="hook">Hook <span class="src hk">hamilton</span></dt>
+<dd>A method on an Adapter that fires at a lifecycle stage: <code>pre_graph_execute</code>, <code>pre_node_execute</code>, <code>post_node_execute</code>, <code>post_graph_execute</code>, etc. Multiple adapters' hooks stack.</dd>
+
+<dt id="input-claims">input_claims <span class="src ik">insight-kit</span></dt>
+<dd>List of upstream claim IDs cited by a claim. Source of cross-run lineage. Layer A validates that every referenced claim exists in this run or any prior run.</dd>
+
+<dt id="input-record">InputRecord <span class="src ik">insight-kit</span></dt>
+<dd>Provenance record for an ingested input: <code>path</code>, <code>sha256</code>, <code>bytes</code>, <code>rows</code>, <code>content_type</code>, <code>source_id</code>, <code>default_caveats</code>. Filed via <code>Run.ingest_*</code>.</dd>
+
+<dt id="kit-root">Kit root <span class="src ik">insight-kit</span></dt>
+<dd>The directory holding <code>.insight-kit/</code>, located by walking upward from CWD via <code>find_kit_root()</code>. <code>ik bootstrap</code> creates it.</dd>
+
+<dt id="layer-a">Layer A / B / C <span class="src ik">insight-kit</span></dt>
+<dd>Three validation tiers. <strong>A:</strong> real-time per-Run (claim-ID format, namespace, referential integrity, critic-edge rule, external-caveat rule). <strong>B:</strong> post-Run global uniqueness scan. <strong>C:</strong> cross-project via <code>ik validate</code>.</dd>
+
+<dt id="layer-1-6">Layer 1–6 (preflight) <span class="src ik">insight-kit</span></dt>
+<dd>Different axis. <code>ik preflight</code> runs six checks: schema validity, run integrity, claim coverage, evidence density, evidence viz, skill availability.</dd>
+
+<dt id="lifecycle">Lifecycle hook <span class="src hk">hamilton</span></dt>
+<dd>See <a href="#hook">Hook</a>. The integration seam between Hamilton's compute graph and insight-kit's provenance layer.</dd>
+
+<dt id="lineage">Lineage <span class="src cross">cross</span></dt>
+<dd>Two senses: <strong>compute lineage</strong> (Hamilton DAG topology, queryable via <code>dr.what_is_upstream_of</code>); <strong>claim lineage</strong> (insight-kit's <code>input_claims</code> / <code>supports</code> / <code>refutes</code> / <code>supersedes</code> edges).</dd>
+
+<dt id="manifest">manifest.json <span class="src ik">insight-kit</span></dt>
+<dd>Per-Run summary written on <code>Run.__exit__</code>. Contains metadata, all <code>InputRecord</code> / <code>OutputRecord</code> / <code>ApiCall</code>, code SHA, git state, runtime telemetry.</dd>
+
+<dt id="materialize">Materialize <span class="src hk">hamilton</span></dt>
+<dd><code>Driver.materialize(dependencies=[...])</code> fires <code>@save_to.&lt;fmt&gt;</code> nodes — declarative I/O as DAG nodes, not side effects.</dd>
+
+<dt id="namespace">Namespace <span class="src ik">insight-kit</span></dt>
+<dd>The 2–5 letter prefix on every Claim ID for a project. <code>DOCK</code>, <code>NMK</code>, etc. Layer-A rule enforces all emitted claims match the configured namespace.</dd>
+
+<dt id="node">Node <span class="src hk">hamilton</span></dt>
+<dd>A function in a Hamilton module. Name = function name. Inputs = typed parameters. Output type = return annotation. Tags = <code>@tag</code>.</dd>
+
+<dt id="openlineage">OpenLineage <span class="src cross">cross</span></dt>
+<dd>Open spec for data lineage events. Hamilton can emit via <code>h_openlineage</code>. Prior memory chose OpenLineage over alternatives; deferred until a real catalog is deployed.</dd>
+
+<dt id="output-record">OutputRecord <span class="src ik">insight-kit</span></dt>
+<dd>Provenance record for an emitted artifact: <code>path</code>, <code>sha256</code>, <code>layer</code> (metric/critique/viz/raw), <code>rows</code>, <code>schema</code>, <code>duckdb_view</code>. Filed by <code>Run.emit_*</code> or the Hamilton hook.</dd>
+
+<dt id="parameterize">@parameterize <span class="src hk">hamilton</span></dt>
+<dd>Decorator that expands one function into N nodes by sweeping a parameter. The natural shape for the council pattern: one function, five persona lenses.</dd>
+
+<dt id="parquet">Parquet <span class="src cross">cross</span></dt>
+<dd>Columnar storage format. The canonical artifact unit in <code>.insight-kit/runs/.../output/&lt;layer&gt;/*.parquet</code>. Each parquet has a sibling <code>.sha</code> and <code>.schema.json</code>.</dd>
+
+<dt id="provenance">Provenance <span class="src cross">cross</span></dt>
+<dd>The story of where an artifact or claim came from: which inputs, what code, which run, which goal. insight-kit's central concern.</dd>
+
+<dt id="run">Run <span class="src ik">insight-kit</span></dt>
+<dd>The context manager <code>with Run(topic, agent) as run: ...</code>. On enter, opens a timestamped run directory under <code>.insight-kit/runs/</code>. On exit, writes the manifest, claims, env.lock, checksums.</dd>
+
+<dt id="run-id">run_id <span class="src cross">cross</span></dt>
+<dd>Hamilton: uuid passed to every hook. insight-kit: <code>&lt;date&gt;_&lt;time&gt;_&lt;agent&gt;_&lt;topic-slug&gt;</code> dir name. The integration stores Hamilton's uuid as <code>hamilton_run_id</code> in the manifest.</dd>
+
+<dt id="schema-drift">Schema drift <span class="src ik">insight-kit</span></dt>
+<dd>Skill <code>schema-drift/</code> compares emitted output schema to the registered schema for a claim; flags additions, removals, type changes across runs.</dd>
+
+<dt id="script-py">script.py <span class="src ik">insight-kit</span></dt>
+<dd>The user's executable for a Run, copied verbatim into the run directory for reproducibility. The integration plan replaces per-run procedural scripts with one declarative Hamilton module per topic.</dd>
+
+<dt id="shim">Shim <span class="src ik">insight-kit</span></dt>
+<dd>Back-compat wrapper. Recent commits (<code>5f7ab73</code>) add shims for <code>Run.claim(id=)</code> and <code>Run.emit()</code> to keep older call sites working as the API tightens.</dd>
+
+<dt id="subdag">@subdag <span class="src hk">hamilton</span></dt>
+<dd>Embed a sub-graph as a single node in a parent graph. Pairs with <code>@parameterize</code> for "critic-of-claim-X across N angles" in one declaration.</dd>
+
+<dt id="supersedes">supersedes <span class="src ik">insight-kit</span></dt>
+<dd>Edge from a new claim to an older one it replaces. Lets a claim be re-emitted with the same logical identity but updated value. Layer-B rule allows duplicate claim IDs <em>only</em> when a supersedes chain exists.</dd>
+
+<dt id="tag">@tag <span class="src hk">hamilton</span></dt>
+<dd>Attach KV metadata to a node: <code>@tag(emit="metric", claim_tier="derived", claim_id="DOCK-D-001", confidence="high")</code>. <code>InsightKitHook</code> reads these in <code>post_node_execute</code> to dispatch into <code>Run.emit_*</code> / <code>Run.claim()</code>.</dd>
+
+<dt id="topic">Topic <span class="src ik">insight-kit</span></dt>
+<dd>Short slug identifying a Run's subject (e.g. <code>brevo-attribution</code>, <code>g2-levers</code>). Used in the run-dir name.</dd>
+
+<dt id="viz">viz / Evidence seam <span class="src ev">evidence</span></dt>
+<dd>The path from <code>viz</code>-tier claims to Evidence.dev pages. Today: parquet → DuckDB view → SQL source → hand-written <code>.md</code> page that imports <code>@insight-kit/viz-evidence</code> components.</dd>
+
+</dl>
+
+<footer>
+  Glossary · insight-kit × Hamilton ·
+  <a href="index.html" style="color:var(--clay)">synthesis</a> ·
+  <a href="hamilton.html" style="color:var(--clay)">deep dive</a>
+</footer>
+
+</div>
+</body>
+</html>

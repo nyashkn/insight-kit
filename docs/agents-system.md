@@ -6,7 +6,7 @@ This document describes the insight-kit agents framework: a structured system fo
 
 The agents system defines three orthogonal dimensions:
 
-1. **Roles** (7 canonical) — work phases and outputs. MECE: each role produces a specific tier of work (ETL, Derive, External, Challenge, Render, Eval, Ops).
+1. **Roles** (8 canonical) — work phases and outputs. MECE: each role produces a specific tier of work (ETL, Derive, External, Challenge, Render, Eval, Ops, Annotate).
 2. **Personas** (composable) — domain expertise layered onto roles. Example: analyst + funnel-persona = funnel-analyst.
 3. **Council** (18 members) — reasoning lenses for escalation and deliberation. Never produce claims directly; invoked by role agents for specific decisions.
 
@@ -14,7 +14,7 @@ The agents system defines three orthogonal dimensions:
 
 ---
 
-## Roles — Canonical 7
+## Roles — Canonical 8
 
 Each role is tied to a work phase and produces specific output tiers. Roles are MECE (mutually exclusive, collectively exhaustive) within a project workflow.
 
@@ -27,6 +27,7 @@ Each role is tied to a work phase and produces specific output tiers. Roles are 
 | **renderer** | Evidence pages | I, V | Markdown + components | — |
 | **evaluator** | Regression + golden-set | eval-report | Accuracy metrics, golden-set validation | — |
 | **operator** | Kit ops + lifecycle | — | Tier hygiene, goal state, deployments | annotation-pass, goal-mgmt |
+| **annotator** | Annotate claims + runs | A | Typed annotation edges, validation flags, off-glossary tags | annotation-pass |
 
 **Output tiers:**
 - **ETL_R**: raw data layer (views, imports)
@@ -304,6 +305,36 @@ Symlinked 14 skills to ~/.claude/skills/
 Council source: github.com/0xNyk/council-of-high-intelligence
 ```
 
+### Bootstrap-Complete Marker
+
+On successful completion of `init_kit` or `ik agents bootstrap`, the runtime writes:
+
+```
+.insight-kit/.bootstrap-complete
+```
+
+**Schema** (JSON):
+```json
+{
+  "timestamp": "2026-05-04T14:23:00Z",
+  "kit_version": "0.4.1",
+  "skills_count": 14,
+  "skills_dir": ".agents/skills"
+}
+```
+
+**Fields:**
+- `timestamp` — ISO-8601 UTC datetime of the bootstrap run
+- `kit_version` — insight-kit version at bootstrap time (from `kit_version` in `config.yaml` or installed package)
+- `skills_count` — number of skills resolved and symlinked
+- `skills_dir` — resolved path to local skills directory
+
+**When it is written**: after step 6 of the bootstrap sequence (skill symlink complete, no fatal errors).
+
+**When it is stale**: the marker is considered stale when the installed insight-kit minor version differs from `kit_version` recorded in the marker (e.g., marker says `0.4.x`, installed is `0.5.x`). A stale marker triggers a warning at `Run init` and prompts `ik agents bootstrap` to re-run.
+
+**Gitignore**: `.insight-kit/.bootstrap-complete` should be listed in `.gitignore` — it is machine-local state, not project config.
+
 ---
 
 ## Modes — Execution Flags
@@ -375,7 +406,7 @@ ik agents resolve-skill preflight
 
 ## Adding a New Role
 
-Roles are fixed (canonical 7). If you believe a new role is needed, follow this checklist:
+Roles are fixed (canonical 8). If you believe a new role is needed, follow this checklist:
 
 1. **Verify MECE**: Does it overlap with existing roles? (Roles must be mutually exclusive.)
 2. **Define output tier**: What distinct output tier does it produce?
@@ -602,7 +633,9 @@ metadata:
 | evaluator | *(none)* |
 | operator | *(none)* |
 
-The `personas_compatible` field is informational (not schema-validated). It ensures the persona axis is no longer orphaned from the role axis — consumers can look up which roles a persona applies to without re-reading every `persona.md`.
+The `personas_compatible` field is validated by `.agents/agent.schema.json` (the AGENT.md frontmatter schema). See that file for the full field list including `skills_using`, `tier_produces`, and `modes`.
+
+**Schema reference**: `.agents/agent.schema.json` — validates all AGENT.md frontmatter. Required fields: `name`, `description`, `role`. Optional: `phase`, `tier_produces`, `modes`, `skills_using`, `personas_compatible`, `metadata`.
 
 ---
 
@@ -626,12 +659,24 @@ default_role_for:
 ```
 
 **Constraints**:
-- Keys are free-form phase keywords (e.g., `ingest`, `analysis`, `visualization`).
-- Values must be one of the 7 canonical role names: `data-engineer`, `analyst`, `researcher`, `critic`, `renderer`, `evaluator`, `operator`.
+- Keys must be one of the 7 canonical phase keywords: `analyze`, `critique`, `ingest`, `render`, `evaluate`, `annotate`, `operate`. The schema enforces this via `patternProperties`; unknown keys are rejected.
+- Values must be one of the 8 canonical role names: `data-engineer`, `analyst`, `researcher`, `critic`, `renderer`, `evaluator`, `operator`, `annotator`.
 - Each value must also appear in the project's `roles:` list — you cannot route to a role that is not active in the project.
 - The block is entirely optional; `AgentsConfig.default_role_for` is `None` when absent.
 
-**Schema**: `config.schema.json` enforces value enum (7 canonical roles) via `additionalProperties: { type: "string", enum: [...] }`.
+**Canonical phase keys:**
+
+| Phase key | Typical default role | Notes |
+|-----------|---------------------|-------|
+| `ingest` | `data-engineer` | ETL ingestion and transform work |
+| `analyze` | `analyst` | Descriptive claim derivation |
+| `critique` | `critic` | Adversarial re-run and challenge |
+| `render` | `renderer` | Evidence page authoring |
+| `evaluate` | `evaluator` | Regression and golden-set validation |
+| `annotate` | `annotator` | Typed annotation of claims and runs |
+| `operate` | `operator` | Kit ops, lifecycle, goal management |
+
+**Schema**: `config.schema.json` enforces key pattern (`patternProperties` with regex `^(analyze|analysis|critique|critic|ingest|ingestion|render|visualization|evaluate|evaluation|annotate|annotation|operate|orchestration|hypothesis|validation)$`) and value enum (8 canonical roles) with `additionalProperties: false`. Both verb (`analyze`) and noun (`analysis`) forms are accepted to support natural-language phase tags.
 
 **Runtime validation** (`validate_config`): after schema check, each value is verified to be present in the project's `roles` list. A value that passes the schema enum but is not in `roles` raises `ConfigError`.
 

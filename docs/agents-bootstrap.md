@@ -24,6 +24,12 @@ A fresh machine or CI runner has no skills symlinked and no council config. This
 
 ## Procedure
 
+```bash
+# Skills install dir (override for non-Claude harnesses):
+SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+# e.g., for Cursor: export CLAUDE_SKILLS_DIR="$HOME/.cursor/skills"
+```
+
 ### Step 1: Clone the council repo
 
 ```bash
@@ -40,7 +46,6 @@ fi
 ### Step 2: Check global skills directory
 
 ```bash
-SKILLS_DIR="$HOME/.claude/skills"
 mkdir -p "$SKILLS_DIR"
 ls "$SKILLS_DIR"
 ```
@@ -86,12 +91,14 @@ This is the same loop documented in `.agents/SETUP.md`. It is safe to run multip
 ### Step 4: Verify skills are discoverable
 
 ```bash
-ls ~/.claude/skills/ | sort
-# Expected: agents-bootstrap, agent-browser-verify, bun-monorepo-setup,
+ls "$SKILLS_DIR" | sort
+# Expected: agent-browser-verify, bun-monorepo-setup,
 #           citation-hygiene, claim-authoring, eval-protocol, evidence-page-creation,
-#           glossary-management, goal-management, ingest-flow, layer-a-validation,
-#           preflight, schema-drift, viz-evidence-authoring
+#           glossary-management, ingest-flow, layer-a-validation,
+#           preflight, schema-drift, viz-evidence-authoring (12 skills)
 ```
+
+Note: `agents-bootstrap.md` and `goal-management.md` are operational runbooks under `docs/`, not skills. They are NOT symlinked into `$SKILLS_DIR`.
 
 In Claude Code, run `/find-skills` to refresh the skills cache and confirm the list.
 
@@ -174,8 +181,8 @@ bun run lint
 
 ## Acceptance criteria
 
-- `ls ~/.claude/skills/` lists all 14 skills (12 written here + preflight + viz-evidence-authoring).
-- `/find-skills` in Claude Code returns all 14 skills without errors.
+- `ls $SKILLS_DIR/` lists all 12 skills (expected list in Step 4).
+- `/find-skills` in Claude Code returns all 12 skills without errors.
 - `.insight-kit/config.yaml` exists and has a `namespace:` field.
 - `uv run pytest tests/ -q` exits 0.
 - `bun run --filter '*' typecheck` exits 0.
@@ -193,7 +200,32 @@ bun run lint
 
 **council clone fails (private repo):** If `0xNyk/council-of-high-intelligence` is private, configure SSH keys or a personal access token before cloning. The bootstrap script will fail silently if `git clone` exits non-zero — always check the exit code.
 
-**`find_kit_root` LRU cache stale:** After `init_kit` creates `.insight-kit/`, the first `Run` in the same Python process will find it. But if `find_kit_root` was called before `init_kit`, it cached a `FileNotFoundError`. Call `find_kit_root.cache_clear()` after init.
+**`find_kit_root` LRU cache stale:** Fixed in `init_kit` — cache is automatically cleared after `.insight-kit/` and config are written, so subsequent `find_kit_root()` calls in the same process will see the newly created kit.
+
+## Cleanup / Teardown
+
+Use this section when archiving the project, cleaning up CI between runs, or switching namespaces.
+
+**Remove project-skill symlinks:**
+
+```bash
+find "$SKILLS_DIR" -lname "*insight-kit/.agents/skills*" -delete
+```
+
+**Delete the kit root for re-init:**
+
+```bash
+rm -rf .insight-kit/
+```
+
+If reinitializing the same path in a long-running process, manually clear the cache:
+
+```python
+from insight_kit.provenance.root import find_kit_root
+find_kit_root.cache_clear()
+```
+
+(Normally, `init_kit` handles cache invalidation automatically.)
 
 ## Examples
 
@@ -201,11 +233,11 @@ bun run lint
 
 ```bash
 REPO="/path/to/insight-kit"
-SKILLS="$HOME/.claude/skills"
-mkdir -p "$SKILLS"
+SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+mkdir -p "$SKILLS_DIR"
 for d in "$REPO"/.agents/skills/*/; do
   skill="$(basename "$d")"
-  [ ! -e "$SKILLS/$skill" ] && ln -s "$(realpath "$d")" "$SKILLS/$skill" && echo "Linked: $skill"
+  [ ! -e "$SKILLS_DIR/$skill" ] && ln -s "$(realpath "$d")" "$SKILLS_DIR/$skill" && echo "Linked: $skill"
 done
 cd "$REPO"
 uv run python -c "

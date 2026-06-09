@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Agentic-Coding Observability — 2026 Landscape</title>
+<style>
+:root {
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC;
+  --olive:#788C5D; --sage:#A8B89A; --rose:#C97B7B;
+  --g100:#F0EEE6; --g200:#E6E3DA; --g300:#D1CFC5;
+  --g500:#87867F; --g700:#3D3D3A;
+  --serif:ui-serif,Georgia,"Times New Roman",Times,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Monaco,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1500px;margin:0 auto;padding:0 32px 140px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--g500)}
+h1.display{font-family:var(--serif);font-weight:500;font-size:clamp(36px,5.2vw,58px);line-height:1.05;letter-spacing:-.018em;margin:.2em 0 .25em}
+h1.display em{font-style:italic;color:var(--clay)}
+h2{font-family:var(--serif);font-weight:500;font-size:28px;letter-spacing:-.012em;margin:54px 0 14px;border-top:1px solid var(--g200);padding-top:28px}
+h2 .num{font-family:var(--mono);color:var(--g500);font-size:13px;margin-right:14px;letter-spacing:.08em;vertical-align:5px}
+h3{font-family:var(--sans);font-weight:600;font-size:16.5px;margin:24px 0 8px;letter-spacing:-.005em}
+p{max-width:74ch}
+a{color:var(--clay);text-decoration:none;border-bottom:1px solid rgba(217,119,87,.35)}
+a:hover{color:var(--clay-d);border-bottom-color:var(--clay-d)}
+code,kbd{font-family:var(--mono);font-size:.92em;background:var(--g100);padding:1px 5px;border-radius:4px;color:var(--g700)}
+pre.tree,pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre;overflow-x:auto;background:var(--slate);color:#F5F1EA;border-radius:8px;padding:16px 18px;margin:14px 0}
+pre.code .k{color:var(--clay)}
+pre.code .s{color:var(--sage)}
+pre.code .c{color:var(--g500);font-style:italic}
+.topbar{position:sticky;top:0;background:rgba(250,249,245,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--g200);z-index:30}
+.topbar-inner{max-width:1500px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate)}
+.brand span{color:var(--clay)}
+nav.crumbs{display:flex;gap:18px;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.1em}
+nav.crumbs a{color:var(--g500);border:none}
+nav.crumbs a.active{color:var(--slate)}
+nav.crumbs a:hover{color:var(--clay)}
+.hero{padding:56px 0 28px;border-bottom:1px solid var(--g200)}
+.tldr{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 8px;align-items:center}
+.pill{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;padding:6px 12px;border:1px solid var(--g300);border-radius:999px;background:var(--paper);color:var(--g700)}
+.pill.clay{background:var(--clay);border-color:var(--clay);color:#fff}
+.pill.olive{background:var(--olive);border-color:var(--olive);color:#fff}
+.pill.oat{background:var(--oat);border-color:var(--oat);color:var(--slate)}
+.pill.slate{background:var(--slate);border-color:var(--slate);color:var(--ivory)}
+.lead{font-family:var(--serif);font-size:19.5px;line-height:1.55;color:var(--g700);max-width:78ch;margin-top:18px}
+.lead em{font-style:italic;color:var(--clay)}
+.layout{display:grid;grid-template-columns:1fr;gap:48px}
+@media(min-width:1280px){.layout{grid-template-columns:220px minmax(0,1fr)}}
+aside.toc{display:none}
+@media(min-width:1280px){aside.toc{display:block;position:sticky;top:80px;align-self:start;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}.toc ul{list-style:none;padding:0;margin:0;border-left:1px solid var(--g200)}.toc li{margin:0}.toc a{display:block;padding:7px 12px;color:var(--g500);border:none;border-left:2px solid transparent;margin-left:-1px}.toc a.active{color:var(--slate);border-left-color:var(--clay)}.toc a:hover{color:var(--clay)}}
+
+.callout{border:1px solid var(--g200);background:var(--paper);border-radius:10px;padding:18px 22px;margin:18px 0}
+.callout.clay{border-left:4px solid var(--clay)}
+.callout.olive{border-left:4px solid var(--olive)}
+.callout.rose{border-left:4px solid var(--rose)}
+.callout.slate{background:var(--slate);color:var(--ivory);border:none;border-left:4px solid var(--clay)}
+.callout.slate p{color:var(--oat)}
+.callout .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500);margin-bottom:6px}
+.callout.slate .lbl{color:var(--clay)}
+
+.grid2{display:grid;grid-template-columns:1fr;gap:18px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.grid3{display:grid;grid-template-columns:1fr;gap:18px}
+@media(min-width:900px){.grid3{grid-template-columns:1fr 1fr 1fr}}
+.card{background:var(--paper);border:1px solid var(--g200);border-radius:10px;padding:18px 20px}
+.card h4{margin:0 0 6px;font-size:15px;font-family:var(--sans);font-weight:600}
+.card .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--g500)}
+.card .num{font-family:var(--mono);font-size:11px;color:var(--clay);letter-spacing:.08em}
+
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;margin:16px 0;background:var(--paper);border-radius:10px;overflow:hidden;border:1px solid var(--g200)}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--g200);vertical-align:top}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--g500);font-weight:500;background:var(--g100);position:sticky;top:0;z-index:1}
+tr:last-child td{border-bottom:none}
+tr td:first-child{font-weight:600;color:var(--slate);white-space:nowrap;font-family:var(--sans);font-size:13.5px}
+td.yes{color:var(--olive);font-weight:600}
+td.no{color:var(--rose);font-weight:600}
+td.partial{color:var(--clay);font-weight:600}
+td.cell-mono{font-family:var(--mono);font-size:11.5px;color:var(--g700)}
+.table-scroll{overflow-x:auto;border-radius:10px;border:1px solid var(--g200);margin:16px 0}
+.table-scroll table{margin:0;border-radius:0;border:none}
+
+.matrix-legend{display:flex;gap:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--g500);margin:6px 0 0;flex-wrap:wrap}
+.matrix-legend span::before{content:"●";margin-right:5px}
+.matrix-legend .yes::before{color:var(--olive)}
+.matrix-legend .partial::before{color:var(--clay)}
+.matrix-legend .no::before{color:var(--rose)}
+
+.decision{background:var(--slate);color:var(--ivory);border-radius:14px;padding:34px 38px;margin:48px 0 0}
+.decision h2{border:none;color:var(--ivory);margin-top:0;padding-top:0}
+.decision .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--clay)}
+.decision ol{padding-left:18px;max-width:74ch;color:var(--oat)}
+.decision li{margin:10px 0}
+.decision li b{color:var(--ivory)}
+.decision p{color:var(--oat);max-width:74ch}
+
+.tier-stack{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+.tier{display:grid;grid-template-columns:80px 1fr;gap:18px;background:var(--paper);border:1px solid var(--g200);border-radius:10px;padding:18px 22px;align-items:start}
+.tier .badge{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ivory);background:var(--clay);padding:5px 9px;border-radius:5px;text-align:center;align-self:start}
+.tier .badge.olive{background:var(--olive)}
+.tier .badge.slate{background:var(--slate)}
+.tier h4{margin:0 0 4px;font-size:15.5px}
+.tier p{margin:4px 0 0;color:var(--g700);font-size:14px;max-width:none}
+
+.gotcha-list{list-style:none;padding:0;margin:14px 0;counter-reset:gc}
+.gotcha-list li{counter-increment:gc;padding:14px 18px 14px 56px;background:var(--paper);border:1px solid var(--g200);border-left:4px solid var(--clay);border-radius:8px;margin:8px 0;position:relative;max-width:none}
+.gotcha-list li::before{content:counter(gc);position:absolute;left:14px;top:13px;width:30px;height:30px;border-radius:50%;background:var(--clay);color:#fff;font-family:var(--mono);font-size:13px;font-weight:600;display:grid;place-items:center}
+.gotcha-list li b{color:var(--slate)}
+
+.diagram{background:var(--paper);border:1px solid var(--g200);border-radius:12px;padding:22px;margin:18px 0;overflow-x:auto}
+.diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}
+
+footer{margin-top:80px;font-family:var(--mono);font-size:11px;color:var(--g500);letter-spacing:.06em;text-align:center;padding-top:24px;border-top:1px solid var(--g200)}
+footer a{color:var(--g500);border:none}
+footer a:hover{color:var(--clay)}
+
+/* Mobile TOC dropdown */
+.toc-mobile{display:block;margin:0 0 24px;position:relative}
+@media(min-width:1280px){.toc-mobile{display:none}}
+.toc-mobile-btn{width:100%;text-align:left;background:var(--paper);border:1px solid var(--g300);border-radius:8px;padding:11px 14px;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.toc-mobile-btn::after{content:"▾";color:var(--clay);font-size:13px}
+.toc-mobile-btn[aria-expanded="true"]::after{content:"▴"}
+.toc-mobile-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--paper);border:1px solid var(--g200);border-radius:8px;z-index:20;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.toc-mobile-menu ul{list-style:none;margin:0;padding:6px 0}
+.toc-mobile-menu li{margin:0}
+.toc-mobile-menu a{display:block;padding:9px 16px;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--g700);border:none;text-decoration:none}
+.toc-mobile-menu a:hover{background:var(--g100);color:var(--clay)}
+
+.src-list{font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--g700);columns:2;column-gap:32px;margin:14px 0}
+@media(max-width:760px){.src-list{columns:1}}
+.src-list a{color:var(--clay);border:none}
+.src-list a:hover{border-bottom:1px solid var(--clay)}
+
+details.deep{margin:14px 0;border:1px solid var(--g200);border-radius:8px;background:var(--paper);padding:0}
+details.deep summary{padding:12px 18px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--g700);cursor:pointer;list-style:none}
+details.deep summary::after{content:" ▸";color:var(--clay)}
+details.deep[open] summary::after{content:" ▾"}
+details.deep[open] summary{border-bottom:1px solid var(--g200)}
+details.deep .body{padding:14px 18px}
+</style>
+</head>
+<body>
+
+<div class="topbar" data-component="header">
+  <div class="topbar-inner">
+    <span class="brand">insight-kit <span>×</span> observability</span>
+    <nav class="crumbs">
+      <a href="00_index.html">00 · Index</a>
+      <a href="08_pi-harness-redesign.html">08 · pi harness</a>
+      <a href="09_agent-team-orchestration.html">09 · agent teams</a>
+      <a href="14_agentic-coding-observability.html" class="active">14 · Observability</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="eyebrow">Research synth · 2026-05-25 · ~4000w · revised w/ Laminar vs Opik deep-dive</div>
+  <h1 class="display">Agentic-coding observability is <em>not LLM observability</em>.</h1>
+  <div class="tldr">
+    <span class="pill clay">14 platforms scored</span>
+    <span class="pill oat">8 axes</span>
+    <span class="pill olive">OSS-self-host bias</span>
+    <span class="pill">Bun-runtime aware</span>
+    <span class="pill slate">For oh-my-pi / omp</span>
+  </div>
+  <p class="lead">
+    Throughout 2026 the field finally split. <em>LLM observability</em> still treats a request as the unit. <em>Agent observability</em> treats a <em>run</em> as the unit — an analyst + N code sub-agents + critic + judge, all rolled under one trace id. The platforms that grew up agent-first don't look like Langfuse + a span tree; they look like transcripts, agent graphs, and replay buttons. Here's how 14 contenders score for an <code>omp</code> harness on Bun/TS + Python/Hamilton, and which ones survive the Bun runtime tax.
+  </p>
+</section>
+
+<!-- Mobile TOC dropdown (hidden on ≥1280px) -->
+<nav class="toc-mobile" aria-label="Table of contents">
+  <button class="toc-mobile-btn" id="toc-mobile-btn" aria-expanded="false" aria-controls="toc-mobile-menu">Contents</button>
+  <div class="toc-mobile-menu" id="toc-mobile-menu" hidden>
+    <ul>
+      <li><a href="#s1">§1 Axes that matter</a></li>
+      <li><a href="#s2">§2 Feature matrix</a></li>
+      <li><a href="#s3">§3 What's new in 2026</a></li>
+      <li><a href="#s4">§4 Bun caveats</a></li>
+      <li><a href="#s5">§5 Harbor RL path</a></li>
+      <li><a href="#s6">§6 Recommendation</a></li>
+      <li><a href="#s7">§7 10-min PoC</a></li>
+      <li><a href="#s8">§8 Gotchas</a></li>
+      <li><a href="#s9">§9 Laminar vs Opik</a></li>
+      <li><a href="#s10">§10 Interaction flow</a></li>
+      <li><a href="#s11">§11 Early-flag scenarios</a></li>
+      <li><a href="#s12">§12 Deploy topology</a></li>
+      <li><a href="#s13">§13 Adoption sequence</a></li>
+      <li><a href="#sx">Sources</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="layout">
+
+<aside class="toc">
+<ul>
+<li><a href="#s1" class="active">§1 Axes that matter</a></li>
+<li><a href="#s2">§2 Feature matrix</a></li>
+<li><a href="#s3">§3 What's new in 2026</a></li>
+<li><a href="#s4">§4 Bun caveats</a></li>
+<li><a href="#s5">§5 Harbor RL path</a></li>
+<li><a href="#s6">§6 Recommendation</a></li>
+<li><a href="#s7">§7 10-min PoC</a></li>
+<li><a href="#s8">§8 Gotchas</a></li>
+<li><a href="#s9">§9 Laminar vs Opik</a></li>
+<li><a href="#s10">§10 Interaction flow</a></li>
+<li><a href="#s11">§11 Early-flag scenarios</a></li>
+<li><a href="#s12">§12 Deploy topology</a></li>
+<li><a href="#s13">§13 Adoption sequence</a></li>
+<li><a href="#sx">Sources</a></li>
+</ul>
+</aside>
+
+<main>
+
+<h2 id="s1"><span class="num">§1</span>Eight axes that decide it for <code>omp</code></h2>
+
+<p>Pick the right scoring rubric and the answer almost writes itself. For a containerized <code>omp</code> harness driving <em>one analyst + N code sub-agents + one critic + one future judge</em> per run, eight axes matter — license, agent-first design, parent/child rollup under a single run-id, dual TS+Python SDKs, built-in agent-as-judge, replay, Bun compatibility, and a path to Harbor RL.</p>
+
+<div class="grid3">
+  <div class="card"><span class="tag">Axis 01–02</span><h4>License + self-host</h4><p>Single-container deploy ideal. Apache/MIT preferred. ELv2 is OK for self-host, blocks reselling.</p></div>
+  <div class="card"><span class="tag">Axis 03</span><h4>Agent-first</h4><p>Not "LLM proxy with sessions". Modelled around <em>agent run → sub-agent → tool call</em>.</p></div>
+  <div class="card"><span class="tag">Axis 04</span><h4>Run-id rollup</h4><p>1 analyst spawns N coders. All spans aggregate under one parent.</p></div>
+  <div class="card"><span class="tag">Axis 05</span><h4>TS + Python SDK</h4><p>Bun for <code>omp</code>, Python for Hamilton DAG. Both must emit into the same trace.</p></div>
+  <div class="card"><span class="tag">Axis 06</span><h4>Agent-as-judge</h4><p>Critic + judge live inside the platform — or at least its eval primitives.</p></div>
+  <div class="card"><span class="tag">Axis 07–08</span><h4>Bun + Harbor</h4><p>Bun's OTel auto-instrumentation is fragile. Harbor RL expects trajectory shape, not OTLP.</p></div>
+</div>
+
+<h2 id="s2"><span class="num">§2</span>The 2026 feature matrix</h2>
+
+<p>Entries ordered 2026 entrants first, then 2025, then 2024. <span class="pill oat" style="font-size:10.5px;padding:3px 9px">●</span> = ships, <span class="pill" style="font-size:10.5px;padding:3px 9px;color:var(--clay)">◐</span> = partial / gated, <span class="pill" style="font-size:10.5px;padding:3px 9px;color:var(--rose)">○</span> = no. Free-host = unrestricted free self-host (not "contact sales").</p>
+
+<div class="matrix-legend">
+  <span class="yes">ships</span>
+  <span class="partial">partial / enterprise-gated</span>
+  <span class="no">absent</span>
+</div>
+
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>License</th>
+<th>Free self-host</th>
+<th>Agent-first</th>
+<th>Run rollup</th>
+<th>TS</th>
+<th>Py</th>
+<th>Judge</th>
+<th>Replay</th>
+<th>Bun OK</th>
+<th>Free tier</th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Dynatrace Coding-Agent <span style="font-family:var(--mono);font-size:10px;color:var(--clay)">2026·Q2</span></td><td class="cell-mono">Commercial</td><td class="no">○</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="no">○</td><td class="partial">◐</td><td class="yes">●</td><td>—</td></tr>
+<tr><td>Laminar <span style="font-family:var(--mono);font-size:10px;color:var(--clay)">2026 GA</span></td><td class="cell-mono">Apache-2.0</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="cell-mono">1 GB</td></tr>
+<tr><td>Comet Opik <span style="font-family:var(--mono);font-size:10px;color:var(--clay)">2026</span></td><td class="cell-mono">Apache-2.0</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="cell-mono">OSS free</td></tr>
+<tr><td>AgentOps <span style="font-family:var(--mono);font-size:10px;color:var(--clay)">2026 TS</span></td><td class="cell-mono">MIT (app)</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="cell-mono">5 K ev</td></tr>
+<tr><td>Maxim AI</td><td class="cell-mono">Commercial</td><td class="no">○</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="cell-mono">3-day</td></tr>
+<tr><td>Patronus AI</td><td class="cell-mono">Commercial</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="yes">●</td><td>—</td></tr>
+<tr><td>HoneyHive</td><td class="cell-mono">Commercial</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="cell-mono">10 K ev</td></tr>
+<tr><td>Inkeep <span style="font-family:var(--mono);font-size:10px;color:var(--clay)">2026</span></td><td class="cell-mono">ELv2</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="partial">◐</td><td class="partial">◐</td><td class="yes">●</td><td class="cell-mono">OSS free</td></tr>
+<tr><td>Pydantic Logfire</td><td class="cell-mono">MIT SDK</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="partial">◐</td><td class="partial">◐</td><td class="cell-mono">10 M sp</td></tr>
+<tr><td>Arize Phoenix</td><td class="cell-mono">ELv2</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="cell-mono">unlim</td></tr>
+<tr><td>Galileo</td><td class="cell-mono">Commercial</td><td class="no">○</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="yes">●</td><td class="cell-mono">5 K tr</td></tr>
+<tr><td>Braintrust</td><td class="cell-mono">Commercial</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="cell-mono">dev</td></tr>
+<tr><td>Langfuse <span style="font-family:var(--mono);font-size:10px;color:var(--g500)">2024 base</span></td><td class="cell-mono">MIT</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="yes">●</td><td class="cell-mono">OSS free</td></tr>
+<tr><td>Helicone <span style="font-family:var(--mono);font-size:10px;color:var(--rose)">maint mode</span></td><td class="cell-mono">OSS</td><td class="yes">●</td><td class="no">○</td><td class="partial">◐</td><td class="yes">●</td><td class="yes">●</td><td class="partial">◐</td><td class="partial">◐</td><td class="yes">●</td><td class="cell-mono">free w/ caps</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="font-size:13px;color:var(--g500);font-family:var(--mono)">Sources: [1]–[36] in §Sources. Verified 2026-05-25.</p>
+
+<h2 id="s3"><span class="num">§3</span>What's actually new in 2026</h2>
+
+<div class="grid2">
+  <div class="card"><span class="num">01</span><h4>OTel GenAI conventions hit v5</h4><p>Pydantic's instrumentation iterated through five spec versions in 12 months. <code>gen_ai.input.messages</code>, <code>pydantic_ai.all_messages</code>, and agent-run spans are now stable. Backend choice = UX choice, not wire-protocol lock-in [4].</p></div>
+  <div class="card"><span class="num">02</span><h4>OpenInference TypeScript 2.0</h4><p>Nov 2025 release shipped <code>@observe</code> decorators, function-tracing wrappers, attribute helpers — Phoenix TS finally has Python parity [29].</p></div>
+  <div class="card"><span class="num">03</span><h4>Agent-as-judge goes mainstream</h4><p>Galileo's Luna-2 (fine-tuned Llama-3B/8B) runs 10–20 metrics at 152 ms, 97% cheaper than GPT-4o LLM-judge. Maxim, Opik, Patronus, HoneyHive, Braintrust all ship LLM-judge primitives [32].</p></div>
+  <div class="card"><span class="num">04</span><h4>Dynatrace ships named-agent integrations</h4><p>April/May 2026: Claude Code, Codex CLI, Gemini CLI, OpenCode, Copilot SDK as first-class. Signals "Big-Three APM cares" market maturity [11].</p></div>
+  <div class="card"><span class="num">05</span><h4>Laminar's transcript-first UI</h4><p>Explicitly rejects span tree as default. Agent conversation + tool calls render as transcript; span tree on demand. Most agent-native UX redesign of the year [3].</p></div>
+  <div class="card"><span class="num">06</span><h4>Braintrust MCP for IDE observability</h4><p>Cursor / Claude Code / VS Code query trace data directly. First time observability is consumed <em>by</em> the coding agent, not just emitted by it [34].</p></div>
+</div>
+
+<h2 id="s4"><span class="num">§4</span>The Bun runtime tax</h2>
+
+<div class="callout rose">
+<div class="lbl">⚠ Load-bearing gotcha</div>
+<p><b>Bun + OpenTelemetry auto-instrumentation is still partly broken</b> on Bun 1.3.7 (May 2026). Don't rely on it. Use programmatic <code>NodeSDK</code> init and wrap spans by hand.</p>
+</div>
+
+<div class="grid2">
+  <div class="card"><h4><code>FastifyInstrumentation</code> / <code>ExpressInstrumentation</code> hooks no-op</h4><p>Bun issue #26536: <code>requestHook</code> never fires; span names degenerate to bare <code>GET</code>/<code>POST</code>; per-route filtering becomes impossible [8].</p></div>
+  <div class="card"><h4>Phoenix TS client logs per-request errors</h4><p>otel-js #5260: payloads arrive on the server, but the JS client throws on every send under Bun. Node engine works clean [10].</p></div>
+  <div class="card"><h4><code>@opentelemetry/instrumentation-fs</code> crashes</h4><p>Known Bun-crasher. Disable explicitly via <code>getNodeAutoInstrumentations({ '@opentelemetry/instrumentation-fs': { enabled: false } })</code> [9].</p></div>
+  <div class="card"><h4><code>Bun.serve()</code> / <code>bun:sqlite</code> not auto-instrumented</h4><p>Built-in Bun APIs are invisible. Wrap manually with <code>@opentelemetry/api</code> — the cost is real but bounded.</p></div>
+</div>
+
+<p><b>Practical takeaway for <code>omp</code>:</b> wrap the analyst loop + each sub-agent + critic + judge in <code>tracer.startActiveSpan()</code> calls with explicit <code>run.id</code> attribute. Don't trust auto-instrumentation to nest them for you. <code>--require</code> doesn't work reliably; programmatic init at top of <code>entry.ts</code> is mandatory [37][38].</p>
+
+<h2 id="s5"><span class="num">§5</span>Path to Harbor RL</h2>
+
+<p>Harbor (Jan 2026) is a containerized agent-eval + RL-environment framework — <code>omp</code>'s eventual destination for fine-tuning scored runs [39][40]. Native OTel ingestion is <b>not documented</b> as of May 2026. Best path:</p>
+
+<ul>
+<li>Export <code>omp</code> traces as <b>structured JSONL</b> (one event per line, run-id + span hierarchy preserved). Harbor's RL pipeline expects trajectory-shaped data, not OTLP wire format.</li>
+<li>Borrow Braintrust's <code>BraintrustSpanProcessor</code> pattern — converts OTel spans → structured agent traces [2]. Fork to emit Harbor-shaped <code>(state, action, observation, reward)</code> tuples.</li>
+<li>OpenRLHF 0.10 (April 2026) added multi-turn VLM RL [41]. Harbor will follow that shape. Plan replay = trajectory tuples derived from your trace.</li>
+</ul>
+
+<h2 id="s6"><span class="num">§6</span>Recommendation — three tiers for <code>omp</code></h2>
+
+<div class="callout clay">
+<div class="lbl">Superseded by §9–§13</div>
+<p>The three-tier framing below is the <em>original</em> May 2026 recommendation, kept for traceability. After fetching Laminar and Opik at HEAD (§9) and walking the actual interaction flow + deploy topology (§10, §12), the single-platform answer in the Decision block is <b>Laminar</b>, not Langfuse+Opik dual-emit. Read this section as context; treat §9 onward as the live recommendation.</p>
+</div>
+
+<div class="tier-stack">
+
+<div class="tier">
+  <span class="badge olive">Tier 1</span>
+  <div>
+    <h4>Langfuse OSS + OpenTelemetry GenAI + Hamilton's existing Python tracing</h4>
+    <p>Single-container Langfuse via official Docker. <code>omp</code> emits OTLP via Bun-friendly manual spans. Hamilton DAG emits the same OTLP from Python. <b>One trace per run-id</b>; analyst is root span; sub-agents are children; critic + judge are sibling spans tied to the same trace. This is the boring, working, MIT-licensed answer — and <code>pi</code>-flavoured projects already integrate Langfuse via the official Claude Code Stop hook [memory].</p>
+  </div>
+</div>
+
+<div class="tier">
+  <span class="badge">Tier 2</span>
+  <div>
+    <h4>Add Comet Opik alongside Langfuse</h4>
+    <p>Apache-2.0, runs in the same <code>docker-compose.yml</code>, dual-emits the OTLP. Gives you the <b>agent-graph view</b> + GEPA optimizer + Hamilton-friendly span schema. Best ROI for analyst/critic/judge structure because Opik specifically models multi-step reasoning paths and ships built-in LLM-judge.</p>
+  </div>
+</div>
+
+<div class="tier">
+  <span class="badge slate">Tier 3</span>
+  <div>
+    <h4>Swap Bun → Node for the omp host process if pain dominates</h4>
+    <p>Keep Bun for tool execution; run the long-lived omp orchestrator on Node. Bun's OTel hostile-environment cost is ~2 days of debug per Bun upgrade. Worth the swap if you're shipping to production teams in 2026; not worth it for an internal harness you control.</p>
+  </div>
+</div>
+
+</div>
+
+<div class="callout slate">
+<div class="lbl">Don't pick</div>
+<p>Patronus (K8s-only commercial), Maxim (no self-host), Galileo (eval gated to enterprise), HoneyHive (BYOC = enterprise), Dynatrace (no free tier). All are excellent products. None fit a single-container OSS harness.</p>
+</div>
+
+<h2 id="s7"><span class="num">§7</span>10-minute proof of concept</h2>
+
+<p>Langfuse + Opik dual-emit, one run id, full analyst→sub-agent→critic→judge rollup.</p>
+
+<pre class="code"><span class="c"># 1. docker-compose.yml — both backends, both OTLP on 4318</span>
+<span class="k">services:</span>
+  <span class="k">langfuse:</span> { image: <span class="s">langfuse/langfuse:3</span>, ports: [<span class="s">"3000:3000"</span>, <span class="s">"4318:4318"</span>] }
+  <span class="k">opik:</span>     { image: <span class="s">comet/opik:latest</span>,    ports: [<span class="s">"5173:5173"</span>, <span class="s">"4319:4318"</span>] }
+
+<span class="c"># 2. omp entry.ts — programmatic OTel init BEFORE any imports</span>
+<span class="k">import</span> { NodeSDK }            <span class="k">from</span> <span class="s">'@opentelemetry/sdk-node'</span>
+<span class="k">import</span> { OTLPTraceExporter }  <span class="k">from</span> <span class="s">'@opentelemetry/exporter-trace-otlp-http'</span>
+<span class="k">import</span> { BatchSpanProcessor } <span class="k">from</span> <span class="s">'@opentelemetry/sdk-trace-base'</span>
+
+<span class="k">new</span> NodeSDK({
+  spanProcessors: [
+    <span class="k">new</span> BatchSpanProcessor(<span class="k">new</span> OTLPTraceExporter({ url: <span class="s">'http://langfuse:4318/v1/traces'</span> })),
+    <span class="k">new</span> BatchSpanProcessor(<span class="k">new</span> OTLPTraceExporter({ url: <span class="s">'http://opik:4318/v1/traces'</span> })),
+  ],
+  instrumentations: [getNodeAutoInstrumentations({
+    <span class="s">'@opentelemetry/instrumentation-fs'</span>: { enabled: <span class="k">false</span> },  <span class="c">// Bun crash workaround</span>
+  })],
+}).start()
+
+<span class="c"># 3. wrap the run</span>
+<span class="k">const</span> tracer = trace.getTracer(<span class="s">'omp'</span>)
+<span class="k">await</span> tracer.startActiveSpan(<span class="s">'omp.run'</span>, { attributes: { <span class="s">'run.id'</span>: runId } }, <span class="k">async</span> (root) => {
+  <span class="k">await</span> runAnalyst(runId)         <span class="c">// emits child spans</span>
+  <span class="k">for</span> (<span class="k">const</span> t <span class="k">of</span> tasks) <span class="k">await</span> spawnCodeAgent(runId, t)  <span class="c">// each child of root</span>
+  <span class="k">await</span> runCritic(runId)
+  <span class="k">await</span> runJudge(runId)
+  root.end()
+})
+
+<span class="c"># 4. Hamilton (Python) — propagate run_id via W3C traceparent env</span>
+<span class="k">from</span> opentelemetry <span class="k">import</span> trace
+tracer = trace.get_tracer(<span class="s">"hamilton"</span>)
+<span class="k">with</span> tracer.start_as_current_span(<span class="s">"hamilton.dag"</span>, attributes={<span class="s">"run.id"</span>: run_id}):
+    driver.execute([...])
+
+<span class="c"># 5. visit http://localhost:3000 (Langfuse span tree)</span>
+<span class="c">#          http://localhost:5173 (Opik agent-graph + judge scores)</span></pre>
+
+<p>Wall-clock: ~10 min config, ~30 min to a first clean trace including critic + judge attribution under the same run id.</p>
+
+<h2 id="s8"><span class="num">§8</span>Killer gotchas, rank-ordered</h2>
+
+<ol class="gotcha-list">
+<li><b>Bun + OTel auto-instrumentation is broken in subtle ways</b> — span names degenerate, FS crashes, Phoenix logs per-request errors. Manual spans only. [8][9][10]</li>
+<li><b>Double-counted tokens</b> — parent + child both report <code>gen_ai.usage.*</code>. Datadog / Opik / New Relic sum them. Set <code>use_aggregated_usage_attribute_names</code> or pre-divide. [4]</li>
+<li><b>"Self-host" ≠ free self-host</b> — AgentOps, HoneyHive, Maxim, Galileo, Patronus all gate self-host behind Enterprise pricing. Free self-host: Langfuse, Opik, Laminar, Phoenix, Logfire SDK (not backend), Inkeep. [22][35]</li>
+<li><b>Phoenix is ELv2, not MIT/Apache</b> — fine for self-host; forbidden if you ship a hosted SaaS competing with Arize Cloud. Reads as Apache at a glance; it isn't. [28]</li>
+<li><b>Helicone is maintenance-mode under Mintlify</b> in 2026 — don't bet long-term. [36]</li>
+<li><b>Maxim free-tier retention is 3 days</b> — useless for post-hoc incident debug. [18]</li>
+<li><b>OpenInference TS 2.0 decorators need <code>useDefineForClassFields: true</code></b> — Bun's tsconfig defaults can break decorator span creation. [29]</li>
+<li><b>LangSmith Agent Replay is closed-beta + LangChain-coupled</b> — reference only.</li>
+</ol>
+
+<details class="deep">
+<summary>Deep cut — why "agent-first" actually matters (and why span-tree-as-default fails)</summary>
+<div class="body">
+<p>The conceptual leap in 2026 is that agent traces are <em>not</em> shaped like distributed-systems traces. A microservice trace is a fan-out of independent calls; an agent trace is a <em>causally coupled sequence</em> where step 3's tool output conditions step 8's reasoning. A failure at step 3 that silently corrupts the chain through step 8 is invisible to call-level monitoring and only detectable in a full-session view.</p>
+<p>This is why Laminar's transcript-first UI matters: humans read agent runs as conversations, not as flame graphs. The span tree is still there when you need to drill into a specific tool call, but the default rendering matches the mental model of what's happening. AgentOps and Phoenix get partway there with agent-graph visualization; Langfuse and Helicone retrofit the data into LLM-monitoring widgets.</p>
+<p>For omp specifically: the analyst's reasoning loop calls N code sub-agents, each of which makes M tool calls. A span-tree of N×M nodes is unreadable. A transcript of "analyst said X → sub-agent 3 ran tool Y → critic said Z" is readable. Pick the UX that matches your reading mode.</p>
+</div>
+</details>
+
+<h2 id="s9"><span class="num">§9</span>Laminar vs Opik — the 7-axis cage match</h2>
+
+<p>Both ship Apache-2.0 source. Both run in Docker on a Tailnet box. Both speak OTel. The differences are where the platform <em>wants you to look</em> — Opik wants you in a scorer library; Laminar wants you in a transcript. For the <code>omp</code> shape (one analyst spawning N coders, one critic, one judge, scored by a structural-then-semantic grader), one of these mismatches dominates. The other lives with itself.</p>
+
+<div class="callout slate">
+<div class="lbl">Verified 2026-05-25</div>
+<p><b>Releases at HEAD:</b> Laminar <code>v0.1.45</code> (Apr 27 2026), Opik <code>2.0.46</code> (May 22 2026). Both Apache-2.0. Both active — Opik 466 releases, 5,874 commits; Laminar 1,536 commits, weekly cadence. No deprecation signal on either.</p>
+</div>
+
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Axis</th>
+<th>Laminar (v0.1.45)</th>
+<th>Opik (2.0.46)</th>
+<th>Winner for <code>omp</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Trace backbone</td>
+<td class="cell-mono">OTel native; transcript-first render; SQL query interface over traces; Postgres + ClickHouse + Quickwit</td>
+<td class="cell-mono">OTel via optional <code>otel-collector</code> profile; span-tree render; ClickHouse + MySQL + Redis + MinIO</td>
+<td class="partial">Laminar</td>
+</tr>
+<tr>
+<td>2. Agent-as-judge</td>
+<td class="cell-mono">Signals (NL outcome events, backfill across history); LLM evals; weaker built-in scorer library per Laminar's own positioning [12]</td>
+<td class="cell-mono">30+ scorers shipped: G-Eval, Hallucination, RegexMatch, Equals, IsJson, Levenshtein, Trajectory Accuracy, Agent Task Completion, custom via Python class [42]</td>
+<td class="yes">Opik</td>
+</tr>
+<tr>
+<td>3. Datasets + Experiments</td>
+<td class="cell-mono">Datasets + bulk-create-from-SQL; experiments via eval CLI; data-volume pricing (not span-count) [12]</td>
+<td class="cell-mono">First-class Datasets + Experiments with execution policy (n trials per item, n must pass); comparison UI; explicit groupings [43]</td>
+<td class="yes">Opik</td>
+</tr>
+<tr>
+<td>4. Deploy fit (Tailnet box)</td>
+<td class="cell-mono"><b>6 services</b>: postgres, clickhouse, query-engine, quickwit, frontend, app-server. Plus optional RabbitMQ in <code>-full</code> [44]</td>
+<td class="cell-mono"><b>11 services</b>: mysql, redis, zookeeper, clickhouse, clickhouse-init, minio, mc, backend (Java), python-backend, frontend, demo-data-generator [45]</td>
+<td class="yes">Laminar</td>
+</tr>
+<tr>
+<td>5. UX for early-flag</td>
+<td class="cell-mono">Signals fire on NL-described drift; SQL alerts trivial; transcript shows token cliff visually as the analyst's bubbles get thinner</td>
+<td class="cell-mono">Online scorers run as spans land; alerts via score thresholds; span-tree means budget cliffs surface as a numeric column, not a visual gradient</td>
+<td class="partial">Laminar</td>
+</tr>
+<tr>
+<td>6. Bun reality (2026-05)</td>
+<td class="cell-mono"><code>@lmnr-ai/lmnr</code>: standard OTel-JS path. No Bun-tagged issues filed in lmnr-ai/lmnr at time of fetch. Untested but std path.</td>
+<td class="cell-mono"><code>opik</code> JS SDK: TypeScript is 44% of codebase. No Bun-tagged issues either. Std OTel path.</td>
+<td class="partial">Tie (both unverified)</td>
+</tr>
+<tr>
+<td>7. Harbor JSONL path</td>
+<td class="cell-mono">SQL query interface → <code>SELECT * FROM spans WHERE run_id = ?</code> → JSONL is one query away. Trajectory shape needs span→tuple mapper either way.</td>
+<td class="cell-mono">REST API + Python SDK pull; needs a fetch loop + pagination + projection. More glue code per export.</td>
+<td class="yes">Laminar</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p style="font-size:13px;color:var(--g500);font-family:var(--mono)">Tally: Laminar 4 (incl. one shared), Opik 2 (decisive), Tie 1.</p>
+
+<div class="callout clay">
+<div class="lbl">The hinge</div>
+<p>Opik wins decisively on axes 2 and 3. That matters <em>only</em> if we believe the built-in scorer library is doing the load-bearing work for D01. It isn't — D01's three checks (claim_id regex, citation cross-validation, length-distribution prior) are all <em>custom</em> scorers we'd write either way, because they encode <em>this project's</em> claim schema, not a generic LLM eval. Opik's <code>RegexMatch</code> and <code>IsJson</code> are too coarse; we need <code>RegexMatch(pattern=r'^MD-[DC]-G\d-\d{3}$', field='claim_id')</code> <em>and</em> <code>citation in run.queries</code>, which is a custom Python class in either platform. The 30-scorer library is a marketing artifact, not a use-case match.</p>
+</div>
+
+<details class="deep">
+<summary>Per-axis paragraph reasoning — why each cell lands where it lands</summary>
+<div class="body">
+<p><b>Axis 1 (trace backbone).</b> Both ingest OTLP cleanly. The differentiator is the default render. Opik shows a span tree by default — fine for a 50-span request, hostile for a 2,000-span agent run with N×M tool calls. Laminar shows a transcript by default — analyst bubble, sub-agent bubble, critic bubble, judge bubble — and the span tree is one click away. For an <code>omp</code> run that already has six discovered tasks (D01–D04 + B1) we'll need to read by trajectory, not by latency flame graph. Laminar's render matches our reading mode.</p>
+<p><b>Axis 2 (agent-as-judge).</b> Opik ships a real scorer library: 30+ built-in metrics including <code>Hallucination</code>, <code>G-Eval</code>, <code>Trajectory Accuracy</code>, <code>Agent Task Completion Judge</code>, plus heuristics like <code>RegexMatch</code>, <code>IsJson</code>, <code>Equals</code>, <code>Levenshtein</code>. Laminar's eval story is admittedly thinner — Laminar's own competitive article concedes "Langfuse and Braintrust have stronger eval harnesses than Laminar" — and instead leans on <em>Signals</em>: natural-language outcome descriptions that backfill across trace history. For our D01 hardening this is a wash: we are writing custom scorers either way (claim_id regex needs our exact pattern, citation cross-check needs our queries/ dir, length prior needs our 12KB baseline). For drift detection it's a Laminar win: "alert when the critic stops disagreeing" is exactly what Signals describes.</p>
+<p><b>Axis 3 (datasets + experiments).</b> This is Opik's strongest axis. The D02 factorial (AGENT × CHANNEL × MODEL, 8 cells, k=3 trials) has a textbook Opik representation: one Dataset (the 8 prompts × 3 repeats = 24 items), one Experiment (the run), an execution-policy of <code>{trials: 3, must_pass: 2}</code>, side-by-side comparison UI. Laminar Datasets exist and you can bulk-create from SQL, but the factorial → comparison-UI workflow is less prefab. The mitigation: Laminar's SQL interface means "show me drop rate per CHANNEL marginalized over AGENT, MODEL" is one query — we don't need a comparison UI, we need a SQL prompt. Opik wins the convenience; Laminar matches the capability via a different idiom.</p>
+<p><b>Axis 4 (deploy fit).</b> Laminar's 6 services vs Opik's 11 is a real number, and it's the load-bearing one. Opik needs MySQL <em>and</em> Redis <em>and</em> Zookeeper <em>and</em> ClickHouse <em>and</em> MinIO <em>and</em> four app containers. On a single Tailnet host with the harness + Hamilton + Infisical edge already running, that's a non-trivial memory + disk footprint. Laminar's stack (Postgres + ClickHouse + Quickwit + 2 app containers) is roughly half the surface area. The Opik footprint also pulls in a Java backend (heavier JVM footprint than Laminar's Rust app-server) and a separate Python backend for scorers (sandboxed code execution). For a long-lived self-hosted box that's not the harness's primary purpose, fewer containers means fewer things to watch.</p>
+<p><b>Axis 5 (early-flag UX).</b> Both platforms can fire alerts on score thresholds. The difference is how the alert is <em>described</em>. Opik's "score &lt; 0.5 on G-Eval" requires you to define the G-Eval. Laminar's Signals let you write "the critic stopped finding contradictions" in plain language and the platform back-classifies historical traces. For an <code>omp</code> harness that will run hundreds of times over the next year, the cost of writing a scorer for every drift mode is higher than the cost of writing a Signal. The transcript view also makes the token cliff visually obvious: the analyst's bubble narrows as the conversation goes on. In a span tree that's a column you have to know to look at.</p>
+<p><b>Axis 6 (Bun reality).</b> Honest answer: neither has a Bun success story at the URL level. Neither has a Bun-tagged issue at the repo level. Both ride the standard <code>@opentelemetry/sdk-node</code> path, which means both inherit the same Bun pain we'd hit with Langfuse or Phoenix. Both will work if we hand-wrap spans via <code>tracer.startActiveSpan()</code> (which we have to do anyway — see §4). Both will break the same way if we trust auto-instrumentation. This axis is a wash, and the resolution is the same regardless of pick: manual spans, programmatic NodeSDK init, FS instrumentation disabled.</p>
+<p><b>Axis 7 (Harbor JSONL).</b> Laminar exposes a SQL interface over the trace store. Harbor wants <code>(state, action, observation, reward)</code> tuples. Both representations are tabular. A single query — <code>SELECT span_id, parent_id, attributes['gen_ai.input.messages'], attributes['gen_ai.output.messages'], score FROM spans WHERE trace_id = ? ORDER BY start_time</code> — gives us the rows; the JSONL mapper is one Python function. Opik requires the Python SDK fetch loop with pagination, then the same mapper. Smaller delta on Laminar. Neither is a heavy lift but the SQL path is closer to "one query and a transform".</p>
+</div>
+</details>
+
+<h2 id="s10"><span class="num">§10</span>Interaction flow — what gets captured, end-to-end</h2>
+
+<p>The diagram below is the trace topology we want for one <code>omp</code> run. Every arrow is labelled with the wire format. <code>run.id</code> is the join key everywhere — it lives on the root span as an attribute, propagates to children via OTel context, and crosses the Bun/Python boundary via the <code>traceparent</code> environment variable. Laminar renders this as a transcript by default; the span tree is the alternate view.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="11">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/>
+    </marker>
+    <marker id="arrc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#D97757"/>
+    </marker>
+  </defs>
+
+  <!-- swimlane labels -->
+  <text x="70" y="22" fill="#87867F" font-size="10" letter-spacing="1">OMP · BUN</text>
+  <text x="245" y="22" fill="#87867F" font-size="10" letter-spacing="1">LLM PROVIDER</text>
+  <text x="415" y="22" fill="#87867F" font-size="10" letter-spacing="1">HAMILTON · PY</text>
+  <text x="595" y="22" fill="#87867F" font-size="10" letter-spacing="1">SCORE.PY</text>
+  <text x="760" y="22" fill="#87867F" font-size="10" letter-spacing="1">LAMINAR</text>
+
+  <!-- swimlane divider lines -->
+  <line x1="170" y1="30" x2="170" y2="540" stroke="#E6E3DA"/>
+  <line x1="340" y1="30" x2="340" y2="540" stroke="#E6E3DA"/>
+  <line x1="510" y1="30" x2="510" y2="540" stroke="#E6E3DA"/>
+  <line x1="680" y1="30" x2="680" y2="540" stroke="#E6E3DA"/>
+
+  <!-- root span -->
+  <rect x="20" y="44" width="150" height="32" rx="5" fill="#141413" stroke="#141413"/>
+  <text x="95" y="63" fill="#FAF9F5" text-anchor="middle" font-weight="600">omp.run (root)</text>
+  <text x="95" y="75" fill="#D97757" text-anchor="middle" font-size="9">run.id=R7f3a · trace.id=…</text>
+
+  <!-- analyst -->
+  <rect x="20" y="98" width="150" height="42" rx="5" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="95" y="115" fill="#141413" text-anchor="middle" font-weight="600">analyst.invoke</text>
+  <text x="95" y="128" fill="#787" text-anchor="middle" font-size="9.5">prompt=analyst_prompt.md</text>
+  <text x="95" y="138" fill="#787" text-anchor="middle" font-size="9.5">claim_id=MD-D-G6-*</text>
+
+  <!-- analyst → LLM -->
+  <path d="M170,118 L240,118" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+  <text x="205" y="113" fill="#788C5D" text-anchor="middle" font-size="9">OTLP gen_ai.*</text>
+
+  <rect x="240" y="98" width="100" height="42" rx="5" fill="#F0EEE6" stroke="#87867F"/>
+  <text x="290" y="115" fill="#141413" text-anchor="middle" font-weight="600">deepseek-v4</text>
+  <text x="290" y="129" fill="#787" text-anchor="middle" font-size="9.5">opencode-go tunnel</text>
+
+  <!-- sub-agent fanout -->
+  <rect x="20" y="160" width="150" height="32" rx="5" fill="#FFFFFF" stroke="#788C5D"/>
+  <text x="95" y="180" fill="#141413" text-anchor="middle" font-weight="600">subagent.spawn[1..N]</text>
+
+  <!-- sub-agent → Hamilton -->
+  <path d="M170,176 L410,176" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+  <text x="290" y="171" fill="#788C5D" text-anchor="middle" font-size="9">subprocess + TRACEPARENT env</text>
+
+  <rect x="410" y="160" width="100" height="42" rx="5" fill="#FFFFFF" stroke="#788C5D" stroke-width="1.5"/>
+  <text x="460" y="178" fill="#141413" text-anchor="middle" font-weight="600">hamilton.dag</text>
+  <text x="460" y="190" fill="#787" text-anchor="middle" font-size="9.5">DuckDB · 11 views</text>
+
+  <!-- Hamilton → Laminar -->
+  <path d="M510,178 L758,178" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+  <text x="630" y="173" fill="#788C5D" text-anchor="middle" font-size="9">OTLP /v1/traces · run.id attr</text>
+
+  <!-- sub-agent writes queries -->
+  <rect x="20" y="218" width="150" height="32" rx="5" fill="#FFFFFF" stroke="#A8B89A"/>
+  <text x="95" y="238" fill="#141413" text-anchor="middle" font-weight="600">queries/*.sql write</text>
+
+  <!-- critic -->
+  <rect x="20" y="270" width="150" height="42" rx="5" fill="#FFFFFF" stroke="#C97B7B" stroke-width="1.5"/>
+  <text x="95" y="287" fill="#141413" text-anchor="middle" font-weight="600">critic.invoke</text>
+  <text x="95" y="300" fill="#787" text-anchor="middle" font-size="9.5">taleb persona</text>
+  <text x="95" y="310" fill="#787" text-anchor="middle" font-size="9.5">claim_id=MD-C-G6-*</text>
+
+  <path d="M170,290 L240,290" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+  <text x="205" y="285" fill="#788C5D" text-anchor="middle" font-size="9">OTLP gen_ai.*</text>
+  <rect x="240" y="270" width="100" height="42" rx="5" fill="#F0EEE6" stroke="#87867F"/>
+  <text x="290" y="287" fill="#141413" text-anchor="middle" font-weight="600">deepseek-v4</text>
+  <text x="290" y="301" fill="#787" text-anchor="middle" font-size="9.5">streamed; ~12KB out</text>
+
+  <!-- judge -->
+  <rect x="20" y="332" width="150" height="42" rx="5" fill="#FFFFFF" stroke="#788C5D" stroke-width="1.5"/>
+  <text x="95" y="349" fill="#141413" text-anchor="middle" font-weight="600">judge.invoke (D03)</text>
+  <text x="95" y="362" fill="#787" text-anchor="middle" font-size="9.5">G-Eval / Laminar Signal</text>
+
+  <path d="M170,352 L240,352" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+  <rect x="240" y="332" width="100" height="42" rx="5" fill="#F0EEE6" stroke="#87867F"/>
+  <text x="290" y="349" fill="#141413" text-anchor="middle" font-weight="600">opus / sonnet</text>
+  <text x="290" y="363" fill="#787" text-anchor="middle" font-size="9.5">rubric scorer</text>
+
+  <!-- score.py -->
+  <rect x="580" y="394" width="100" height="42" rx="5" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="630" y="411" fill="#141413" text-anchor="middle" font-weight="600">score.py</text>
+  <text x="630" y="425" fill="#787" text-anchor="middle" font-size="9.5">6 structural · 3 semantic</text>
+
+  <!-- omp.run → score.py -->
+  <path d="M170,60 C 540,60 540,400 580,410" stroke="#D97757" stroke-width="1.5" marker-end="url(#arrc)" fill="none"/>
+  <text x="430" y="55" fill="#D97757" font-size="9">on-exit · subprocess</text>
+
+  <!-- score → Laminar -->
+  <path d="M680,414 L758,414" stroke="#D97757" stroke-width="1.5" marker-end="url(#arrc)" fill="none"/>
+  <text x="715" y="409" fill="#D97757" text-anchor="middle" font-size="9">attach as span score</text>
+
+  <!-- Laminar collector -->
+  <rect x="760" y="100" width="100" height="340" rx="5" fill="#141413" stroke="#141413"/>
+  <text x="810" y="125" fill="#FAF9F5" text-anchor="middle" font-weight="600">Laminar</text>
+  <text x="810" y="142" fill="#D97757" text-anchor="middle" font-size="9">app-server :8000</text>
+  <text x="810" y="156" fill="#D97757" text-anchor="middle" font-size="9">/v1/traces :4318</text>
+  <text x="810" y="180" fill="#FAF9F5" text-anchor="middle" font-size="9.5">↓ stored</text>
+  <text x="810" y="200" fill="#FAF9F5" text-anchor="middle" font-size="9.5">ClickHouse</text>
+  <text x="810" y="216" fill="#FAF9F5" text-anchor="middle" font-size="9.5">+ Quickwit FTS</text>
+  <text x="810" y="248" fill="#FAF9F5" text-anchor="middle" font-size="9.5">↓ rendered</text>
+  <text x="810" y="268" fill="#FAF9F5" text-anchor="middle" font-size="9.5">transcript view</text>
+  <text x="810" y="284" fill="#FAF9F5" text-anchor="middle" font-size="9.5">+ Signals</text>
+  <text x="810" y="320" fill="#FAF9F5" text-anchor="middle" font-size="9.5">↓ exported</text>
+  <text x="810" y="340" fill="#FAF9F5" text-anchor="middle" font-size="9.5">SQL → JSONL</text>
+  <text x="810" y="356" fill="#FAF9F5" text-anchor="middle" font-size="9.5">→ Harbor RL</text>
+  <text x="810" y="400" fill="#A8B89A" text-anchor="middle" font-size="9">joins on run.id</text>
+  <text x="810" y="420" fill="#A8B89A" text-anchor="middle" font-size="9">across all spans</text>
+
+  <!-- bottom legend -->
+  <text x="20" y="475" fill="#3D3D3A" font-size="10">━━ OTLP HTTP (port 4318, gen_ai.* attributes)</text>
+  <text x="20" y="492" fill="#3D3D3A" font-size="10">━━ control flow (sub-process, score attach)</text>
+  <text x="20" y="509" fill="#3D3D3A" font-size="10">run.id flows as: root attr → OTel context → traceparent env → score input → JSONL key</text>
+  <text x="20" y="526" fill="#87867F" font-size="9.5">wire formats: OTLP/HTTP between every Bun/Py → Laminar hop; score.py reads files on the bind mount.</text>
+</svg>
+</div>
+
+<p>Three things to notice in the diagram. First, <code>run.id</code> is the only identifier that crosses every boundary — it's a root-span attribute, propagated by OTel context for in-process children, by the <code>traceparent</code> env var when omp shells out to Hamilton, and by direct attribute when score.py attaches its 9 check results. Second, every long arrow is OTLP — meaning the entire run can be reconstructed from Laminar's trace store with no other backend. Third, the only non-OTLP edge is score.py reading the run-dir off the bind mount — the structural grader doesn't need traces, it grades artifacts on disk.</p>
+
+<h2 id="s11"><span class="num">§11</span>Five failure modes, five auto-alerts</h2>
+
+<p>These are the failure modes the <code>15_t17-smoke-1pt0-critic.html</code> post-mortem identified as the next-to-fire. For each, the column on the right is the exact Laminar primitive (Signal, score attribute, or SQL query) that would trip on the first occurrence — not on the third, not after a human notices.</p>
+
+<div class="table-scroll">
+<table>
+<thead>
+<tr><th>Failure mode</th><th>Symptom in the run</th><th>Laminar alert primitive</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Token cliff</td>
+<td class="cell-mono">Analyst spends 80% of context budget by sub-agent 4; critic gets a degraded prompt window and shortens its output. Today: invisible until reading critic.md and noticing it's thin.</td>
+<td class="cell-mono">Signal: <em>"analyst used &gt;80% of its model's context window before the critic phase started"</em>. Backed by <code>SUM(span.attr.gen_ai.usage.prompt_tokens) / model.context_window &gt; 0.8</code> over the omp.run trace. Fires before critic invocation, not after.</td>
+</tr>
+<tr>
+<td>2. Socket drop mid-critic</td>
+<td class="cell-mono">The 6b73452 failure — TCP-level event during critic streaming, critic.md left at stub length, score 0.83. Today: caught only by score.py's check 5 failing.</td>
+<td class="cell-mono">Signal: <em>"critic span ended without OTLP end event"</em>. Detectable as <code>span.status = UNSET</code> + <code>span.end_time IS NULL</code> at trace-completion-time. Fires within seconds of the drop, not after the next score.py run.</td>
+</tr>
+<tr>
+<td>3. Hallucinated claim citation</td>
+<td class="cell-mono">A critic claim cites <code>queries/q_07_xxx.sql</code> that doesn't exist. score.py's check 6 sees that <em>any</em> .sql file exists; it does not cross-check citations.</td>
+<td class="cell-mono">Custom span scorer: <code>citations_resolved = all(c in run.queries for c in claim.cites)</code>. Attach to every critic claim span as <code>score.citation_valid</code>. SQL alert: <code>WHERE score.citation_valid = 0</code>. This is the D01 work, expressed in Laminar's scorer API.</td>
+</tr>
+<tr>
+<td>4. Prompt drift</td>
+<td class="cell-mono"><code>analyst_prompt.md</code> changes silently between runs. Run R7 and R8 look comparable in the score column; the analyst is actually being asked a different question.</td>
+<td class="cell-mono">Span attribute: <code>prompt.sha256</code> on every <code>analyst.invoke</code>. Signal: <em>"prompt SHA differs from the previous run's prompt SHA"</em>. Trivially queryable via SQL; surfaces in the comparison view between any two runs.</td>
+</tr>
+<tr>
+<td>5. JWT TTL squeeze</td>
+<td class="cell-mono">Run completes in 9m 53s against a ~10-min Infisical universal-auth JWT. One slower run and the cred chain fails for a non-agent reason; score.py mis-attributes.</td>
+<td class="cell-mono">Span attribute: <code>auth.jwt_remaining_seconds</code> set at root-span start. Signal: <em>"run.duration_seconds &gt; (jwt_remaining_seconds at start − 60)"</em>. Fires on completion of any run that came within 60s of the JWT cliff, regardless of whether it succeeded this time.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout olive">
+<div class="lbl">Why Signals beat per-failure scorers</div>
+<p>Four of these five (1, 2, 4, 5) are <em>not</em> traditional eval problems — they're operational invariants we want enforced. Writing each as a custom LLM-judge scorer (the Opik idiom) means a model call per check per run. Writing each as a Signal (the Laminar idiom) means one NL description per check, evaluated deterministically against span attributes. The cost difference scales with run count. At 24 runs (D02 factorial) it's negligible. At the 500-run cadence we'll hit during reward-shaping, the Signal path is the only one that's free.</p>
+</div>
+
+<h2 id="s12"><span class="num">§12</span>Deploy topology — the Tailnet box</h2>
+
+<p>The single docker-compose file that everything sits in. Laminar's 6 services + the harness + Hamilton + an Infisical edge. Secrets cross the trust boundary exactly once — at <code>infisical run --silent</code>. Traces cross the host boundary zero times — Laminar lives inside the same compose network.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 880 540" xmlns="http://www.w3.org/2000/svg" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="11">
+  <defs>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#788C5D"/>
+    </marker>
+    <marker id="arr2c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#D97757"/>
+    </marker>
+  </defs>
+
+  <!-- HOST BOUNDARY -->
+  <rect x="20" y="20" width="840" height="440" rx="10" fill="none" stroke="#141413" stroke-dasharray="6 4" stroke-width="1.5"/>
+  <text x="40" y="42" fill="#141413" font-size="10" letter-spacing="2" font-weight="600">HOST · TAILNET MEMBER</text>
+
+  <!-- signet (host service) -->
+  <rect x="40" y="60" width="160" height="60" rx="6" fill="#141413"/>
+  <text x="120" y="82" fill="#FAF9F5" text-anchor="middle" font-weight="600">signet</text>
+  <text x="120" y="98" fill="#A8B89A" text-anchor="middle" font-size="9.5">MI cred chain (host)</text>
+  <text x="120" y="112" fill="#A8B89A" text-anchor="middle" font-size="9.5">universal-auth client</text>
+
+  <!-- signet → infisical edge -->
+  <path d="M200,90 L260,90" stroke="#D97757" stroke-width="1.5" marker-end="url(#arr2c)" fill="none"/>
+  <text x="230" y="84" fill="#D97757" text-anchor="middle" font-size="9">JWT login</text>
+
+  <!-- infisical edge -->
+  <rect x="260" y="60" width="180" height="60" rx="6" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="350" y="82" fill="#141413" text-anchor="middle" font-weight="600">infisical edge</text>
+  <text x="350" y="98" fill="#787" text-anchor="middle" font-size="9.5">infisical.lan.ds.ke</text>
+  <text x="350" y="112" fill="#787" text-anchor="middle" font-size="9.5">Tailnet-only, mTLS</text>
+
+  <!-- infisical → docker -e -->
+  <path d="M440,90 L500,90" stroke="#D97757" stroke-width="1.5" marker-end="url(#arr2c)" fill="none"/>
+  <text x="470" y="84" fill="#D97757" text-anchor="middle" font-size="9">infisical run -e</text>
+
+  <!-- TRUST BOUNDARY label -->
+  <line x1="490" y1="55" x2="490" y2="430" stroke="#C97B7B" stroke-dasharray="4 4"/>
+  <text x="490" y="48" fill="#C97B7B" text-anchor="middle" font-size="9" letter-spacing="1">trust boundary</text>
+
+  <!-- COMPOSE NET -->
+  <rect x="500" y="60" width="340" height="370" rx="8" fill="#FAF9F5" stroke="#788C5D" stroke-dasharray="3 3"/>
+  <text x="510" y="75" fill="#788C5D" font-size="9.5" letter-spacing="1">docker-compose · default network</text>
+
+  <!-- omp harness container -->
+  <rect x="515" y="90" width="155" height="60" rx="5" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="592" y="111" fill="#141413" text-anchor="middle" font-weight="600">omp harness</text>
+  <text x="592" y="125" fill="#787" text-anchor="middle" font-size="9.5">Bun · /opt/omp</text>
+  <text x="592" y="138" fill="#787" text-anchor="middle" font-size="9.5">deepseek-v4-flash</text>
+
+  <!-- hamilton container -->
+  <rect x="680" y="90" width="155" height="60" rx="5" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="757" y="111" fill="#141413" text-anchor="middle" font-weight="600">hamilton</text>
+  <text x="757" y="125" fill="#787" text-anchor="middle" font-size="9.5">Python 3.12 · DuckDB</text>
+  <text x="757" y="138" fill="#787" text-anchor="middle" font-size="9.5">11 views</text>
+
+  <!-- omp ↔ hamilton -->
+  <path d="M670,120 L680,120" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+
+  <!-- OTLP arrows down to Laminar -->
+  <path d="M592,150 L592,210" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+  <text x="600" y="180" fill="#788C5D" font-size="9">OTLP :4318</text>
+  <path d="M757,150 L757,210" stroke="#788C5D" stroke-width="1.5" marker-end="url(#arr2)" fill="none"/>
+  <text x="765" y="180" fill="#788C5D" font-size="9">OTLP :4318</text>
+
+  <!-- Laminar app-server -->
+  <rect x="515" y="210" width="320" height="50" rx="5" fill="#141413"/>
+  <text x="675" y="232" fill="#FAF9F5" text-anchor="middle" font-weight="600">laminar · app-server</text>
+  <text x="675" y="248" fill="#D97757" text-anchor="middle" font-size="9.5">OTLP ingest :4318 · API :8000 · UI :5173</text>
+
+  <!-- Laminar storage tier -->
+  <rect x="515" y="275" width="100" height="50" rx="5" fill="#FFFFFF" stroke="#787"/>
+  <text x="565" y="295" fill="#141413" text-anchor="middle" font-size="10.5" font-weight="600">postgres</text>
+  <text x="565" y="309" fill="#787" text-anchor="middle" font-size="9">metadata</text>
+
+  <rect x="625" y="275" width="100" height="50" rx="5" fill="#FFFFFF" stroke="#787"/>
+  <text x="675" y="295" fill="#141413" text-anchor="middle" font-size="10.5" font-weight="600">clickhouse</text>
+  <text x="675" y="309" fill="#787" text-anchor="middle" font-size="9">spans + scores</text>
+
+  <rect x="735" y="275" width="100" height="50" rx="5" fill="#FFFFFF" stroke="#787"/>
+  <text x="785" y="295" fill="#141413" text-anchor="middle" font-size="10.5" font-weight="600">quickwit</text>
+  <text x="785" y="309" fill="#787" text-anchor="middle" font-size="9">full-text search</text>
+
+  <!-- query-engine + frontend -->
+  <rect x="515" y="340" width="155" height="40" rx="5" fill="#FFFFFF" stroke="#787"/>
+  <text x="592" y="358" fill="#141413" text-anchor="middle" font-size="10.5" font-weight="600">query-engine</text>
+  <text x="592" y="372" fill="#787" text-anchor="middle" font-size="9">SQL → Harbor JSONL</text>
+
+  <rect x="680" y="340" width="155" height="40" rx="5" fill="#FFFFFF" stroke="#787"/>
+  <text x="757" y="358" fill="#141413" text-anchor="middle" font-size="10.5" font-weight="600">frontend</text>
+  <text x="757" y="372" fill="#787" text-anchor="middle" font-size="9">transcript UI</text>
+
+  <!-- bind mount -->
+  <rect x="40" y="280" width="180" height="60" rx="6" fill="#FFFFFF" stroke="#A8B89A" stroke-width="1.5"/>
+  <text x="130" y="302" fill="#141413" text-anchor="middle" font-weight="600">.eval-out/ (bind mount)</text>
+  <text x="130" y="316" fill="#787" text-anchor="middle" font-size="9.5">claims.jsonl · queries/*.sql</text>
+  <text x="130" y="330" fill="#787" text-anchor="middle" font-size="9.5">findings_*.md</text>
+
+  <!-- bind mount → omp -->
+  <path d="M220,310 L515,120" stroke="#A8B89A" stroke-width="1.5" stroke-dasharray="2 3" fill="none"/>
+  <text x="370" y="225" fill="#A8B89A" font-size="9">mounted at /app/.eval</text>
+
+  <!-- score.py -->
+  <rect x="40" y="360" width="180" height="50" rx="5" fill="#FFFFFF" stroke="#D97757" stroke-width="1.5"/>
+  <text x="130" y="380" fill="#141413" text-anchor="middle" font-weight="600">score.py (host)</text>
+  <text x="130" y="395" fill="#787" text-anchor="middle" font-size="9.5">9 checks · attaches to span</text>
+
+  <!-- score.py → laminar (REST) -->
+  <path d="M220,380 C 400,380 400,235 515,235" stroke="#D97757" stroke-width="1.5" marker-end="url(#arr2c)" fill="none"/>
+  <text x="380" y="290" fill="#D97757" font-size="9">POST /api/runs/{id}/scores</text>
+
+  <!-- bottom: NO Tailnet inside compose -->
+  <text x="500" y="450" fill="#C97B7B" font-size="9.5">→ no compose container has Tailnet membership; all Tailnet IO crosses via the host-side infisical/signet pair before <code>docker run</code></text>
+
+  <!-- legend -->
+  <text x="40" y="480" fill="#3D3D3A" font-size="10">━━ OTLP (trace data, default :4318)</text>
+  <text x="40" y="498" fill="#3D3D3A" font-size="10">━━ secrets path (one-shot at container spawn)</text>
+  <text x="40" y="516" fill="#3D3D3A" font-size="10">┄┄ artifact path (bind mount, host-readable post-run)</text>
+</svg>
+</div>
+
+<p>Three boundaries that matter on this diagram. (a) The <b>trust boundary</b> is at the <code>infisical run</code> call — secrets exist as env vars inside the compose network only for the lifetime of one <code>omp</code> process. (b) The <b>Tailnet boundary</b> is at the host: no container speaks Tailnet directly, Infisical access is mediated by the host-side <code>signet → infisical-cli</code> chain. (c) The <b>artifact boundary</b> is the <code>.eval-out</code> bind mount — score.py reads from disk, traces stay in Laminar's ClickHouse. The two stores aren't synchronised; the join key is <code>run.id</code> in both.</p>
+
+<h2 id="s13"><span class="num">§13</span>Four-week adoption sequence</h2>
+
+<p>Concrete commits, in order, against the <code>insight-kit</code> repo and the <code>nairomarket/growth_insights/deploy</code> harness. Each week ends in a measurable invariant.</p>
+
+<div class="tier-stack">
+
+<div class="tier">
+  <span class="badge olive">Week 1</span>
+  <div>
+    <h4>Stand Laminar up alongside the harness</h4>
+    <p>Pull <code>docker-compose.yml</code> from <code>lmnr-ai/lmnr</code> (the lightweight 6-service variant, no RabbitMQ). Add it to the <code>deploy/eval/</code> compose alongside the existing harness service. Boot to <code>http://localhost:5173</code>. In <code>omp/src/entry.ts</code>, add programmatic <code>NodeSDK</code> init pointing OTLP at <code>http://laminar:4318/v1/traces</code>, with <code>@opentelemetry/instrumentation-fs</code> disabled. Wrap exactly one span — <code>omp.run</code> — with <code>run.id</code> as attribute. <b>Invariant at end of week:</b> one trace per <code>./eval-run.sh</code> invocation shows up in the Laminar transcript view, with <code>run.id</code> queryable.</p>
+  </div>
+</div>
+
+<div class="tier">
+  <span class="badge">Week 2</span>
+  <div>
+    <h4>Wire the analyst → sub-agent → critic → judge hierarchy</h4>
+    <p>Add <code>tracer.startActiveSpan()</code> wrappers in <code>analyst.ts</code>, <code>subagent.ts</code>, <code>critic.ts</code>. Each opens a child span under <code>omp.run</code>; sub-agents spawn N siblings; critic and judge are siblings of the analyst. For Hamilton, set <code>TRACEPARENT</code> env when omp spawns the Python subprocess; in <code>build_duckdb_views.py</code> open a <code>hamilton.dag</code> span attached to the parent context. Add <code>prompt.sha256</code> as a span attribute on every LLM invocation (axis 4 of §11). <b>Invariant:</b> one transcript per run shows the analyst, every sub-agent, critic, judge, and the Hamilton DAG nested correctly. Prompt SHA diffs visible in the comparison view.</p>
+  </div>
+</div>
+
+<div class="tier">
+  <span class="badge">Week 3</span>
+  <div>
+    <h4>Custom scorers + Signals for the D01 + §11 invariants</h4>
+    <p>Three custom Laminar scorers, one Python file each, registered on the <code>critic.invoke</code> span: <code>claim_id_regex</code> (matches <code>^MD-[DC]-G\d-\d{3}$</code>), <code>citation_valid</code> (every <code>cite</code> in <code>claims.jsonl</code> resolves to a real file in <code>queries/</code>), <code>length_prior</code> (critic.md byte count within ±2σ of the 12,335-byte baseline). Five Laminar Signals, one for each row of §11 (token cliff, socket drop, hallucinated citation, prompt drift, JWT squeeze). score.py is modified to POST its 9 results (6 structural + 3 semantic) to Laminar via the API as span scores rather than only printing to stderr. <b>Invariant:</b> every run lands with both structural and semantic scores attached; any Signal firing is visible in the alerts pane within 30s of run completion.</p>
+  </div>
+</div>
+
+<div class="tier">
+  <span class="badge slate">Week 4</span>
+  <div>
+    <h4>D02 factorial via Laminar Datasets + Harbor JSONL export</h4>
+    <p>Create one Laminar Dataset of 24 items: 8 cells (AGENT × CHANNEL × MODEL) × 3 trials. Run the matrix via the eval CLI; the platform groups results by cell automatically. Read off drop-rate per CHANNEL, critic-length per MODEL, omp-exit rate per AGENT — the four marginals from <code>15_t17-smoke-1pt0-critic.html</code> §4. For Harbor: a single SQL query against Laminar's <code>query-engine</code> produces <code>(trace_id, span_id, parent_id, attributes['gen_ai.input.messages'], attributes['gen_ai.output.messages'], score.*)</code>; a 40-line Python transform converts this to Harbor's <code>(state, action, observation, reward)</code> trajectory JSONL. <b>Invariant:</b> the 24-cell matrix is repeatable as a one-line command; the JSONL export is one query + one transform; Harbor can consume the trajectory shape without further glue.</p>
+  </div>
+</div>
+
+</div>
+
+<div class="callout slate">
+<div class="lbl">What's deliberately deferred</div>
+<p>Langfuse stays in the "maybe later" bucket — strong trace viewer but eval primitives feel grafted on, and we don't want a second backend competing for the OTLP fan-out. Opik stays in the "if Laminar evals turn out too thin" bucket — the dataset/experiments idiom is genuinely nicer, but we'd be paying 11 services instead of 6 for a difference we can match with SQL. Phoenix is out (ELv2 + Bun JS errors per request). Dual-emit is out (operationally fragile, and we don't have a second use-case that justifies the cost).</p>
+</div>
+
+<div class="decision">
+<div class="lbl">Decision · revised 2026-05-25 post §9–§13</div>
+<h2 style="margin-top:6px">Ship Laminar. Single platform, six containers, transcript-first, SQL out to Harbor.</h2>
+<ol>
+<li><b>Trace backbone:</b> Laminar <code>v0.1.45</code>, Apache-2.0, lightweight 6-service compose alongside the harness. <code>run.id</code> as root-span attribute, OTel context for in-process children, <code>traceparent</code> env for the Bun → Hamilton hop.</li>
+<li><b>Agent UX + judge:</b> Laminar's transcript view is the default render — exactly the reading mode <code>omp</code>'s analyst → critic flow demands. Three custom scorers (claim_id regex, citation cross-validation, length-prior) cover D01; five Signals cover the §11 operational invariants.</li>
+<li><b>Datasets + Experiments:</b> Laminar Datasets handle the D02 factorial (8 cells × 3 trials = 24 items); the SQL query interface answers the four marginals (drop rate per CHANNEL, critic length per MODEL, exit rate per AGENT, within-cell variance) without a comparison UI.</li>
+<li><b>Harbor path:</b> one SQL query against Laminar's <code>query-engine</code> + a ~40-line Python transform produces Harbor's <code>(state, action, observation, reward)</code> trajectory JSONL. Smallest delta among the candidates.</li>
+<li><b>Bun tax:</b> unchanged. Programmatic <code>NodeSDK</code> init at top of <code>entry.ts</code>, <code>@opentelemetry/instrumentation-fs</code> disabled, manual <code>tracer.startActiveSpan()</code> around analyst / sub-agent / critic / judge. Same tax we'd pay with Opik or Langfuse.</li>
+</ol>
+<p>One-sentence verdict: <b>Laminar wins on the two axes that scale with run count (deploy footprint at 6 containers vs Opik's 11; transcript UX that matches how we read agent runs) and ties on the axis that doesn't matter as much as it looks (built-in scorer library, because D01 is custom Python in any platform). Opik's stronger Datasets/Experiments idiom is real but recoverable via Laminar's SQL interface; Opik's 11-service compose is not recoverable.</b></p>
+<p style="margin-top:14px;color:var(--g500);font-size:13px"><b>If Laminar's eval ergonomics turn out worse than this analysis projects</b> — say, the custom scorer API is more friction than Opik's — the fallback is to swap, not to dual-emit. Single-platform is a load-bearing simplification; dual-emit was the wrong answer in the earlier draft.</p>
+</div>
+
+<h2 id="sx"><span class="num">§</span>Sources</h2>
+
+<p style="font-size:12.5px;color:var(--g500);font-family:var(--mono)">All sources verified 2026-05-25. Numbered to match synth doc at <code>~/.search-cache/synth/20260525-0200_agentic-coding-observability-2026.md</code>.</p>
+
+<div class="src-list">
+[1] <a href="https://langfuse.com">langfuse.com</a><br>
+[2] <a href="https://www.braintrust.dev/articles/agent-observability-complete-guide-2026">braintrust agent obs guide</a><br>
+[3] <a href="https://laminar.sh/">laminar.sh</a><br>
+[4] <a href="https://pydantic.dev/docs/logfire/get-started/ai-observability/">logfire AI obs</a><br>
+[5] <a href="https://logfire.pydantic.dev/docs/guides/web-ui/llm-panels/">logfire LLM panels</a><br>
+[6] <a href="https://arize.com/docs/phoenix">phoenix docs</a><br>
+[8] <a href="https://github.com/oven-sh/bun/issues/26536">bun#26536</a><br>
+[9] <a href="https://github.com/oven-sh/bun/issues/3775">bun#3775</a><br>
+[10] <a href="https://github.com/open-telemetry/opentelemetry-js/issues/5260">otel-js#5260</a><br>
+[11] <a href="https://www.dynatrace.com/news/blog/dynatrace-expands-ai-coding-agent-monitoring/">dynatrace coding-agent</a><br>
+[12] <a href="https://laminar.sh/article/2026-04-23-top-6-agent-observability-platforms">laminar 2026 ranking</a><br>
+[13] <a href="https://github.com/comet-ml/opik">opik repo</a><br>
+[15] <a href="https://github.com/AgentOps-AI/agentops">agentops repo</a><br>
+[16] <a href="https://github.com/AgentOps-AI/agentops-ts">agentops-ts</a><br>
+[17] <a href="https://google.github.io/adk-docs/integrations/agentops/">agentops × ADK</a><br>
+[18] <a href="https://www.getmaxim.ai/products/agent-observability">maxim agent obs</a><br>
+[20] <a href="https://docs.patronus.ai/docs/self_hosting_guide/architecture_overview">patronus self-host</a><br>
+[21] <a href="https://www.patronus.ai/agents">patronus agents</a><br>
+[22] <a href="https://docs.honeyhive.ai/setup/self-hosted">honeyhive BYOC</a><br>
+[23] <a href="https://www.honeyhive.ai/observability">honeyhive obs</a><br>
+[24] <a href="https://docs.inkeep.com/overview">inkeep docs</a><br>
+[25] <a href="https://github.com/inkeep/agents">inkeep agents</a><br>
+[26] <a href="https://signoz.io/blog/inkeep-ai-agent-monitoring/">signoz × inkeep</a><br>
+[27] <a href="https://pydantic.dev/docs/logfire/get-started/faq/">logfire FAQ</a><br>
+[28] <a href="https://github.com/Arize-ai/phoenix">phoenix repo (ELv2)</a><br>
+[29] <a href="https://arize.com/docs/phoenix/release-notes/11.2025/11.09.2025-openinference-typescript-2.0">openinference TS 2.0</a><br>
+[30] <a href="https://github.com/Arize-ai/openinference">openinference repo</a><br>
+[31] <a href="https://laminar.sh/article/arize-phoenix-alternatives-2026">phoenix alts 2026</a><br>
+[32] <a href="https://galileo.ai/blog/best-ai-agent-observability-platforms">galileo agent obs</a><br>
+[33] <a href="https://www.prnewswire.com/news-releases/galileo-announces-free-agent-reliability-platform-302508172.html">galileo free reliability</a><br>
+[34] <a href="https://www.braintrust.dev/articles/best-ai-agent-observability-tools-2026">braintrust 2026 picks</a><br>
+[35] <a href="https://langfuse.com/integrations/native/opentelemetry">langfuse OTel</a><br>
+[36] <a href="https://www.helicone.ai/blog/the-complete-guide-to-LLM-observability-platforms">helicone guide</a><br>
+[37] <a href="https://oneuptime.com/blog/post/2026-02-06-opentelemetry-bun-without-nodejs-require-flag/view">oneuptime bun + OTel</a><br>
+[38] <a href="https://github.com/oven-sh/bun/discussions/7185">bun discussion #7185</a><br>
+[39] <a href="https://www.harborframework.com/docs/training-workflows/rl">harbor docs</a><br>
+[40] <a href="https://github.com/harbor-framework/harbor">harbor repo</a><br>
+[41] <a href="https://github.com/openrlhf/openrlhf">openrlhf</a><br>
+[42] <a href="https://www.comet.com/docs/opik/evaluation/metrics/overview">opik metrics overview (30+ scorers)</a><br>
+[43] <a href="https://www.comet.com/docs/opik/evaluation/concepts">opik evaluation concepts (datasets + experiments)</a><br>
+[44] <a href="https://github.com/lmnr-ai/lmnr/blob/dev/docker-compose.yml">laminar docker-compose (6 services)</a><br>
+[45] <a href="https://github.com/comet-ml/opik/blob/main/deployment/docker-compose/docker-compose.yaml">opik docker-compose (11 services)</a><br>
+[46] <a href="https://github.com/lmnr-ai/lmnr/releases">lmnr releases (v0.1.45 · 2026-04-27)</a><br>
+[47] <a href="https://github.com/comet-ml/opik/releases">opik releases (2.0.46 · 2026-05-22)</a><br>
+</div>
+
+<footer>
+insight-kit · 14 · agentic-coding observability · synth 2026-05-25 · <a href="https://github.com/anthropics/claude-code">claude-code</a>
+</footer>
+
+</main>
+</div>
+
+</div>
+
+<script>
+// Scrollspy: IntersectionObserver marks active TOC item as user scrolls body
+(function() {
+  const tocLinks = Array.from(document.querySelectorAll('aside.toc a'));
+  const headings = Array.from(document.querySelectorAll('h2[id], h3[id]'));
+  if (!tocLinks.length || !headings.length || !('IntersectionObserver' in window)) return;
+
+  const byId = new Map(tocLinks.map(a => [a.getAttribute('href').slice(1), a]));
+
+  // Track which sections are currently intersecting
+  const visible = new Set();
+
+  function setActive() {
+    // Pick the first heading (in DOM order) that is currently visible
+    let active = null;
+    for (const h of headings) {
+      if (visible.has(h.id)) { active = h.id; break; }
+    }
+    // Fallback: whichever heading is closest above the viewport top
+    if (!active) {
+      const scrollY = window.scrollY || window.pageYOffset;
+      let best = null, bestDist = Infinity;
+      for (const h of headings) {
+        const top = h.getBoundingClientRect().top + scrollY;
+        if (top <= scrollY + 120 && (scrollY - top) < bestDist) {
+          bestDist = scrollY - top;
+          best = h.id;
+        }
+      }
+      active = best;
+    }
+    tocLinks.forEach(a => a.classList.remove('active'));
+    if (active && byId.has(active)) byId.get(active).classList.add('active');
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) visible.add(e.target.id);
+      else visible.delete(e.target.id);
+    });
+    setActive();
+  }, { rootMargin: '0px 0px -60% 0px', threshold: 0 });
+
+  headings.forEach(h => { if (byId.has(h.id)) io.observe(h); });
+
+  // TOC click: smooth scroll to section
+  tocLinks.forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href').slice(1);
+      const target = document.getElementById(id);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Force active immediately on click
+        tocLinks.forEach(x => x.classList.remove('active'));
+        a.classList.add('active');
+      }
+    });
+  });
+
+  // Mobile TOC dropdown toggle
+  const mobileBtn = document.getElementById('toc-mobile-btn');
+  const mobileMenu = document.getElementById('toc-mobile-menu');
+  if (mobileBtn && mobileMenu) {
+    mobileBtn.addEventListener('click', () => {
+      const open = mobileMenu.hidden;
+      mobileMenu.hidden = !open;
+      mobileBtn.setAttribute('aria-expanded', String(open));
+    });
+    mobileMenu.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => { mobileMenu.hidden = true; mobileBtn.setAttribute('aria-expanded', 'false'); });
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
