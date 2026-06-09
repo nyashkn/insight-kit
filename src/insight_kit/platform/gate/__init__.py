@@ -43,12 +43,9 @@ V15, V16, V18, V21, T30, T31, T32, T33.
 """
 from __future__ import annotations
 
-from insight_kit.platform.gate.compose import (
-    ChartBindingResult,
-    ComposeError,
-    compose_record,
-    parse_refs,
-    verify_chart_bindings,
+from insight_kit.platform.gate.acquire import (
+    AcquireResult,
+    ik_acquire,
 )
 from insight_kit.platform.gate.audit import (
     AuditReport,
@@ -60,6 +57,13 @@ from insight_kit.platform.gate.audit import (
     load_claims_index,
     run_render_audit,
 )
+from insight_kit.platform.gate.compose import (
+    ChartBindingResult,
+    ComposeError,
+    compose_record,
+    parse_refs,
+    verify_chart_bindings,
+)
 from insight_kit.platform.gate.emit import (
     ik_claim_emit,
     ik_intervention_emit,
@@ -69,6 +73,11 @@ from insight_kit.platform.gate.emit import (
 from insight_kit.platform.gate.feature import (
     ProvisionalFeature,
     ik_feature_get,
+)
+from insight_kit.platform.gate.graph_query import (
+    AdjacencyNode,
+    GraphAdjacency,
+    query_cites,
 )
 from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter, VegaLiteAdapter
 from insight_kit.platform.gate.runcheck import (
@@ -99,15 +108,6 @@ from insight_kit.platform.gate.schema import (
     ResearchRecord,
     SelectionParams,
     SkillUseRecord,
-)
-from insight_kit.platform.gate.acquire import (
-    AcquireResult,
-    ik_acquire,
-)
-from insight_kit.platform.gate.graph_query import (
-    AdjacencyNode,
-    GraphAdjacency,
-    query_cites,
 )
 from insight_kit.platform.gate.store import (
     endpoint_index_path,

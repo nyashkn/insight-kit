@@ -34,7 +34,6 @@ from insight_kit.platform.gate.schema import (
 )
 from insight_kit.platform.gate.store import record_path
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

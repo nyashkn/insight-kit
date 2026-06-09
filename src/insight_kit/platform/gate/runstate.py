@@ -200,7 +200,9 @@ def apply_critique(
     # Placed BEFORE gate branches so the event is written on every path —
     # pass, downgrade, AND the raise path (record-then-enforce).
     if run_dir is not None:
-        from insight_kit.platform.gate.store import append_event  # lazy import — avoid runstate<->store circular
+        from insight_kit.platform.gate.store import (
+            append_event,  # lazy import — avoid runstate<->store circular
+        )
 
         event: dict[str, Any] = {
             "status": critique.status,

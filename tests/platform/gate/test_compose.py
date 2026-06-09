@@ -18,7 +18,6 @@ from insight_kit.platform.gate.emit import ik_claim_emit
 from insight_kit.platform.gate.runstate import RunState
 from insight_kit.platform.gate.store import record_path
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -304,7 +303,7 @@ class TestComposeMissingSrcRaises:
         narrative = '<ClaimChart src="nope.vl.json" claim="DOCK-D-128"/>'
         _write_narrative(rec_dir, narrative)
 
-        with pytest.raises(ComposeError, match="nope.vl.json"):
+        with pytest.raises(ComposeError, match=r"nope\.vl\.json"):
             compose_record(run_dir, record_id)
 
 

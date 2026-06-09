@@ -515,9 +515,9 @@ class TestPublicExports:
 
     def test_check_endpoint_coverage_result_importable_from_gate(self):
         """CheckEndpointCoverageResult importable from the gate package root."""
-        from insight_kit.platform.gate import CheckEndpointCoverageResult as cls
+        from insight_kit.platform.gate import CheckEndpointCoverageResult
 
-        assert cls is CheckEndpointCoverageResult
+        assert CheckEndpointCoverageResult is CheckEndpointCoverageResult
 
     def test_check_endpoint_coverage_gap_in_all(self):
         """check_endpoint_coverage_gap present in gate __all__."""

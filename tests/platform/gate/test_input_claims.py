@@ -24,7 +24,6 @@ from pydantic import ValidationError as PydanticValidationError
 
 from insight_kit.libs.validation import ValidationError as LayerAValidationError
 from insight_kit.platform.gate.emit import (
-    check_input_claims_exist,
     ik_claim_emit,
     ik_research_emit,
     ik_skill_use_emit,
@@ -38,7 +37,6 @@ from insight_kit.platform.gate.schema import (
     SkillUseRecord,
 )
 from insight_kit.platform.gate.store import record_path
-
 
 # ---------------------------------------------------------------------------
 # Helpers

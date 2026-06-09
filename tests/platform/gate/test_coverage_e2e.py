@@ -278,8 +278,8 @@ class TestCoverageE2EMissedHigh:
         assert used == {"products.list"}
 
         # Step 3: run coverage check
-        from insight_kit.platform.gate.store import read_endpoint_index
         from insight_kit.platform.gate.runcheck import check_endpoint_coverage_gap
+        from insight_kit.platform.gate.store import read_endpoint_index
 
         ei = read_endpoint_index(run_dir, result.research_ref.record_id)
         cov_result = check_endpoint_coverage_gap(
@@ -479,7 +479,7 @@ class TestCoverageMultiResearchScoping:
             api_extraction_result={**EXTRACTION_RESULT_ORDERS_LIST, "bundle": "B"},
             skill_use_source="orders.listOrders",  # high endpoint, but cites B not A
         )
-        _ = result_b  # noqa: F841
+        _ = result_b
 
         # Sanity check: run-global used-set contains the endpoint (the old bug).
         global_used = derive_used_endpoints(run_dir)

@@ -24,7 +24,6 @@ from insight_kit.platform.gate.audit import (
 )
 from insight_kit.platform.gate.render_adapters import VegaLiteAdapter
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -108,7 +107,7 @@ class TestMarkdownVegaAdapterExtractTokens:
         vl_tokens = VegaLiteAdapter().extract_tokens(spec)
 
         assert len(mv_tokens) == len(vl_tokens)
-        for mv_tok, vl_tok in zip(mv_tokens, vl_tokens):
+        for mv_tok, vl_tok in zip(mv_tokens, vl_tokens, strict=False):
             assert mv_tok.value == vl_tok.value
             assert mv_tok.claim_ref == vl_tok.claim_ref
             assert mv_tok.raw == vl_tok.raw
@@ -185,7 +184,7 @@ class TestMarkdownVegaAdapterExtractTokens:
             '<ClaimChart src="ghost.vl.json" claim="DOCK-D-128"/>',
         )
 
-        with pytest.raises(Exception, match="ghost.vl.json"):
+        with pytest.raises(Exception, match=r"ghost\.vl\.json"):
             MarkdownVegaAdapter().extract_tokens(narrative_path)
 
 

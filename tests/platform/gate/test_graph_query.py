@@ -20,8 +20,6 @@ from pathlib import Path
 import pytest
 
 from insight_kit.platform.gate.graph_query import (
-    AdjacencyNode,
-    GraphAdjacency,
     query_cites,
 )
 from insight_kit.platform.gate.store import write_record
@@ -350,16 +348,16 @@ class TestRecordTypePreserved:
 
 class TestPublicExport:
     def test_query_cites_importable_from_gate(self):
-        from insight_kit.platform.gate import query_cites as qc  # noqa: F401
+        from insight_kit.platform.gate import query_cites as qc
         assert callable(qc)
 
     def test_graph_adjacency_importable_from_gate(self):
-        from insight_kit.platform.gate import GraphAdjacency as GA  # noqa: F401
-        assert GA is not None
+        from insight_kit.platform.gate import GraphAdjacency
+        assert GraphAdjacency is not None
 
     def test_adjacency_node_importable_from_gate(self):
-        from insight_kit.platform.gate import AdjacencyNode as AN  # noqa: F401
-        assert AN is not None
+        from insight_kit.platform.gate import AdjacencyNode
+        assert AdjacencyNode is not None
 
 
 # ---------------------------------------------------------------------------

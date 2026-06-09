@@ -28,7 +28,6 @@ from insight_kit.platform.gate.emit import ik_claim_emit
 from insight_kit.platform.gate.runstate import RunState
 from insight_kit.platform.gate.store import record_path
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

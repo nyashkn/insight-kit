@@ -419,7 +419,7 @@ def check_coverage_from_run(
     research_record_id: str,
     *,
     claim_id: str | None = None,
-) -> "CheckEndpointCoverageResult":
+) -> CheckEndpointCoverageResult:
     """End-to-end coverage check: derive used-set + read index + run gap check.
 
     Convenience that wires three steps together for the T32 end-to-end critic:

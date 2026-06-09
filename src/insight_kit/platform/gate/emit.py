@@ -102,8 +102,8 @@ def _run_layer_a_guards(
         _check_supersedes_exists(supersedes, run_dir)
         # T26 — V3 chain integrity: reject superseding an already-superseded claim.
         if record.record_type == "claim":
-            from insight_kit.libs.validation import check_supersedes_chain_integrity
             from insight_kit.libs.provenance.root import find_kit_root
+            from insight_kit.libs.validation import check_supersedes_chain_integrity
             try:
                 kit_root = find_kit_root(run_dir)
             except FileNotFoundError:
@@ -257,8 +257,8 @@ def _check_supporter_refutes_targets(record: Any, run_dir: Path) -> None:
                         "point to a claim record (T29, C13)."
                     ),
                     suggestion=(
-                        f"Use supports/refutes only to reference claim records. "
-                        f"For knowledge provenance, use `cites` with research/skill_use records."
+                        "Use supports/refutes only to reference claim records. "
+                        "For knowledge provenance, use `cites` with research/skill_use records."
                     ),
                 )
 
