@@ -853,6 +853,11 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
     <h4><a href="18_t25-debate-trigger-spec.md">When to escalate to opus + N-builder debate</a></h4>
     <p style="font-size:13px;color:var(--g700);max-width:none">Cost-gated escalation trigger for multi-agent debate. Five primitives OR-composed: score floor (&lt;0.7), critic-severity cluster (≥2 HIGH/CRIT), 3-run stagnation (Δ&lt;0.05 &amp; score&lt;0.85), cite-graph contradiction, manual override. Asymmetric bias: false-positive (~5x cost) cheaper than false-negative (bad claim into RL signal).</p>
   </div>
+  <div class="card" style="border-top:3px solid var(--clay)">
+    <div class="tag">19 · D02 factorial design</div>
+    <h4><a href="19_d02-factorial-design.md">24-run isolation: agent × channel × model</a></h4>
+    <p style="font-size:13px;color:var(--g700);max-width:none">Operational spec to attribute the 0.83 → 1.00 jump. 2×2×2 full factorial, k=3 trials per cell, block-randomised. 3-way ANOVA on D01 score; reports partial η² per factor. Pass/fail: GO on T24 RL coupling iff repeatability floor &lt;0.05 AND one factor explains ≥50% variance. Cost: ~4h wall, ~$5 openrouter, ~30min cred re-wire.</p>
+  </div>
 </div>
 
 <footer>
