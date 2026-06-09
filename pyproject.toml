@@ -1,6 +1,6 @@
 [project]
 name = "insight-kit"
-version = "0.1.4"
+version = "0.1.5"
 description = "Provenance-first agent insights kit — Run + Claim + DAG primitives for traceable analyst/critic loops."
 readme = "README.md"
 license = { text = "MIT" }
@@ -30,6 +30,7 @@ polars = ["polars>=1.40"]
 pandas = ["pandas>=2.2"]
 evidence = ["jinja2>=3.1"]
 signet = []
+observability = ["lmnr>=0.7.51"]
 dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.7", "mypy>=1.10"]
 
 [project.scripts]
