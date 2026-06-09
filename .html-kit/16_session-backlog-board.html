@@ -382,17 +382,18 @@ footer a:hover{color:var(--clay)}
       title:'score.py semantic hardening',
       summary:'SHIPPED via insight-kit B1 — insight_kit.platform.eval.score: 9-check gate (3 structural, 3 file-existence, claim_id regex w/ T-suffix accept, query_path citation cross-check, length prior 2-50KB). Unblocks T24.',
       link:'../eval/README.md', linkLabel:'README §score →' },
-    { id:'D02', col:'discovered', tag:'discovered', size:'l',
+    { id:'D02', col:'next', tag:'eval', size:'l',
       title:'24-run isolation factorial (8 cells × 3 trials)',
-      summary:'Attribute the 0.83 → 1.00 jump to agent / channel / model. Three variables changed at once in T18 — n=1 cannot tell us which one mattered. Blocks any honest RL signal.',
-      link:'15_t17-smoke-1pt0-critic.html', linkLabel:'design in §4 →',
-      blocks:'blocks RL on eval signal' },
+      summary:'Attribute the 0.83 → 1.00 jump to agent / channel / model. Operational spec landed at 19_d02-factorial-design.md (2x2x2 factorial, block-randomised, ANOVA with partial η²). Runner: deploy/eval/factorial_runner.py (to-build). Blocks T24 honest RL gradient.',
+      link:'19_d02-factorial-design.md', linkLabel:'design spec →',
+      blocks:'blocks RL on eval signal — needs Dockerfile.factorial-pi + openrouter cred re-add' },
     { id:'D03', col:'discovered', tag:'discovered', size:'m',
       title:'JWT lifecycle on slow runs',
       summary:'Smoke run = 9m53s, JWT TTL ≈ 10min. Cred layer is a hidden failure mode for any run that drifts past the cap. Either refresh mid-run or hard-cap run timeout below TTL.' },
-    { id:'D04', col:'discovered', tag:'discovered', size:'s',
+    { id:'D04', col:'done', tag:'eval', size:'s',
       title:'Score.py docstring vs framing alignment',
-      summary:'score.py docstring says "structural completeness only" — but team treats 1.0 as success. Communicate the distinction in harness output + docs so 1.00 is not over-claimed.' }
+      summary:'RESOLVED post-B1. insight_kit.platform.eval.score docstring now enumerates "structural + semantic" with 6 structural + 3 semantic (claim_id regex, query_path citation cross-check, length prior). "Structural-only" framing gone; stderr also prints per-check PASS/FAIL.',
+      link:'../src/insight_kit/platform/eval/score.py', linkLabel:'score.py →' }
   ];
 
   // ---------- localStorage ----------
