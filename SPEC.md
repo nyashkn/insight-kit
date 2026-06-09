@@ -87,7 +87,7 @@ T13 | x  | published-tier fail-closed hooks — manifest/finalize fatal on publi
 T14 | x  | ik_feature_get — provisional-feature return on miss + draft-lock                       | V18
 T15 | -  | Evidence read-end — <ClaimNum>/<ClaimChart> resolve from index, fingerprint vs record.json. WON'T-DO: Evidence read-end obsolete — Vega-Lite render path supersedes (render_adapters.py VegaLiteAdapter + L5/L6 audit = canonical audited surface). KN 2026-06-08 | V9,I.evidence
 T16 | x  | Layer-D render audit — L5 HTML-token→claim join + L6 prose lint, CI-blocking on published | V12,I.audit
-T17 | x  | eval harness — containerize growth_insights fixture, golden=audited-truth, semantic field-diff, classify regression/legitimate/coverage-drop, buggy runs as negative fixtures | V11,C10,C11
+T17 | x  | eval harness — containerize consumer-repo fixture, golden=audited-truth, semantic field-diff, classify regression/legitimate/coverage-drop, buggy runs as negative fixtures | V11,C10,C11
 T18 | x  | L3 pi extension (.pi/extensions/*.ts) — typed-wrapper TS ToolDefinitions (ik_claim_emit + ik_intervention_emit + ik_research_emit + ik_skill_use_emit), call L1 via pi.exec uv-run subprocess, gen TypeBox parameters from pydantic JSON Schema, gate on tool_call/tool_result hooks | C4,C5,I.emit
 T19 | x  | purity lint — no hamilton/pi import in L1 module                                       | V5
 T20 | x  | env capture — container digest + lockfile hash into run.json                           | V6,C10

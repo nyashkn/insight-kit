@@ -72,7 +72,7 @@ The experiment ships a verdict, not a value judgement:
 - **HOLD on RL coupling:** floor ≥ 0.05 (too noisy for a meaningful gradient) OR no single factor dominates (configuration coupled to multiple confounds).
 - **HARD STOP:** any cell with all 3 trials at score 0.0 — that cell's stack is broken; either fix it or remove that level from the factor and redesign.
 
-## Runner contract — `growth_insights/deploy/eval/factorial_runner.py`
+## Runner contract — `consumer-repo/deploy/eval/factorial_runner.py`
 
 Not yet implemented. Expected shape:
 

@@ -16,7 +16,7 @@ Helpers:
   per-check span under the active score span. Synchronous open/close.
 - `read_capped(path, cap)` — capped text read for span output attachment.
 
-All env-driven init mirrors the growth_insights/deploy/eval/lmnr_harness.py
+All env-driven init mirrors the consumer-repo/deploy/eval/lmnr_harness.py
 behavior — same env var names, same self-host vs cloud switch (LMNR_BASE_URL),
 same fallback (warn + run when LMNR_PROJECT_API_KEY unset).
 """
@@ -86,8 +86,8 @@ def init_from_env() -> bool:
     base_url = os.environ.get("LMNR_BASE_URL")
     if base_url:
         # Self-host. LMNR_BASE_URL must be scheme+host with NO port in URL string.
-        # Good: "https://laminar-grpc.lan.ds.ke"
-        # Bad:  "https://laminar-grpc.lan.ds.ke:443"
+        # Good: "https://laminar-grpc.internal.example.com"
+        # Bad:  "https://laminar-grpc.internal.example.com:443"
         init_kwargs["base_url"] = base_url
         base_http_url = os.environ.get("LMNR_BASE_HTTP_URL")
         if base_http_url:

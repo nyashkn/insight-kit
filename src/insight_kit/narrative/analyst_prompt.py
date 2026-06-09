@@ -3,16 +3,16 @@
 Captures the parts of the analyst prompt that recur across every consumer
 project (claim schema, query_path rules, output file list, headings). Project-
 specific bits (founder context, data scope description) are runtime params so
-consumers like growth_insights inject their own without forking the template.
+consumers like consumer-repo inject their own without forking the template.
 
 Append persona instructions to the rendered string yourself — they vary per
 council member and live in the consumer repo.
 
 History:
-- Original lived inline at growth_insights/src/growth_insights/analyst/runner.py
+- Original lived inline at consumer-repo/src/consumer-repo/analyst/runner.py
   as `_ANALYST_HEADER` from 2026-04-24 through 2026-06-09.
 - 2026-06-09: extracted to insight-kit (B3 of eval-harness extraction).
-- `query_path` rules block was hardened 2026-06-09 (PR #8 on growth_insights)
+- `query_path` rules block was hardened 2026-06-09 (PR #8 on consumer-repo)
   after omp drift emitted multi-source concatenated paths.
 """
 from __future__ import annotations

@@ -22,3 +22,4 @@ node_modules/
 bun.lockb
 .html-kit/_archive/
 .playwright-cli/
+.eval/
