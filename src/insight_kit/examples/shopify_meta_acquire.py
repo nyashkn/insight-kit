@@ -27,18 +27,26 @@ this gap and fires a critique on the claim record.  This is the whole point:
 demonstrating "could the analyst have missed an important API for
 new-vs-returning?".
 
+``Customer.numberOfOrders`` is distilled from the ``search_customer_orders``
+fixture hit: the hit's content contains the string ``numberOfOrders`` and its
+URL is in the customers/Customer doc area, so ``distill_endpoint_index``
+discovers it directly from the hit — no hardcoded injection.
+
 Live extraction (--live-extract)
 ---------------------------------
 Real Meta/Shopify extraction requires credentials that must NEVER be committed
-or appear in fixtures.  See ``_live_extract_stub()`` below for the documented
-stub; the body intentionally raises ``NotImplementedError`` unless
-META_TOKEN + SHOPIFY_TOKEN are present in os.environ at call time.  CI never
-sets these variables, so the code path is dead in automated runs.
+or appear in fixtures.  Pass ``--live-extract`` on the CLI (or set
+``live_extract=True`` in ``run_demo``) to invoke ``_live_extract_stub()``.
+The stub raises ``NotImplementedError`` unless META_TOKEN + SHOPIFY_TOKEN are
+present in os.environ at call time.  CI never sets these variables, so the code
+path is dead in automated runs.  See ``extract_g4f7_attribution.py`` for the
+real implementation.
 
 Usage
 -----
-    uv run python -m insight_kit.examples.shopify_meta_acquire           # fixture mode
-    uv run python -m insight_kit.examples.shopify_meta_acquire --live    # live doc search
+    uv run python -m insight_kit.examples.shopify_meta_acquire                # fixture mode
+    uv run python -m insight_kit.examples.shopify_meta_acquire --live         # live doc search
+    uv run python -m insight_kit.examples.shopify_meta_acquire --live-extract # real extraction (needs creds)
 
 Cites: T30, T31, T32, V16, V20, V22, C12.
 """
@@ -153,9 +161,17 @@ def distill_endpoint_index(search_results: dict[str, Any]) -> dict[str, Any]:
       - ``Customer.numberOfOrders``  → high  (new-vs-returning composition)
       - All other extracted endpoints → medium
 
-    The two high-relevance endpoints are the ones the attribution task
-    genuinely needs.  Only the first one (bulkOperationRunQuery) is used by
-    the synthetic extraction, so the T32 critic will flag the miss.
+    ``Customer.numberOfOrders`` is DISCOVERED from hit content: when a hit's
+    content contains the string 'numberOfOrders' and its URL is in the
+    customers/Customer doc area, the endpoint is emitted as
+    ``Customer.numberOfOrders`` (relevance='high').  This makes the demo
+    narrative honest — the analyst missed an endpoint that the search genuinely
+    surfaced, not one that was silently injected.
+
+    A safety-net fallback for ``bulkOperationRunQuery`` (only) is retained for
+    the case where the bulk mutation URL pattern changes or the fixture doesn't
+    surface it.  ``Customer.numberOfOrders`` has NO unconditional fallback —
+    its presence in the index proves discovery from real hit content.
 
     Args:
         search_results: output of load_search_results() or load_search_results_live().
@@ -165,11 +181,14 @@ def distill_endpoint_index(search_results: dict[str, Any]) -> dict[str, Any]:
     """
     seen: dict[str, dict[str, Any]] = {}
 
-    # High-priority endpoints for the attribution task
-    high_endpoints_required = {
+    # Endpoints that are high-relevance for the attribution task
+    high_endpoints = {
         "bulkOperationRunQuery",
         "Customer.numberOfOrders",
     }
+
+    # URL path segments that identify the customers/Customer doc area
+    _customer_url_markers = ("customers", "Customer")
 
     query_results = search_results.get("query_results", {})
     for _stem, hits in query_results.items():
@@ -178,13 +197,31 @@ def distill_endpoint_index(search_results: dict[str, Any]) -> dict[str, Any]:
         for hit in hits:
             url = hit.get("url", "")
             title = hit.get("title", "")
+            content = hit.get("content", "")
+
+            # --- Discovery: Customer.numberOfOrders from hit content ---
+            # If a hit's content mentions 'numberOfOrders' and the URL is in
+            # the customers/Customer doc area, emit the field-qualified endpoint
+            # id directly from this hit.  This is the genuine discovery path —
+            # the search surfaced a doc that describes the field.
+            if (
+                "numberOfOrders" in content
+                and any(m in url for m in _customer_url_markers)
+                and "Customer.numberOfOrders" not in seen
+            ):
+                seen["Customer.numberOfOrders"] = {
+                    "endpoint": "Customer.numberOfOrders",
+                    "relevance": "high",
+                    "source": url,
+                    "why": _endpoint_why("Customer.numberOfOrders"),
+                }
 
             # Derive endpoint id from URL path tail or title
             ep_id = _extract_endpoint_id(url, title)
             if not ep_id or ep_id in seen:
                 continue
 
-            relevance = "high" if ep_id in high_endpoints_required else "medium"
+            relevance = "high" if ep_id in high_endpoints else "medium"
             seen[ep_id] = {
                 "endpoint": ep_id,
                 "relevance": relevance,
@@ -192,16 +229,17 @@ def distill_endpoint_index(search_results: dict[str, Any]) -> dict[str, Any]:
                 "why": _endpoint_why(ep_id),
             }
 
-    # Always ensure both high-relevance endpoints are present — they may not
-    # appear in fixture hits if the search didn't surface them directly.
-    for ep_id in high_endpoints_required:
-        if ep_id not in seen:
-            seen[ep_id] = {
-                "endpoint": ep_id,
-                "relevance": "high",
-                "source": _fallback_source(ep_id),
-                "why": _endpoint_why(ep_id),
-            }
+    # Safety-net fallback for bulkOperationRunQuery only — in case the mutation
+    # URL pattern changes or the search doesn't surface it.
+    # Customer.numberOfOrders has NO unconditional fallback: its presence proves
+    # discovery from real hit content.
+    if "bulkOperationRunQuery" not in seen:
+        seen["bulkOperationRunQuery"] = {
+            "endpoint": "bulkOperationRunQuery",
+            "relevance": "high",
+            "source": _fallback_source("bulkOperationRunQuery"),
+            "why": _endpoint_why("bulkOperationRunQuery"),
+        }
 
     return {"available_endpoints": list(seen.values())}
 
@@ -403,12 +441,17 @@ def sample_extraction_result() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def run_demo(run_dir: Path, *, live: bool = False) -> dict[str, Any]:
+def run_demo(
+    run_dir: Path, *, live: bool = False, live_extract: bool = False
+) -> dict[str, Any]:
     """Build RunState, run ik_acquire, fire coverage critic, return summary.
 
     Args:
-        run_dir: directory for the run (will be created if absent).
-        live:    if True, replace fixture search with live shopify.dev search.
+        run_dir:      directory for the run (will be created if absent).
+        live:         if True, replace fixture search with live shopify.dev search.
+        live_extract: if True, call ``_live_extract_stub()`` for real extraction.
+                      Raises NotImplementedError unless META_TOKEN + SHOPIFY_TOKEN
+                      are set in os.environ.  Always False in CI.
 
     Returns:
         Summary dict with keys:
@@ -427,7 +470,12 @@ def run_demo(run_dir: Path, *, live: bool = False) -> dict[str, Any]:
     else:
         search_results = load_search_results()
 
-    extraction_result = sample_extraction_result()
+    if live_extract:
+        # Cred-gated: raises NotImplementedError without META_TOKEN + SHOPIFY_TOKEN.
+        # See _live_extract_stub() docstring and extract_g4f7_attribution.py.
+        extraction_result = _live_extract_stub()
+    else:
+        extraction_result = sample_extraction_result()
     endpoint_index = distill_endpoint_index(search_results)
 
     # --- Stable IDs ---
@@ -583,8 +631,19 @@ def main() -> None:
         help=(
             "Use live shopify.dev/assistant/search for the research snapshot "
             "instead of the captured fixtures.  Requires internet access.  "
-            "Extraction stays synthetic unless --live-extract is explicitly "
-            "invoked (requires META_TOKEN + SHOPIFY_TOKEN env vars)."
+            "Extraction stays synthetic unless --live-extract is also passed."
+        ),
+    )
+    parser.add_argument(
+        "--live-extract",
+        action="store_true",
+        default=False,
+        dest="live_extract",
+        help=(
+            "Run real Meta/Shopify extraction via _live_extract_stub().  "
+            "Requires META_TOKEN and SHOPIFY_TOKEN in os.environ.  "
+            "Raises NotImplementedError if credentials are absent (CI-safe).  "
+            "See extract_g4f7_attribution.py for the full implementation."
         ),
     )
     parser.add_argument(
@@ -614,10 +673,14 @@ def main() -> None:
             print("Mode: LIVE doc search (shopify.dev/assistant/search)")
         else:
             print("Mode: FIXTURE (captured shopify.dev search output)")
+        if args.live_extract:
+            print("Extraction: LIVE (cred-gated — requires META_TOKEN + SHOPIFY_TOKEN)")
+        else:
+            print("Extraction: SYNTHETIC (fixture mode, CI-safe)")
         print(f"Run dir: {run_dir}")
         print()
 
-        summary = run_demo(run_dir, live=args.live)
+        summary = run_demo(run_dir, live=args.live, live_extract=args.live_extract)
 
         print("Records emitted:")
         for label, rid in summary["record_ids"].items():

@@ -13,12 +13,19 @@ Coverage:
   - Full-coverage variant: override skill_use_source to cover both high endpoints
     via a second skill_use emit → coverage passes, no critique.
   - distill_endpoint_index unit: both high endpoints present, both marked high.
+  - distill_endpoint_index discovery: Customer.numberOfOrders comes from hit
+    content (removing the customers hit drops it from the index).
+  - --live-extract without creds: run_demo(live_extract=True) raises
+    NotImplementedError.
 """
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from insight_kit.examples.shopify_meta_acquire import (
     distill_endpoint_index,
@@ -320,13 +327,57 @@ class TestDistillEndpointIndex:
                     f"Non-critical endpoint {ep_id!r} must be medium; got {ep!r}"
                 )
 
-    def test_distill_empty_results(self) -> None:
-        """distill_endpoint_index with empty query_results still returns both high
-        endpoints (guaranteed by the fallback insertion logic)."""
+    def test_distill_empty_results_bulk_fallback(self) -> None:
+        """distill_endpoint_index with empty query_results still includes
+        bulkOperationRunQuery via the safety-net fallback."""
         idx = distill_endpoint_index({"query_results": {}})
         ep_ids = {ep.get("endpoint") or ep.get("id") for ep in idx["available_endpoints"]}
         assert "bulkOperationRunQuery" in ep_ids
-        assert "Customer.numberOfOrders" in ep_ids
+
+    def test_distill_empty_results_no_customer_endpoint(self) -> None:
+        """Customer.numberOfOrders is NOT in the index when query_results is empty.
+
+        It has no unconditional fallback — its presence proves discovery from
+        real hit content (a hit whose content contains 'numberOfOrders' and
+        whose URL is in the customers/Customer doc area).
+        """
+        idx = distill_endpoint_index({"query_results": {}})
+        ep_ids = {ep.get("endpoint") or ep.get("id") for ep in idx["available_endpoints"]}
+        assert "Customer.numberOfOrders" not in ep_ids, (
+            "Customer.numberOfOrders must NOT appear when no hits surface it; "
+            f"got {ep_ids!r}"
+        )
+
+    def test_distill_customer_endpoint_discovered_from_hits(self) -> None:
+        """Customer.numberOfOrders is discovered from hit content, not hardcoded.
+
+        Removing the search_customer_orders hits from the results drops
+        Customer.numberOfOrders from the index.
+        """
+        results = load_search_results()
+        # Strip the hits that contain the customers/numberOfOrders doc
+        stripped = copy.deepcopy(results)
+        stripped["query_results"].pop("search_customer_orders", None)
+        idx = distill_endpoint_index(stripped)
+        ep_ids = {ep.get("endpoint") or ep.get("id") for ep in idx["available_endpoints"]}
+        assert "Customer.numberOfOrders" not in ep_ids, (
+            "Customer.numberOfOrders must not appear when the customers hits "
+            f"are absent; got {ep_ids!r}"
+        )
+
+    def test_distill_customer_endpoint_present_when_hits_present(self) -> None:
+        """Customer.numberOfOrders IS in the index when full fixtures are loaded.
+
+        This is the companion to test_distill_customer_endpoint_discovered_from_hits:
+        the same hit that was stripped above, when present, causes discovery.
+        """
+        results = load_search_results()
+        idx = distill_endpoint_index(results)
+        ep_ids = {ep.get("endpoint") or ep.get("id") for ep in idx["available_endpoints"]}
+        assert "Customer.numberOfOrders" in ep_ids, (
+            f"Customer.numberOfOrders must be discovered from fixture hits; "
+            f"got {ep_ids!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -367,3 +418,25 @@ class TestSampleExtractionResult:
         """customer_order_counts is None — the coverage gap we're demonstrating."""
         result = sample_extraction_result()
         assert result["customer_order_counts"] is None
+
+
+# ---------------------------------------------------------------------------
+# Test: --live-extract flag (FIX 1) — cred-gated, CI-safe
+# ---------------------------------------------------------------------------
+
+
+class TestLiveExtractFlag:
+    def test_run_demo_live_extract_raises_without_creds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """run_demo(live_extract=True) raises NotImplementedError when
+        META_TOKEN and SHOPIFY_TOKEN are absent from os.environ.
+
+        This test verifies that the --live-extract flag is wired into run_demo
+        and that the cred-gating works correctly.  CI never sets these env vars
+        so the code path is dead in automated runs.
+        """
+        monkeypatch.delenv("META_TOKEN", raising=False)
+        monkeypatch.delenv("SHOPIFY_TOKEN", raising=False)
+        with pytest.raises(NotImplementedError, match="extract_g4f7_attribution"):
+            run_demo(tmp_path / "run", live_extract=True)
