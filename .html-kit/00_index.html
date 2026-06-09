@@ -848,6 +848,11 @@ The founder review meeting then has a single artifact: the <strong>delta dashboa
     <h4><a href="17_laminar-coverage-audit.html">Laminar coverage — 2 of 7</a></h4>
     <p style="font-size:13px;color:var(--g700);max-width:none">Opus audit of the T17 Laminar wiring. Phase wall-times + artifacts captured; everything inside the 535s omp black box (per-turn LLM calls, ~30 DuckDB queries, persona switches) is opaque. <code>lmnr-claude-code-proxy</code> verdict, 1-hour quick wins, 1-week session-JSON post-parse path.</p>
   </div>
+  <div class="card" style="border-top:3px solid var(--clay)">
+    <div class="tag">18 · T25 debate trigger spec</div>
+    <h4><a href="18_t25-debate-trigger-spec.md">When to escalate to opus + N-builder debate</a></h4>
+    <p style="font-size:13px;color:var(--g700);max-width:none">Cost-gated escalation trigger for multi-agent debate. Five primitives OR-composed: score floor (&lt;0.7), critic-severity cluster (≥2 HIGH/CRIT), 3-run stagnation (Δ&lt;0.05 &amp; score&lt;0.85), cite-graph contradiction, manual override. Asymmetric bias: false-positive (~5x cost) cheaper than false-negative (bad claim into RL signal).</p>
+  </div>
 </div>
 
 <footer>
