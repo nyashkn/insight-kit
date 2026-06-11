@@ -1,7 +1,7 @@
 # viz-kit + JS Preflight — Multi-Slice Rollout Plan
 
 **Date:** 2026-04-28
-**Repos:** insight-kit · dockblocks-ops-insight-kit (feat/insight-kit-adoption) · nairomarket/growth_insights
+**Repos:** insight-kit · example-ops-insight-kit (feat/insight-kit-adoption) · example-shop/growth_insights
 **Decisions taken** (via AskUserQuestion):
 1. Replace Python preflight — port L1-L4 to JS, add L5/L6
 2. Aggressive extraction — components + layouts + generators + preflight all to insight-kit
@@ -49,7 +49,7 @@
 | M6 | viz/evidence/generators/ — 3 scripts | MED | 650 | M1 | M2, M3, M4, M5 | Sonnet |
 | M7 | insight-kit/cli/ — kit preflight + viz install | MED | 300 | M2, M3 | M8 | Sonnet |
 | M8 | .agents/skills/ — preflight + authoring + symlink doc | LOW | 200 | M7 | M9 | Haiku |
-| M9 | dockblocks-ops migration | HIGH | 150 | M4, M5, M6, M7 | M10 (must be after) | Sonnet |
+| M9 | example-ops migration | HIGH | 150 | M4, M5, M6, M7 | M10 (must be after) | Sonnet |
 | M10 | growth_insights migration | HIGH | 100 | M7, M9 | — | Sonnet |
 | M11 | Integration tests CI harness | MED | 200 | M9, M10 | — | Sonnet |
 

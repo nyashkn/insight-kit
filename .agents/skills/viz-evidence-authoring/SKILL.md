@@ -72,7 +72,7 @@ Claim statements may contain `<`, `>`, `&`. Generators MUST escape these charact
 
 ## Critic-stability rule
 
-Chart SQL references `claim_id` column and `dockblocks.<source>` table names, NOT free-text statements. Supersedes-chain edits then propagate automatically without manual chart SQL rewrites.
+Chart SQL references `claim_id` column and `example_ops.<source>` table names, NOT free-text statements. Supersedes-chain edits then propagate automatically without manual chart SQL rewrites.
 
 ```sql
 SELECT revenue FROM reports WHERE claim_id = 'C_001'

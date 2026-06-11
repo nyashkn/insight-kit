@@ -36,15 +36,15 @@ that the two Node scripts read:
 ```bash
 # 1. Refresh DuckDB views (Python)
 python3 viz/evidence/generators/build_evidence_views.py \
-  --project-root /path/to/dockblocks-ops-insight-kit
+  --project-root /path/to/example-ops-insight-kit
 
 # 2. Generate per-claim provenance receipt pages (Node)
 node viz/evidence/generators/build_provenance.mjs \
-  --project-root /path/to/dockblocks-ops-insight-kit
+  --project-root /path/to/example-ops-insight-kit
 
 # 3. Generate by-tier + reasoning-tree index pages (Node)
 node viz/evidence/generators/build_indexes.mjs \
-  --project-root /path/to/dockblocks-ops-insight-kit
+  --project-root /path/to/example-ops-insight-kit
 ```
 
 ## Invocation Patterns
@@ -53,13 +53,13 @@ node viz/evidence/generators/build_indexes.mjs \
 
 ```bash
 node viz/evidence/generators/build_provenance.mjs \
-  --project-root /path/to/dockblocks-ops-insight-kit
+  --project-root /path/to/example-ops-insight-kit
 
 node viz/evidence/generators/build_indexes.mjs \
-  --project-root /path/to/dockblocks-ops-insight-kit
+  --project-root /path/to/example-ops-insight-kit
 
 python3 viz/evidence/generators/build_evidence_views.py \
-  --project-root /path/to/dockblocks-ops-insight-kit
+  --project-root /path/to/example-ops-insight-kit
 ```
 
 ### From the consumer project (after `kit viz install evidence` wires it up)

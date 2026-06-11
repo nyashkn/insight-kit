@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--project-root",
         required=True,
-        help="Absolute path to the consumer project root (e.g. dockblocks-ops-insight-kit/).",
+        help="Absolute path to the consumer project root (e.g. example-ops-insight-kit/).",
     )
     parser.add_argument(
         "--reports-dir",

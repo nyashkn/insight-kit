@@ -7,9 +7,18 @@ re-exported here for convenience.
 """
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import TYPE_CHECKING
 
-__version__ = "0.1.0a3"
+# __version__ single source of truth = pyproject.toml [project].version, read at
+# import time via installed package metadata. Falls back to "0.0.0+unknown" only
+# when the package is not installed (e.g. running from a source tree without an
+# editable install). This keeps __version__ from drifting out of sync with the build.
+try:
+    __version__ = _pkg_version("insight-kit")
+except PackageNotFoundError:  # pragma: no cover - source-tree-without-install
+    __version__ = "0.0.0+unknown"
 
 __all__ = [
     "RunState",

@@ -54,17 +54,17 @@ metadata:
 
 ### Pattern 1: ttfv-distribution
 - **Shape:** `Median TTFV for <cohort> = <D> days. <X>% of activations occur within 1 day (impulse). <Y>% activate within 7 days. <Z>% of acquired customers never activate within 30 days.`
-- **Example:** "Median TTFV = 2 days. 41% of activations same-day (impulse buyers). 68% activate within 7 days. 18% of customers created in March 2026 show no order at 30 days."
+- **Example:** "Median TTFV = 2 days. 40% of activations same-day (impulse buyers). 70% activate within 7 days. 20% of customers created in a sample month show no order at 30 days."
 - **Confidence floor:** medium — TTFV proxy uses `customers.createdAt` which reflects account creation, not first session; may overstate TTFV for guest-first purchasers who created accounts later
 
 ### Pattern 2: abandoned-checkout-leak
 - **Shape:** `<X>% of checkout sessions abandoned in <period>. Recovery rate: <Y>%. Unrecovered value: <KES> at median AOV <KES>.`
-- **Example:** "23% of checkout sessions abandoned. Recovery rate: 9% (email/SMS follow-up). Unrecovered sessions: 1,140 × 1,800 KES AOV = 2.05M KES/month potential."
+- **Example:** "25% of checkout sessions abandoned. Recovery rate: 10% (email/SMS follow-up). Unrecovered sessions: 1,000 × 2,000 KES AOV = 2.0M KES/month potential."
 - **Confidence floor:** medium — recovery rate estimate needs prior campaign data to anchor; unrecovered value is a ceiling, not a projected recovery
 
 ### Pattern 3: first-order-predictor
 - **Shape:** `Customers whose first order was in category <A> have <X>% 90d RPR vs. <Y>% average. Category <A> is a high-LTV entry point.`
-- **Example:** "Customers with first order in 'Marine Electronics' category: 34% 90d RPR vs. 18% platform average. First-order AOV > 3,000 KES predicts LTV_90d > 2× median."
+- **Example:** "Customers with first order in 'Category A': 35% 90d RPR vs. 20% platform average. First-order AOV > 3,000 KES predicts LTV_90d > 2× median."
 - **Confidence floor:** medium — requires sufficient cohort size per category; flag if category < 50 first-order customers
 
 ### Pattern 4: activation-rate-by-channel
@@ -88,8 +88,8 @@ metadata:
 ### Silver / Views
 | View | Derivation | Notes |
 |------|------------|-------|
-| `nairomarket.attribution_coverage_live` | Coverage stats | For activation-by-channel analysis; only 77.9% of orders have attribution |
-| `nairomarket.ltv_cac_by_channel` | CAC, LTV, new_customers per channel | For activation rate validation against channel CAC |
+| `example_shop.attribution_coverage_live` | Coverage stats | For activation-by-channel analysis; only 75% of orders have attribution |
+| `example_shop.ltv_cac_by_channel` | CAC, LTV, new_customers per channel | For activation rate validation against channel CAC |
 
 ### Coverage Gaps
 - No session-level event log: first session timestamp is approximated by `customers.createdAt` (account creation) or first order date for guest checkouts — TTFV may be understated for research browsers who visit multiple times before creating an account
@@ -122,7 +122,7 @@ metadata:
 ### Analysis 4: Activation Rate by Acquisition Channel
 - **Goal:** Determine whether channel mix drives activation rate differences (high-intent vs. discovery channels)
 - **Inputs:** `shopify_orders_journey__orders.parquet` columns `first_visit_source`, `customerId`, `createdAt`; `shopify_customers_bulk__customers.parquet` for account creation cohort
-- **Method:** Group customers by acquisition channel (from first_visit_source on first order). Compute 30d activation rate per channel (first order within 30d of account creation). Compare across channels. Caveat: activation rate is only computable for attributed customers (77.9% coverage).
+- **Method:** Group customers by acquisition channel (from first_visit_source on first order). Compute 30d activation rate per channel (first order within 30d of account creation). Compare across channels. Caveat: activation rate is only computable for attributed customers (75% coverage).
 - **Output claim shape:** activation-rate-by-channel (Pattern 4)
 
 ### Analysis 5: Time-to-Second-Order (Activation-to-Retention Bridge)
@@ -141,7 +141,7 @@ metadata:
 **Correct approach:** Use first order date as the TTFV anchor where session-level data is unavailable. State: "TTFV measured from first order date; pre-purchase browse time not captured. Actual TTFV may be longer." For accounts with `customer.createdAt < first_order_date`, TTFV = delta. Otherwise, TTFV = 0 (same-day or post-purchase account creation — cannot distinguish).
 
 ### AP-2: Treating abandoned checkout value as recoverable revenue
-**Problem:** "2.05M KES in abandoned checkouts can be recovered." The abandoned checkout GMV is the face value of items left in cart, not a revenue ceiling. Some abandonment is intentional (price research), some is technical (payment failure), some is external (customer switched to competitor). Recovery rate of 9–15% is the realistic fraction.
+**Problem:** "2.0M KES in abandoned checkouts can be recovered." The abandoned checkout GMV is the face value of items left in cart, not a revenue ceiling. Some abandonment is intentional (price research), some is technical (payment failure), some is external (customer switched to competitor). Recovery rate of 9–15% is the realistic fraction.
 **Why it happens:** The total abandoned GMV is a large, impressive number that makes recovery campaigns sound like a free money opportunity.
 **Correct approach:** Always present abandoned checkout analysis as: total abandoned value (context), expected recovery value (recovery_rate × abandoned_value), and clearly label the recovery rate as an assumption requiring empirical calibration.
 
@@ -178,9 +178,9 @@ metadata:
 **Pass condition:** Analyst states the anchor date source, reports guest checkout exclusion rate, and qualifies the TTFV claim accordingly.
 
 ### ST-2: Abandoned checkout recovery rate anchor
-**Probe:** "The recovery rate of 10–15% is applied to 2.05M KES in abandoned checkouts. Where does this rate come from?"
-**Expected weak point:** Without a prior recovery campaign on this specific audience, the 10–15% rate is an industry benchmark (SaaS/e-commerce average). Kenya market payment completion rates may differ significantly.
-**Pass condition:** Analyst presents the rate as a benchmark range, states no prior NairoMarket campaign data is available to anchor it, and recommends running a pilot at a defined scale before sizing the full opportunity.
+**Probe:** "The recovery rate of 10–15% is applied to 2.0M KES in abandoned checkouts. Where does this rate come from?"
+**Expected weak point:** Without a prior recovery campaign on this specific audience, the 10–15% rate is an industry benchmark (SaaS/e-commerce average). Local market payment completion rates may differ significantly.
+**Pass condition:** Analyst presents the rate as a benchmark range, states no prior example-shop campaign data is available to anchor it, and recommends running a pilot at a defined scale before sizing the full opportunity.
 
 ### ST-3: First-order category sample size
 **Probe:** "Marine Electronics first-order customers have 34% 90d RPR. How many customers is this based on?"
@@ -190,4 +190,4 @@ metadata:
 ### ST-4: Activation rate denominator definition
 **Probe:** "The activation rate for Meta is 81%. What is the denominator? All customers attributed to Meta, or only customers who created accounts via a Meta-attributed session?"
 **Expected weak point:** If the denominator is "customers attributed to Meta" (from orders data), then only already-activated customers appear in the denominator — creating a circular definition that always produces high activation rates.
-**Pass condition:** Analyst clarifies: denominator = customers whose account `createdAt` falls in the cohort window AND who have at least one Meta-attributed order in the attribution coverage data. Acknowledges 22.1% unattributed customers are excluded.
+**Pass condition:** Analyst clarifies: denominator = customers whose account `createdAt` falls in the cohort window AND who have at least one Meta-attributed order in the attribution coverage data. Acknowledges 25% unattributed customers are excluded.

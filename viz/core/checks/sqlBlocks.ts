@@ -93,20 +93,20 @@ export async function checkSqlBlocks(ctx: CheckContext): Promise<Finding[]> {
   if (ctx.duckdbPath) {
     try {
       await fs.access(ctx.duckdbPath);
-      await exec(`ATTACH '${ctx.duckdbPath}' AS nairomarket_db (READ_ONLY)`);
-      await exec(`CREATE SCHEMA IF NOT EXISTS nairomarket`);
-      // Mirror views from attached db into nairomarket schema
+      await exec(`ATTACH '${ctx.duckdbPath}' AS example_shop_db (READ_ONLY)`);
+      await exec(`CREATE SCHEMA IF NOT EXISTS example_shop`);
+      // Mirror views from attached db into example_shop schema
       const viewsResult = await con.runAndReadAll(
         `SELECT table_name FROM information_schema.tables ` +
-        `WHERE table_catalog = 'nairomarket_db' AND table_type = 'VIEW'`
+        `WHERE table_catalog = 'example_shop_db' AND table_type = 'VIEW'`
       ) as { toRows: () => Array<Record<string, string>> };
       const rows = viewsResult.toRows();
       for (const row of rows) {
         const vname = row['table_name'];
         try {
           await exec(
-            `CREATE OR REPLACE VIEW nairomarket.${vname} AS ` +
-            `SELECT * FROM nairomarket_db.${vname}`
+            `CREATE OR REPLACE VIEW example_shop.${vname} AS ` +
+            `SELECT * FROM example_shop_db.${vname}`
           );
         } catch {
           // Non-fatal — view may already exist or have conflicts
@@ -123,7 +123,7 @@ export async function checkSqlBlocks(ctx: CheckContext): Promise<Finding[]> {
   try {
     const namesResult = await con.runAndReadAll(
       `SELECT table_name FROM information_schema.tables ` +
-      `WHERE table_schema = 'nairomarket' AND table_type = 'VIEW'`
+      `WHERE table_schema = 'example_shop' AND table_type = 'VIEW'`
     ) as { toRows: () => Array<Record<string, string>> };
     attachedViewNames = new Set(namesResult.toRows().map(r => r['table_name']));
   } catch {
@@ -136,12 +136,12 @@ export async function checkSqlBlocks(ctx: CheckContext): Promise<Finding[]> {
   for (const sqlFile of sqlFiles.sort()) {
     const rawName = path.basename(sqlFile, '.sql');
     if (attachedViewNames.has(rawName)) continue;
-    const viewName = `nairomarket.${rawName}`;
+    const viewName = `example_shop.${rawName}`;
     try {
       let src = await fs.readFile(sqlFile, 'utf8');
       src = src.replace(/\$\{PROJECT_ROOT\}/g, ctx.projectRoot);
       try {
-        await exec(`CREATE SCHEMA IF NOT EXISTS nairomarket`);
+        await exec(`CREATE SCHEMA IF NOT EXISTS example_shop`);
       } catch {
         // already exists
       }

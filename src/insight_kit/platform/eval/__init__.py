@@ -13,4 +13,4 @@ from insight_kit.platform.eval.score import (
     score,
 )
 
-__all__ = ["score", "CLAIM_ID_RE", "FINDINGS_MIN_BYTES", "FINDINGS_MAX_BYTES"]
+__all__ = ["CLAIM_ID_RE", "FINDINGS_MAX_BYTES", "FINDINGS_MIN_BYTES", "score"]

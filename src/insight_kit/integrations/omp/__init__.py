@@ -18,4 +18,4 @@ from insight_kit.integrations.omp.session_parser import (
     parse_session,
 )
 
-__all__ = ["parse_session", "find_session_file", "ParsedTurn", "ParsedToolCall"]
+__all__ = ["ParsedToolCall", "ParsedTurn", "find_session_file", "parse_session"]

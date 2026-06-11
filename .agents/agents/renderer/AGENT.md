@@ -41,7 +41,7 @@ a page or chart.
 
 | Source | Notes |
 |--------|-------|
-| DuckDB views (`dockblocks.claims_manifest`, `dockblocks.claim_edges`, `dockblocks.annotations`) | Materialized by ETL_M-002..004 runs; must be refreshed before authoring |
+| DuckDB views (`example_ops.claims_manifest`, `example_ops.claim_edges`, `example_ops.annotations`) | Materialized by ETL_M-002..004 runs; must be refreshed before authoring |
 | Synthesis narratives (`output/synthesis/*.md`) | From analyst runs; provide the prose structure for narrative/investigation pages |
 | Claim IDs from prior runs | Referenced in component props (`claim_id="NAMESPACE-D-NNN"`) |
 | `layout_type` contract (SKILL.md) | Enforces required components and ProvenanceRail rules per page type |
@@ -120,7 +120,7 @@ full page. These feed into dashboard builds.
   source for narrative/investigation page bodies.
 - **critic** — C claims appear in the provenance rail and investigation pages; renderer
   must handle `refutes` edges and display challenge verdicts.
-- **operator** — annotation signals from operator runs feed the `dockblocks.annotations`
+- **operator** — annotation signals from operator runs feed the `example_ops.annotations`
   view, which powers the annotations panel on audit-layout pages.
 - **data-engineer** — ETL_M DuckDB views must be refreshed and correct before renderer
   can build pages. The Evidence source SQL `claim.yaml` sidecars are co-owned.

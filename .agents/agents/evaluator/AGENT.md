@@ -159,7 +159,7 @@ to be superseded if the drift is confirmed.
 ```
 
 No evaluator runs are present in the reference corpus (this role is not yet instantiated
-in dockblocks-ops as of 2026-04-28). The conventions above are inferred from the
+in example-ops as of 2026-04-28). The conventions above are inferred from the
 validation patterns in `src/insight_kit/validation/__init__.py` (Layer-B
 `check_claim_id_unique`) and the annotation health metrics in the annotator-review
 runs (`2026-04-26_0910_annotator-review_annotation-pass`).

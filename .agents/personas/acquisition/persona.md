@@ -29,7 +29,7 @@ metadata:
 
 ### Boundary Notes
 - "New customer" in this persona = customer whose `MIN(createdAt)` across all non-cancelled orders falls in the observation period. Not "new account" or "new session."
-- Attribution coverage in the NairoMarket context is 77.9% (sprint 3, April 2026). Claims about channel mix must state whether unattributed 22.1% is excluded or proportionally allocated.
+- Attribution coverage in the example-shop demo context is 75% (illustrative). Claims about channel mix must state whether the unattributed 25% is excluded or proportionally allocated.
 - `first_visit_source` from `shopify_orders_journey__orders` is the canonical attribution field. UTM parameters are a fallback. Direct/none is not a channel — it is an attribution gap (browser stripping, app session, or dark social).
 
 ---
@@ -40,7 +40,7 @@ metadata:
 |------|------------|
 | **First-touch attribution** | Revenue and order count credited to the channel of the customer's first recorded visit before purchase, regardless of subsequent touches. Sourced from `first_visit_source` in `shopify_orders_journey__orders`. |
 | **Last-touch attribution** | Revenue and order count credited to the channel of the most recent session before checkout completion. May differ from first-touch for multi-session customers. |
-| **Attribution coverage** | `COUNT(non-cancelled orders with first_visit_source IS NOT NULL) / COUNT(total non-cancelled orders)`. Canonical: 77.9% (9,021 of ~11,600 non-cancelled orders, sprint 3). |
+| **Attribution coverage** | `COUNT(non-cancelled orders with first_visit_source IS NOT NULL) / COUNT(total non-cancelled orders)`. Illustrative: 75% (10,000 of ~13,300 non-cancelled orders). |
 | **Unattributed order** | An order where `first_visit_source IS NULL` and no UTM fallback is available. Causes: app purchase (no web session), ad blocker, cross-device, iOS14+ ATT, direct type-in. Not synonymous with "organic." |
 | **New customer rate (NCR)** | `COUNT(orders with customer_order_index = 1) / COUNT(total orders)` per channel and period. A channel with high NCR is a net-new acquisition vehicle; low NCR indicates it mostly serves returning customers. |
 | **CAC** | Ad spend attributed to channel / new customers (order_index = 1) attributed to same channel in same period. Only meaningful when attribution coverage for that channel is > 70%. |
@@ -56,7 +56,7 @@ metadata:
 
 ### Pattern 1: channel-cac
 - **Shape:** `<channel> CAC: <KES> (<N> new customers, <KES_spend> spend) in <period>. Attribution coverage: <pct>%.`
-- **Example:** "Meta CAC: 2,490 KES (211 new customers, 526,000 KES spend) in March 2026. Attribution coverage: 77.9%."
+- **Example:** "Meta CAC: 1,200 KES (200 new customers, 240,000 KES spend) in a sample month. Attribution coverage: 75%."
 - **Confidence floor:** medium — dependent on attribution coverage; state coverage in every CAC claim
 
 ### Pattern 2: channel-mix-shift
@@ -71,7 +71,7 @@ metadata:
 
 ### Pattern 4: payback-period
 - **Shape:** `<channel> CAC = <KES>. LTV curve reaches CAC at day <D> (cohort median). Break-even revenue rate: <KES/day>.`
-- **Example:** "Meta CAC = 2,490 KES. LTV_90d = 4,200 KES → break-even at approximately day 55. Daily LTV accrual: ~47 KES."
+- **Example:** "Meta CAC = 1,200 KES. LTV_90d = 2,400 KES → break-even at approximately day 50. Daily LTV accrual: ~27 KES."
 - **Confidence floor:** medium — LTV accrual rate is cohort-average; individual customer variance is high
 
 ---
@@ -81,7 +81,7 @@ metadata:
 ### Bronze (raw ingest)
 | Table / Parquet | Key Columns | Notes |
 |-----------------|-------------|-------|
-| `shopify_orders_journey__orders.parquet` | `orderId`, `customerId`, `createdAt`, `cancelledAt`, `totalPriceSet`, `customerJourneySummary`, `first_visit_source` | Primary attribution source. 77.9% coverage. `customerJourneySummary` contains structured touch sequence. |
+| `shopify_orders_journey__orders.parquet` | `orderId`, `customerId`, `createdAt`, `cancelledAt`, `totalPriceSet`, `customerJourneySummary`, `first_visit_source` | Primary attribution source. 75% coverage. `customerJourneySummary` contains structured touch sequence. |
 | `shopify_orders_bulk__orders.parquet` | `orderId`, `customerId`, `createdAt`, `cancelledAt`, `totalPriceSet`, `referringSite`, `landingPageUrl` | Broader order history; referringSite and landingPageUrl for UTM fallback. |
 | `shopify_customers_bulk__customers.parquet` | `customerId`, `email`, `createdAt` | For new customer identification (first seen date). |
 | `meta_metadata__pixel_events.parquet` | `event_name`, `event_time`, `source_url`, `match_keys` | Pixel-to-order matching for Meta channel validation. |
@@ -89,16 +89,16 @@ metadata:
 ### Silver / Views
 | View | Derivation | Notes |
 |------|------------|-------|
-| `nairomarket.attribution_coverage_live` | `metric, value, note` — coverage stats | Canonical: 77.9% first_visit_source coverage as of sprint 3. |
-| `nairomarket.ltv_cac_by_channel` | `channel, orders, new_customers, channel_spend_kes, cac_kes, ltv_30d/60d/90d, ltv_cac_ratio` | CAC and LTV by channel; use as canonical CAC source. |
-| `nairomarket.monthly_pl` | `mer, revenue_kes, ad_spend_kes` | MER as channel-agnostic efficiency baseline. |
+| `example_shop.attribution_coverage_live` | `metric, value, note` — coverage stats | Illustrative: 75% first_visit_source coverage. |
+| `example_shop.ltv_cac_by_channel` | `channel, orders, new_customers, channel_spend_kes, cac_kes, ltv_30d/60d/90d, ltv_cac_ratio` | CAC and LTV by channel; use as canonical CAC source. |
+| `example_shop.monthly_pl` | `mer, revenue_kes, ad_spend_kes` | MER as channel-agnostic efficiency baseline. |
 
 ### Coverage Gaps
 - No multi-touch attribution model — only first-touch available via `first_visit_source`; last-touch requires session sequence reconstruction from `customerJourneySummary`
-- 22.1% of orders have no attribution — dark social and cross-device purchases are systematically unattributable with current data
+- 25% of orders have no attribution — dark social and cross-device purchases are systematically unattributable with current data
 - No Google Ads data in current extract — non-Meta paid channels not represented
 - Email channel under-measured: email link clicks often strip referrers, causing email-driven orders to appear as Direct
-- WhatsApp/SMS-driven orders (likely material in Kenya market) appear as Direct/none
+- Messaging-app/SMS-driven orders (likely material in some markets) appear as Direct/none
 
 ---
 
@@ -118,7 +118,7 @@ metadata:
 
 ### Analysis 3: Channel CAC and Payback Period
 - **Goal:** Determine which channels have sustainable acquisition economics within a 90-day payback horizon
-- **Inputs:** `nairomarket.ltv_cac_by_channel` view (all columns); `monthly_pl` for gross margin
+- **Inputs:** `example_shop.ltv_cac_by_channel` view (all columns); `monthly_pl` for gross margin
 - **Method:** For each channel: CAC = `channel_spend_kes / new_customers`. Payback period = `CAC / (ltv_90d / 90)`. Flag channels with payback > 90 days as unsustainable at current LTV depth. Apply gross margin from `monthly_pl` to convert revenue LTV to contribution LTV.
 - **Output claim shape:** channel-cac (Pattern 1), payback-period (Pattern 4)
 
@@ -139,9 +139,9 @@ metadata:
 ## 6. Anti-Patterns
 
 ### AP-1: Treating unattributed orders as a channel called "Direct"
-**Problem:** Grouping unattributed orders under "Direct" traffic and reporting "Direct: 22% of orders." Direct in standard analytics means the user typed the URL or used a bookmark. In the NairoMarket context, the unattributed 22.1% is a heterogeneous bucket: iOS14+ ATT-blocked sessions, WhatsApp-referred (dark social), cross-device, and genuine direct. Calling it a channel implies it has acquisition characteristics.
+**Problem:** Grouping unattributed orders under "Direct" traffic and reporting "Direct: 25% of orders." Direct in standard analytics means the user typed the URL or used a bookmark. In the example-shop demo context, the unattributed 25% is a heterogeneous bucket: iOS14+ ATT-blocked sessions, messaging-app-referred (dark social), cross-device, and genuine direct. Calling it a channel implies it has acquisition characteristics.
 **Why it happens:** Attribution tools default to "Direct/none" as a channel label for unattributed sessions.
-**Correct approach:** Report as "22.1% unattributed" as a separate bucket. Qualify: "Cannot determine channel for these orders. Likely mix of dark social (WhatsApp/SMS), cross-device, and iOS-blocked sessions." Do not include in channel-share denominator without flagging.
+**Correct approach:** Report as "25% unattributed" as a separate bucket. Qualify: "Cannot determine channel for these orders. Likely mix of dark social (messaging apps/SMS), cross-device, and iOS-blocked sessions." Do not include in channel-share denominator without flagging.
 
 ### AP-2: Computing channel CAC with attributed orders instead of new customers
 **Problem:** Using `COUNT(orders attributed to Meta) / Meta_spend` as CAC. If 76% of Meta's orders are from new customers but 24% are repeat customers, this formula undercounts CAC by including orders that were not acquisitions.
@@ -176,19 +176,19 @@ metadata:
 ## 8. Critic Stress-Tests
 
 ### ST-1: Attribution coverage adequacy
-**Probe:** "Channel mix analysis shows Meta = 58% of attributed orders. The 22.1% unattributed orders are excluded. If the unattributed orders are disproportionately from Meta (iOS14 ATT-blocked), what happens to Meta's true share?"
+**Probe:** "Channel mix analysis shows Meta = 60% of attributed orders. The 25% unattributed orders are excluded. If the unattributed orders are disproportionately from Meta (iOS14 ATT-blocked), what happens to Meta's true share?"
 **Expected weak point:** If iOS-blocked purchases are Meta-influenced but unattributed, Meta's true share is higher than stated. This matters for CAC and ROAS claims.
 **Pass condition:** Analyst acknowledges the direction of potential bias, offers a range estimate (e.g., "Meta true share likely 55–70% if unattributed proportional to tracked share"), and does not present a single point estimate as precise.
 
 ### ST-2: CAC denominator audit
-**Probe:** "The analysis reports Meta NCR = 76% and CAC = 2,490 KES. If NCR is 76%, then 24% of Meta's attributed orders are repeat customers. How does this affect the CAC calculation?"
+**Probe:** "The analysis reports Meta NCR = 75% and CAC = 1,200 KES. If NCR is 75%, then 25% of Meta's attributed orders are repeat customers. How does this affect the CAC calculation?"
 **Expected weak point:** If the analyst used total Meta orders (not order_index=1) for the CAC denominator, the CAC is understated by approximately 24%.
 **Pass condition:** Analyst confirms CAC uses only `customer_order_index = 1` orders as denominator. If total orders were used, revises CAC upward accordingly.
 
 ### ST-3: WhatsApp dark social omission
-**Probe:** "The acquisition analysis covers Meta paid, organic search, email, and direct. NairoMarket operates in Kenya. What % of customer discovery may be happening via WhatsApp groups or SMS that is invisible in web analytics?"
-**Expected weak point:** WhatsApp is the dominant product-discovery channel in Kenyan e-commerce for many categories. If WhatsApp referrals are material, the "Direct" bucket likely contains significant WhatsApp-influenced orders that the analysis ignores.
-**Pass condition:** Analyst acknowledges the dark social gap specific to the Kenya market, does not claim the attribution model is complete, and recommends a survey-based or referral-code-based validation approach to size WhatsApp contribution.
+**Probe:** "The acquisition analysis covers Meta paid, organic search, email, and direct. The example shop operates in a market where messaging apps drive discovery. What % of customer discovery may be happening via messaging-app groups or SMS that is invisible in web analytics?"
+**Expected weak point:** Messaging apps can be a dominant product-discovery channel in some markets for many categories. If messaging-app referrals are material, the "Direct" bucket likely contains significant messaging-app-influenced orders that the analysis ignores.
+**Pass condition:** Analyst acknowledges the dark social gap specific to the market, does not claim the attribution model is complete, and recommends a survey-based or referral-code-based validation approach to size messaging-app contribution.
 
 ### ST-4: First-touch model suitability for 3-5 day purchase cycles
 **Probe:** "If the median time from first Meta click to purchase is 3 days, how many additional sessions occur in that window? Does the first-touch model accurately credit the right interaction?"

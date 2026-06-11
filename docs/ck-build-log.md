@@ -30,7 +30,7 @@ Running log of e2e build decisions for the insight-kit L1 typed-record gate
 
 ## 2026-05-22 — Phase 2 + cutover plan (autonomous e2e)
 
-- **T17 constraint.** The eval harness containerizes real `nairomarket`/
+- **T17 constraint.** The eval harness containerizes real `example-shop`/
   `growth_insights` business data — the image stays LOCAL, never pushed to any
   registry. Harness tests run against a synthetic/golden fixture.
 - **Sequencing.** Gate-core tasks T21/T22/T23 (touch `schema.py`/`emit.py`/

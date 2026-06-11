@@ -13,14 +13,13 @@ import type { CheckContext } from '@insight-kit/viz-core/types';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 
-// Attempt to locate a live reports dir (dockblocks or nairomarket growth_insights)
-const CANDIDATE_REPORTS_DIRS = [
-  '/Users/njui/Documents/dev_work/naisiae_lema/nairomarket/growth_insights/reports',
-  '/Users/njui/Documents/dev_work/naisiae_lema/dockblocks-ops/reports',
-];
-
+// Locate a live Evidence reports dir to smoke-test against. This is opt-in:
+// point IK_TEST_REPORTS_DIR at a local Evidence project's reports dir to
+// exercise the live render path. When unset, the live test is skipped.
 function findReportsDir(): string | undefined {
-  return CANDIDATE_REPORTS_DIRS.find((d) => existsSync(d));
+  const fromEnv = process.env.IK_TEST_REPORTS_DIR;
+  if (fromEnv && existsSync(fromEnv)) return fromEnv;
+  return undefined;
 }
 
 describe('renderCheck (L3)', async () => {

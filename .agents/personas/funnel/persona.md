@@ -45,7 +45,7 @@ metadata:
 | **B3a HOT** | Sub-cohort of B3_FOLLOWED_UP where last-activity timestamp < 14 days prior to observation date. Estimated at ~20% of B3 volume (~680 deals in DOCK-D-019 context). |
 | **B3b COLD** | Sub-cohort of B3_FOLLOWED_UP where last-activity timestamp >= 14 days. Structurally different MED cost vs B3a; should not be pooled for CVR targets. |
 | **MED cost** | Minimum Effective Dose — the estimated sales effort (touches, time) required to move a deal forward by one stage. Stage-specific. B3a MED != B3b MED. |
-| **Objection coverage** | Count of B4_ENGAGED deals with Objection field populated / total B4 deals. In Zoho CRM context, 1.6% coverage (273/16,670) — treat objection taxonomy as directional only. |
+| **Objection coverage** | Count of B4_ENGAGED deals with Objection field populated / total B4 deals. In the CRM demo context, ~2% coverage (≈300/15,000) — treat objection taxonomy as directional only. |
 | **Closed-lost recovery rate** | Deals re-engaged from B6_CLOSED_LOST that transition to B6_CLOSED_WON within a re-engagement window / total B6_CLOSED_LOST deals piloted. |
 | **Stage volume** | Count of active (non-terminal) deals assigned to a stage at a point-in-time snapshot. Distinguish from throughput (deals that passed through stage in a window). |
 | **Conversion efficiency** | CVR × AOV at that stage. Allows comparison of different stages' revenue leverage even when CVR is small. |
@@ -56,7 +56,7 @@ metadata:
 
 ### Pattern 1: stage-volume-loss
 - **Shape:** `Stage <Bn> holds <N> deals (<pct>% of pipeline). Transition CVR to <Bn+1> is <X>%.`
-- **Example:** "B3_FOLLOWED_UP holds ~3,400 deals (20% of 16,670 active). CVR to B4_ENGAGED is estimated at 22%."
+- **Example:** "B3_FOLLOWED_UP holds ~3,000 deals (20% of 15,000 active). CVR to B4_ENGAGED is estimated at 20%."
 - **Confidence floor:** medium when stage counts are from a snapshot; low when CVR depends on dwell estimates
 
 ### Pattern 2: dwell-variance-risk
@@ -82,19 +82,19 @@ metadata:
 | Table / Parquet | Key Columns | Notes |
 |-----------------|-------------|-------|
 | `zoho_crm_deals` (silver view; bronze = Zoho CRM export) | `Stage`, `Amount`, `Send_1st_Follow_Up`, `Send_2nd_Follow_Up`, `Send_3rd_Follow_Up`, `Objection`, `Sales_Agreement_Signed`, `createdAt`, `closedAt` | Stage field is rep-editorial label; ~25% mismatch with operational flags. No stage-transition timestamps in current export. |
-| `shopify_orders_journey__orders.parquet` | `orderId`, `createdAt`, `cancelledAt`, `customerJourneySummary`, `first_visit_source` | For e-commerce funnel; 77.9% attribution coverage (sprint 3). |
+| `shopify_orders_journey__orders.parquet` | `orderId`, `createdAt`, `cancelledAt`, `customerJourneySummary`, `first_visit_source` | For e-commerce funnel; 75% attribution coverage. |
 | `shopify_abandoned_checkouts__abandoned_checkout_line_items.parquet` | `checkoutId`, `createdAt`, `completedAt`, `lineItemTitle` | Abandoned checkout stage; ~22% of sessions that reach checkout. |
 
 ### Silver / Views
 | View | Derivation | Notes |
 |------|------------|-------|
-| `nairomarket.attribution_coverage_live` | 9,021 orders with `first_visit_source` populated or UTM fallback; 77.9% coverage | Used to assess funnel entry attribution quality |
-| Stage predicate views (ad hoc) | Derived from Zoho export using B1–B6 predicates in DOCK-D-003 | Must be regenerated when CRM export schema changes |
+| `example_shop.attribution_coverage_live` | 10,000 orders with `first_visit_source` populated or UTM fallback; 75% coverage | Used to assess funnel entry attribution quality |
+| Stage predicate views (ad hoc) | Derived from CRM export using B1–B6 predicates in EXMP-D-003 | Must be regenerated when CRM export schema changes |
 
 ### Coverage Gaps
 - No stage-entry/exit timestamps in Zoho CRM export — all dwell estimates are priors
-- Objection field populated on only 1.6% of deals — objection taxonomy is directional, not statistical
-- B5_AGREEMENT_SIGNED false-negative rate high (53 of 2,863 Closed Won have flag set)
+- Objection field populated on only ~2% of deals — objection taxonomy is directional, not statistical
+- B5_AGREEMENT_SIGNED false-negative rate high (≈50 of 3,000 Closed Won have flag set)
 - E-commerce: no dwell-time equivalent for checkout funnel stages (session data not retained)
 
 ---

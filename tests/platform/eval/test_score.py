@@ -19,6 +19,8 @@ from insight_kit.platform.eval.score import (
     CLAIM_ID_RE,
     FINDINGS_MAX_BYTES,
     FINDINGS_MIN_BYTES,
+)
+from insight_kit.platform.eval.score import (
     score as run_score,
 )
 

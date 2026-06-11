@@ -20,9 +20,9 @@ from insight_kit.platform.observability.lmnr import (
 )
 
 __all__ = [
-    "init_from_env",
     "RunIdentity",
     "emit_session_spans",
-    "score_check_span",
+    "init_from_env",
     "read_capped",
+    "score_check_span",
 ]

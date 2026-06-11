@@ -27,10 +27,9 @@ import subprocess
 import sys
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Lazy import guard — keep insight-kit importable without lmnr dep
@@ -80,7 +79,7 @@ def init_from_env() -> bool:
         print("[insight-kit.lmnr] LMNR_PROJECT_API_KEY unset — tracing OFF", flush=True)
         return False
 
-    Laminar, _ = _require_lmnr()
+    laminar, _ = _require_lmnr()
 
     init_kwargs: dict[str, Any] = {"project_api_key": api_key}
     base_url = os.environ.get("LMNR_BASE_URL")
@@ -97,7 +96,7 @@ def init_from_env() -> bool:
         if os.environ.get("LMNR_GRPC_PORT"):
             init_kwargs["grpc_port"] = int(os.environ["LMNR_GRPC_PORT"])
 
-    Laminar.initialize(**init_kwargs)
+    laminar.initialize(**init_kwargs)
     print(f"[insight-kit.lmnr] tracing ON  base_url={base_url or 'cloud'}", flush=True)
     return True
 
@@ -139,7 +138,7 @@ class RunIdentity:
 
         return cls(
             run_id=os.environ.get("RUN_ID") or str(uuid.uuid4()),
-            started_at=datetime.now(timezone.utc).isoformat(),
+            started_at=datetime.now(UTC).isoformat(),
             git_sha=_git_rev(["git", "rev-parse", "HEAD"], cwd=cwd_path)
             or os.environ.get("GIT_SHA", "unknown"),
             git_branch=_git_rev(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=cwd_path)

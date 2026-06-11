@@ -13,7 +13,7 @@ metadata:
 
 ## Purpose
 
-The Phase 2 stress-test fixtures in `dockblocks-ops/phase3/empirical_rules.md` exposed that 4 out of 8 synthetic failure cases slipped past Layer A. This skill documents what each fixture tested, what happened, and the current enforcement status — so the critic and annotator can reason accurately about which guards are live and which are not.
+The Phase 2 stress-test fixtures in `example-ops/phase3/empirical_rules.md` exposed that 4 out of 8 synthetic failure cases slipped past Layer A. This skill documents what each fixture tested, what happened, and the current enforcement status — so the critic and annotator can reason accurately about which guards are live and which are not.
 
 ## When to invoke
 

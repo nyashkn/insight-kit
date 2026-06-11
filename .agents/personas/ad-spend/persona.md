@@ -44,10 +44,10 @@ metadata:
 | **Bleeder** | A placement/demographic/adset with material spend and ROAS < 1.0 (spend exceeds attributed revenue). "Material" = spend > 500 KES in the observation window (p50 threshold). |
 | **Starved winner** | A placement/demographic segment with ROAS > p75 of all material-spend segments, receiving spend < the median spend allocation for its ROAS tier. |
 | **Frequency** | Average ad impressions per unique person reached. From `meta_metadata__ad_reach_frequency`. High frequency (> 3.0 for conversion campaigns) indicates audience saturation. |
-| **Attribution coverage** | `COUNT(orders with first_visit_source populated) / COUNT(total non-cancelled orders)` in a period. Sourced from `attribution_coverage_live` view (canonical: 77.9% as of sprint 3, April 2026). |
+| **Attribution coverage** | `COUNT(orders with first_visit_source populated) / COUNT(total non-cancelled orders)` in a period. Sourced from `attribution_coverage_live` view (illustrative: 75%). |
 | **DPA** | Dynamic Product Ad — Meta creative that serves catalog items from a product set. Performance depends on product set quality (OOS rate, filter configuration). |
-| **CAC (media)** | `adset_insights.spend_kes / COUNT(orders with customer_order_index = 1)` for the channel and period. Canonical March 2026: Meta CAC = 2,490 KES / 211 new customers. |
-| **Retargeting bucket** | Classification of adsets by audience type: `retargeting_repeat` (customer-list), `cold_with_suppress` (new audience + exclusion list), `lookalike_with_suppress`, `cold_broad` (no exclusions). From `nairomarket.retargeting_split` view. |
+| **CAC (media)** | `adset_insights.spend_kes / COUNT(orders with customer_order_index = 1)` for the channel and period. Illustrative: Meta CAC = 1,200 KES / 200 new customers. |
+| **Retargeting bucket** | Classification of adsets by audience type: `retargeting_repeat` (customer-list), `cold_with_suppress` (new audience + exclusion list), `lookalike_with_suppress`, `cold_broad` (no exclusions). From `example_shop.retargeting_split` view. |
 | **Audience saturation** | State where additional spend on a fixed audience pool yields decreasing ROAS due to frequency fatigue. Observable as: spend increases YoY while ROAS compresses in a fixed geographic/demographic pool. |
 | **Adset effective status** | Meta-resolved status accounting for campaign-level and adset-level enable/pause flags. `effective_status = ACTIVE` means the adset is currently serving. `status = ACTIVE` alone may still be paused at campaign level. |
 
@@ -57,22 +57,22 @@ metadata:
 
 ### Pattern 1: placement-roas-bleed
 - **Shape:** `<platform>/<position>/<device> spent <KES> in <period> at ROAS <X>x. Wasted KES vs. break-even: <KES>.`
-- **Example:** "Instagram Explore / mobile_app spent 739 KES in April 2025 at ROAS 0.0x (zero purchases). Entire 739 KES wasted."
+- **Example:** "Instagram Explore / mobile_app spent 800 KES in a sample month at ROAS 0.0x (zero purchases). Entire 800 KES wasted."
 - **Confidence floor:** high for confirmed zero-purchase placements; medium for ROAS < 1.0 with 1–3 purchases (noise risk)
 
 ### Pattern 2: demographic-decay
 - **Shape:** `<age>-<gender> segment: <period_A> ROAS = <X>x, <period_B> ROAS = <Y>x. Spend moved <+/-%>. Revenue gap vs. prior baseline: <KES>.`
-- **Example:** "45-54 male: March 4.33x → April 2.0x ROAS. Spend grew 70% in same period. Revenue gap vs. March ROAS applied to April spend: 189,000 KES."
+- **Example:** "45-54 male: period A 4.0x → period B 2.0x ROAS. Spend grew 70% in same period. Revenue gap vs. period-A ROAS applied to period-B spend: 200,000 KES."
 - **Confidence floor:** medium — demographic ROAS from aggregate account breakdown, not per-adset; cannot isolate creative vs. audience effect
 
 ### Pattern 3: audience-saturation
 - **Shape:** `<platform/audience> spend grew <N>x from <start> to <end>. ROAS declined <M>% over same period. CPM increased <P>%. Efficient budget ceiling estimated at <KES/month>.`
-- **Example:** "Instagram spend grew 10x (2025-01 to 2025-12). ROAS fell 84% (8.53x → 1.35x). Efficient ceiling estimated at 25,000 KES/month based on pre-saturation curve."
+- **Example:** "Instagram spend grew 10x over a year. ROAS fell ~85% (8.0x → 1.2x). Efficient ceiling estimated at 25,000 KES/month based on pre-saturation curve."
 - **Confidence floor:** medium — ceiling estimate requires curve-fitting; flag as directional
 
 ### Pattern 4: reallocation-counterfactual
 - **Shape:** `Redirecting <KES> from bleeders to <winner_segment> at <winner_ROAS>x projects <KES_uplift> additional revenue. Conservative case at <lower_ROAS>x: <KES_conservative>.`
-- **Example:** "Redirecting 47,584 KES from 35-44 and 45-54 male to 25-34 male at 11.1x projects +433,663 KES. Conservative at 5.5x: +150,057 KES."
+- **Example:** "Redirecting 50,000 KES from 35-44 and 45-54 male to 25-34 male at 10.0x projects +450,000 KES. Conservative at 5.0x: +150,000 KES."
 - **Confidence floor:** medium — assumes no ROAS elasticity penalty at higher spend; must be validated with 2-week ramp test
 
 ---
@@ -92,10 +92,10 @@ metadata:
 ### Silver / Views
 | View | Derivation | Notes |
 |------|------------|-------|
-| `nairomarket.ltv_cac_by_channel` | CAC, LTV (30/60/90d), LTV/CAC ratio, AOV per channel | Uses `adset_insights` spend (w11) × orders (order_index=1). March 2026: Meta CAC = 2,490 KES. |
-| `nairomarket.retargeting_split` | Adset bucket breakdown by 90d spend | Sources: adset_targeting (w1) × adset_insights (w11). Canonical: retargeting_repeat = 0 rows (no customer-list audiences wired). |
-| `nairomarket.attribution_coverage_live` | `metric, value, note` | Canonical coverage: 77.9% as of sprint 3. |
-| `nairomarket.monthly_pl` | `month, revenue_kes, ad_spend_kes, mer, break_even_mer` | MER = revenue / ad_spend. Break-even MER accounts for COGS and overhead. |
+| `example_shop.ltv_cac_by_channel` | CAC, LTV (30/60/90d), LTV/CAC ratio, AOV per channel | Uses `adset_insights` spend (w11) × orders (order_index=1). Illustrative: Meta CAC = 1,200 KES. |
+| `example_shop.retargeting_split` | Adset bucket breakdown by 90d spend | Sources: adset_targeting (w1) × adset_insights (w11). Canonical: retargeting_repeat = 0 rows (no customer-list audiences wired). |
+| `example_shop.attribution_coverage_live` | `metric, value, note` | Illustrative coverage: 75%. |
+| `example_shop.monthly_pl` | `month, revenue_kes, ad_spend_kes, mer, break_even_mer` | MER = revenue / ad_spend. Break-even MER accounts for COGS and overhead. |
 
 ### Coverage Gaps
 - No adset-level spend in current extract — W1 is targeting metadata only; placement/demographic are account-level aggregates
@@ -134,7 +134,7 @@ metadata:
 
 ### Analysis 5: Attribution Coverage and ROAS Reliability Assessment
 - **Goal:** Quantify what % of Meta-attributed conversions can be cross-validated against Shopify orders
-- **Inputs:** `nairomarket.attribution_coverage_live` view; `meta_metadata__pixel_events.parquet` columns `event_name`, `match_keys`
+- **Inputs:** `example_shop.attribution_coverage_live` view; `meta_metadata__pixel_events.parquet` columns `event_name`, `match_keys`
 - **Method:** Compare `purchases` from `placement_insights` to non-cancelled Shopify orders in the same period. Compute coverage ratio. If Meta-attributed purchases exceed Shopify orders, flag view-through inflation. Report pixel match rate from `pixel_events`.
 - **Output claim shape:** supports confidence tagging on all other ROAS claims
 
@@ -143,22 +143,22 @@ metadata:
 ## 6. Anti-Patterns
 
 ### AP-1: Citing demographic ROAS as adset-level spend evidence
-**Problem:** Stating "we are spending 59,948 KES on 35-44 male" as if it's an adset-level budget, when the demographic insights are account-level breakdowns — the 59,948 KES is how much of the account's total April spend was attributed to 35-44 male by Meta's measurement system.
+**Problem:** Stating "we are spending 60,000 KES on 35-44 male" as if it's an adset-level budget, when the demographic insights are account-level breakdowns — the 60,000 KES is how much of the account's total April spend was attributed to 35-44 male by Meta's measurement system.
 **Why it happens:** The demographic table has a `spend_kes` column that looks like a budget allocation.
-**Correct approach:** Frame demographic spend as "of the account's total April spend, 59,948 KES was served to 35-44 male" — not as a controllable budget line. Budget control requires adset-level demographic targeting, which must be confirmed via `adset_targeting.parquet`.
+**Correct approach:** Frame demographic spend as "of the account's total April spend, 60,000 KES was served to 35-44 male" — not as a controllable budget line. Budget control requires adset-level demographic targeting, which must be confirmed via `adset_targeting.parquet`.
 
 ### AP-2: Reporting ROAS without stating attribution window
-**Problem:** "ROAS 11.1x for 25-34 male in April" without specifying whether this includes view-through conversions. If the Meta account is configured for 7-day view attribution, a single display impression 6 days before a non-related organic purchase is counted.
+**Problem:** "ROAS 10.0x for 25-34 male in a sample month" without specifying whether this includes view-through conversions. If the Meta account is configured for 7-day view attribution, a single display impression 6 days before a non-related organic purchase is counted.
 **Why it happens:** Meta's default ROAS metric in the UI includes view-through, which is not disclosed in export data headers.
 **Correct approach:** Always caveat: "Attribution window not confirmed; view-through inclusion status unknown. If view-through is included, ROAS figures for high-frequency placements (Instagram) may be inflated by 15–40%." Escalate to critic if the claim is a primary budget decision driver.
 
 ### AP-3: Using placement bleeders as the full budget reclaim story when demographic bleeders are larger
-**Problem:** Identifying placement bleeders (e.g., 5,054 KES total) and treating that as the reallocation opportunity, while the demographic bleeders (35-44 male at 59,948 KES with 44% ROAS decline) represent 10× the dollar impact.
+**Problem:** Identifying placement bleeders (e.g., 5,000 KES total) and treating that as the reallocation opportunity, while the demographic bleeders (35-44 male at 60,000 KES with 45% ROAS decline) represent 10× the dollar impact.
 **Why it happens:** Placement analysis is more straightforward to run first; analysts anchor on the first number they compute.
 **Correct approach:** Always run both placement and demographic ROAS decomposition before sizing the reallocation case. Compare absolute wasted KES across both dimensions before concluding on priority.
 
 ### AP-4: Projecting winner ROAS forward without elasticity caveat
-**Problem:** "If we redirect 47K KES to 25-34 male at 11.1x ROAS, we will generate 522K KES in revenue" — treating the observed ROAS as applicable at 2× current spend level.
+**Problem:** "If we redirect 50K KES to 25-34 male at 10.0x ROAS, we will generate 500K KES in revenue" — treating the observed ROAS as applicable at 2× current spend level.
 **Why it happens:** Counterfactual modeling naturally assumes the observed rate holds at the new budget level.
 **Correct approach:** Always present two cases: (1) optimistic at observed ROAS, (2) conservative at the winner's N-month median ROAS. State explicitly: "ROAS elasticity at 2× spend not tested; 2-week ramp required." This is a mandatory caveat, not optional.
 
@@ -171,7 +171,7 @@ metadata:
 | ROAS figures from a segment with < 5 purchases in the window | **kahneman** | Small-sample overconfidence — 1 purchase × high AOV creates misleading ROAS; need minimum sample threshold |
 | Attribution coverage < 70% | **taleb** | Fat-tail uncertainty — unattributed orders may have systematically different characteristics than attributed ones |
 | Spend 2× with no ROAS improvement for 3+ consecutive months | **meadows** | Reinforcing degradation loop — scaling spend past a saturation ceiling without audience or creative refresh |
-| Winner ROAS segment relies on a single age/gender cell with no structural justification | **feynman** | Mechanism verification — what is the causal reason this demographic converts at 11.1x? Without mechanism, the signal may be a seasonal artifact |
+| Winner ROAS segment relies on a single age/gender cell with no structural justification | **feynman** | Mechanism verification — what is the causal reason this demographic converts at 10.0x? Without mechanism, the signal may be a seasonal artifact |
 | Reallocation recommendation would shift > 30% of total account budget to a single targeting slice | **meadows** | Concentration risk — the recommendation itself creates a new structural fragility |
 | Region data shows zero purchases despite material spend | **socrates** | Data quality definitional issue — confirm whether region breakdown is a Meta reporting artifact or a genuine data gap before excluding it from analysis |
 
@@ -180,12 +180,12 @@ metadata:
 ## 8. Critic Stress-Tests
 
 ### ST-1: ROAS derivation verification
-**Probe:** "The ROAS for 25-34 male in April is stated as 11.1x. Show the derivation: `purchase_value_kes / spend_kes` for that row. Does it match the pre-aggregated `roas` column?"
+**Probe:** "The ROAS for 25-34 male in a sample month is stated as 10.0x. Show the derivation: `purchase_value_kes / spend_kes` for that row. Does it match the pre-aggregated `roas` column?"
 **Expected weak point:** If the analyst used the pre-aggregated column without verifying the derivation, rounding or aggregation errors in the source table may produce a different number.
 **Pass condition:** Analyst confirms derivation error = 0.0 (or < 0.001 for float precision). If mismatch, raw calculation takes precedence.
 
 ### ST-2: Attribution window probe
-**Probe:** "The placement analysis identifies instagram_explore as a zero-ROAS bleeder (739 KES, 0 purchases). Could this be a reporting window mismatch — e.g., purchases attributed to Instagram Explore are reported under a different attribution window than the spend?"
+**Probe:** "The placement analysis identifies instagram_explore as a zero-ROAS bleeder (800 KES, 0 purchases). Could this be a reporting window mismatch — e.g., purchases attributed to Instagram Explore are reported under a different attribution window than the spend?"
 **Expected weak point:** Meta splits impression attribution across windows; it's possible that purchases occurred in the view-through window but are not counted in the click-based export column.
 **Pass condition:** Analyst confirms which purchase_value column is used (click-only vs. click+view) and whether the Meta account's default attribution setting matches the column used. If unknown, claims are tagged with the caveat.
 

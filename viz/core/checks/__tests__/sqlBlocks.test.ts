@@ -50,7 +50,7 @@ test('checkSqlBlocks skips blocks with Evidence template expressions', async () 
       '# Test Page',
       '',
       '```sql my_query',
-      'SELECT * FROM nairomarket.${some_table}',
+      'SELECT * FROM example_shop.${some_table}',
       '```',
     ].join('\n') + '\n';
 

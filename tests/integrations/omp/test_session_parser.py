@@ -132,7 +132,7 @@ class TestBasicParsing:
         lines = [_session_header(), _model_change(), _user_msg("q"), _assistant_msg(long_text)]
         p = _write_session(tmp_path, lines)
         turns = parse_session(p)
-        asst = [t for t in turns if t.role == "assistant"][0]
+        asst = next(t for t in turns if t.role == "assistant")
         assert len(asst.text_preview) <= 500
 
 
@@ -209,7 +209,7 @@ class TestEdgeCases:
         lines = [_session_header(), _model_change(), _user_msg("q"), msg_no_usage]
         p = _write_session(tmp_path, lines)
         turns = parse_session(p)
-        asst = [t for t in turns if t.role == "assistant"][0]
+        asst = next(t for t in turns if t.role == "assistant")
         assert asst.input_tokens is None
         assert asst.output_tokens is None
         assert asst.cost_usd is None
@@ -268,7 +268,7 @@ class TestEdgeCases:
         p = _write_session(tmp_path, lines)
         turns = parse_session(p)
 
-        asst = [t for t in turns if t.role == "assistant"][0]
+        asst = next(t for t in turns if t.role == "assistant")
         assert len(asst.tool_calls) == 1
         tc = asst.tool_calls[0]
         assert tc.tool_name == "bash"
@@ -293,7 +293,7 @@ class TestEdgeCases:
         lines = [_session_header(), _model_change(), _user_msg("run code"), asst_msg]
         p = _write_session(tmp_path, lines)
         turns = parse_session(p)
-        asst = [t for t in turns if t.role == "assistant"][0]
+        asst = next(t for t in turns if t.role == "assistant")
         assert len(asst.tool_calls) == 1
         assert asst.tool_calls[0].tool_name == "python"
         assert asst.input_tokens == 50

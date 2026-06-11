@@ -40,7 +40,7 @@ metadata:
 | **New customer** | A customer whose `customer_order_index = 1` on the order in question — their first-ever order in the platform. Not "new in the current month." |
 | **Repeat customer** | A customer with `customer_order_index >= 2` on at least one order in the observation window. |
 | **Repeat purchase rate (RPR)** | Customers with >= 2 orders in the cohort window / total customers in the cohort entry month. Denominator is cohort entrants, not active customers. Window: 90d post-acquisition unless stated. |
-| **CAC** | Channel ad spend in period P / count of new customers (order_index=1) attributed to that channel in period P. Canonical: Meta CAC = `adset_insights.spend` / `new_customers` from `ltv_cac_by_channel` view. March 2026 canonical: 2,490 KES/customer. |
+| **CAC** | Channel ad spend in period P / count of new customers (order_index=1) attributed to that channel in period P. Canonical: Meta CAC = `adset_insights.spend` / `new_customers` from `ltv_cac_by_channel` view. Illustrative: 1,200 KES/customer. |
 | **LTV (Nd)** | Sum of `(order_total_kes × gross_margin_pct)` for all non-cancelled orders placed by a customer within N days of their first order. Cohort-based: LTV_90d = cohort median across all customers whose first order was >= 90 days ago. |
 | **LTV/CAC ratio** | LTV_90d / CAC for the same channel and acquisition cohort month. Ratio < 1.0 means the channel loses money at 90 days. Break-even typically requires ratio >= 1.5x when accounting for overhead. |
 | **Churn (transactional)** | Customer who has placed at least one order and has no order in the trailing 90 days from observation date. Not binary — expressed as % of the eligible customer base (those whose last order was 90–180 days prior). |
@@ -48,7 +48,7 @@ metadata:
 | **AOV** | `SUM(order_total_kes) / COUNT(DISTINCT orderId)` for non-cancelled orders in a window. Excludes cancelled. |
 | **Revenue concentration** | % of total GMV contributed by the top-N customers in a period. Expressed as "top 10% of customers = X% of GMV." Lorenz curve segment, not Gini coefficient. |
 | **Winback eligible** | Customers whose last order was 90–365 days prior to observation date (lapsed but not permanently lost). |
-| **Gross margin** | `(revenue_kes - cogs_kes) / revenue_kes`. Sourced from `nairomarket.monthly_pl` view. Apply to LTV to produce contribution-margin LTV. |
+| **Gross margin** | `(revenue_kes - cogs_kes) / revenue_kes`. Sourced from `example_shop.monthly_pl` view. Apply to LTV to produce contribution-margin LTV. |
 
 ---
 
@@ -56,22 +56,22 @@ metadata:
 
 ### Pattern 1: cohort-retention-decay
 - **Shape:** `<channel> cohort from <month> shows <X>% RPR at 30d, <Y>% at 90d. Median time to second order: <D> days.`
-- **Example:** "Meta acquisition cohort March 2026: 23% RPR at 90d. Median second-order interval: 38 days."
+- **Example:** "Meta acquisition cohort (sample month): 25% RPR at 90d. Median second-order interval: 40 days."
 - **Confidence floor:** medium — requires orders data with customer_order_index; low if customer identity matching is incomplete
 
 ### Pattern 2: ltv-cac-ratio
 - **Shape:** `<channel> LTV_<N>d = <KES>. CAC = <KES>. Ratio = <R>x. Break-even at <D> days.`
-- **Example:** "Meta channel: LTV_90d = 4,200 KES, CAC = 2,490 KES, ratio = 1.69x. Break-even at ~55 days post-acquisition."
+- **Example:** "Meta channel: LTV_90d = 2,400 KES, CAC = 1,200 KES, ratio = 2.0x. Break-even at ~50 days post-acquisition."
 - **Confidence floor:** medium — CAC from adset_insights has attribution coverage caveat; LTV from Shopify requires cancelled order exclusion
 
 ### Pattern 3: churn-size
 - **Shape:** `<N> customers (<pct>% of base) are lapsed (no order in 90d). Estimated winback revenue at <R>% recovery: <KES>.`
-- **Example:** "1,240 customers (34% of all-time buyers) are 90d lapsed. At 15% winback rate with AOV 1,800 KES: 186 orders × 1,800 = 334,800 KES potential."
+- **Example:** "1,000 customers (35% of all-time buyers) are 90d lapsed. At 15% winback rate with AOV 2,000 KES: 150 orders × 2,000 = 300,000 KES potential."
 - **Confidence floor:** medium — winback recovery rate is an estimate; confirm from prior campaign data if available
 
 ### Pattern 4: revenue-concentration
 - **Shape:** `Top <N>% of customers by GMV contribute <X>% of total revenue in <period>. Median customer GMV = <KES>.`
-- **Example:** "Top 10% of customers (by lifetime GMV) contribute 58% of total 2025 revenue. Median customer GMV = 1,950 KES."
+- **Example:** "Top 10% of customers (by lifetime GMV) contribute 60% of total annual revenue. Median customer GMV = 2,000 KES."
 - **Confidence floor:** high when derived from complete orders data with cancelled exclusion
 
 ---
@@ -83,18 +83,18 @@ metadata:
 |-----------------|-------------|-------|
 | `shopify_orders_bulk__orders.parquet` | `orderId`, `customerId`, `createdAt`, `cancelledAt`, `totalPriceSet`, `financialStatus` | Must filter `cancelledAt IS NULL` for all revenue/LTV computations |
 | `shopify_customers_bulk__customers.parquet` | `customerId`, `email`, `createdAt`, `ordersCount`, `totalSpent` | `ordersCount` and `totalSpent` include cancelled — do not use directly |
-| `shopify_orders_journey__orders.parquet` | `orderId`, `customerId`, `customerJourneySummary`, `first_visit_source` | Attribution data; 77.9% coverage |
+| `shopify_orders_journey__orders.parquet` | `orderId`, `customerId`, `customerJourneySummary`, `first_visit_source` | Attribution data; 75% coverage |
 | `shopify_orders_bulk__line_items.parquet` | `orderId`, `productId`, `variantId`, `quantity`, `price` | For product-level LTV decomposition |
 
 ### Silver / Views
 | View | Derivation | Notes |
 |------|------------|-------|
-| `nairomarket.ltv_cac_by_channel` | channel, orders, new_customers (order_index=1), channel_spend_kes, cac_kes, ltv_30d/60d/90d, ltv_cac_ratio, gmv_kes, aov_kes | March 2026 canonical: Meta CAC = 2,490 KES, 211 new customers. Join dependency: adset_insights (w11) × orders. |
-| `nairomarket.monthly_pl` | month, revenue_kes, cogs_kes, ad_spend_kes, overhead_kes, net_kes, net_margin_pct, mer | Used for gross margin input to contribution-margin LTV. Excludes 2024-04 outlier. |
+| `example_shop.ltv_cac_by_channel` | channel, orders, new_customers (order_index=1), channel_spend_kes, cac_kes, ltv_30d/60d/90d, ltv_cac_ratio, gmv_kes, aov_kes | Illustrative: Meta CAC = 1,200 KES, 200 new customers. Join dependency: adset_insights (w11) × orders. |
+| `example_shop.monthly_pl` | month, revenue_kes, cogs_kes, ad_spend_kes, overhead_kes, net_kes, net_margin_pct, mer | Used for gross margin input to contribution-margin LTV. Excludes 2024-04 outlier. |
 
 ### Coverage Gaps
 - `customer_order_index` must be computed from orders sorted by `createdAt` per customer — not a native Shopify field in the current extract
-- Attribution coverage 77.9%: 22.1% of orders have no `first_visit_source` — channel-split LTV has selection bias for the unattributed segment
+- Attribution coverage 75%: 25% of orders have no `first_visit_source` — channel-split LTV has selection bias for the unattributed segment
 - No explicit subscription or loyalty program data — repeat purchase is inferred from raw order frequency only
 - Gross margin at product level unavailable; margin applied at blended monthly rate from `monthly_pl`
 
@@ -110,7 +110,7 @@ metadata:
 
 ### Analysis 2: LTV/CAC Ratio by Channel
 - **Goal:** Determine which acquisition channel delivers sustainable unit economics at 90 days
-- **Inputs:** `nairomarket.ltv_cac_by_channel` view (all columns)
+- **Inputs:** `example_shop.ltv_cac_by_channel` view (all columns)
 - **Method:** Divide `ltv_90d_kes` by `cac_kes` per channel row. Flag channels with ratio < 1.5x as at-risk. Cross-validate CAC against `monthly_pl.ad_spend_kes / new_customers` as a sanity check on attribution coverage.
 - **Output claim shape:** ltv-cac-ratio (Pattern 2)
 
@@ -154,7 +154,7 @@ metadata:
 ### AP-4: Conflating behavioral churn with subscription churn definitions
 **Problem:** Applying a 30-day inactivity window (appropriate for subscription SaaS) to a transactional e-commerce context where repeat purchase interval median is 38+ days. A customer with a 45-day purchase cycle would be classified as churned under the 30d window but is active.
 **Why it happens:** "Churn" terminology is borrowed from subscription benchmarks without adjustment.
-**Correct approach:** Set the inactivity window to at least 2× the median repeat-purchase interval for the category. In NairoMarket context, the 90d default is appropriate. Any claim using a different window must state it explicitly.
+**Correct approach:** Set the inactivity window to at least 2× the median repeat-purchase interval for the category. In the example-shop demo context, the 90d default is appropriate. Any claim using a different window must state it explicitly.
 
 ---
 
@@ -179,13 +179,13 @@ metadata:
 **Pass condition:** Analyst confirms the filter is applied, states the cancelled rate for the cohort (if available), and shows the denominator query explicitly.
 
 ### ST-2: CAC denominator challenge
-**Probe:** "The CAC is stated as 2,490 KES. What is the exact denominator — total unique customers who ordered in March, or only first-time customers?"
+**Probe:** "The CAC is stated as 1,200 KES. What is the exact denominator — total unique customers who ordered in the period, or only first-time customers?"
 **Expected weak point:** If the analyst used total customers rather than `order_index = 1` customers, the CAC understates the true acquisition cost because repeat customers dilute the denominator.
-**Pass condition:** Analyst confirms `new_customers` = customers with first order in the period. Cross-validates against `ltv_cac_by_channel` view (211 new customers, March 2026).
+**Pass condition:** Analyst confirms `new_customers` = customers with first order in the period. Cross-validates against `ltv_cac_by_channel` view (200 new customers, illustrative).
 
 ### ST-3: Attribution coverage caveat
 **Probe:** "The LTV/CAC ratio is reported by channel. What % of orders in the LTV cohort have a known `first_visit_source`? How are unattributed orders handled?"
-**Expected weak point:** 22.1% of orders have no channel attribution. If unattributed orders are excluded, channel LTV is biased toward channels that happen to produce trackable sessions.
+**Expected weak point:** 25% of orders have no channel attribution. If unattributed orders are excluded, channel LTV is biased toward channels that happen to produce trackable sessions.
 **Pass condition:** Analyst states the coverage %, either excludes or proportionally allocates unattributed revenue, and flags the direction of potential bias.
 
 ### ST-4: Winback rate anchor

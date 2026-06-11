@@ -293,7 +293,7 @@
 
   <h3><span class="dot"></span>What lands under <code class="k">runs/&lt;run&gt;/</code></h3>
   <div class="filetree">
-runs/2026-06-08_dockblocks/
+runs/2026-06-08_example-ops/
 ├── <span class="w">records.jsonl</span>              <span class="cm"># derived projection index — append_index_row  store.py:176</span>
 ├── <span class="w">claims.jsonl</span>               <span class="cm"># regenerable claim view (Evidence back-compat) store.py:211</span>
 ├── <span class="w">run.json</span>                   <span class="cm"># RunState: fingerprints, critiqueRounds, manifest  runstate.py:354</span>
@@ -535,7 +535,7 @@ pi.<span class="fn">on</span>(<span class="s">"tool_call"</span>, (event) => {
 <section class="tab" id="diff">
   <h2>Diff: old approach vs the gate <span class="tag">flat jsonl → content-addressed immutable</span></h2>
   <p class="section-lede">Two contrasts. <b>(a)</b> the pre-T25 in-repo legacy (<code class="k">provenance/run.py</code> + <code class="k">claim.py</code>, recovered from git history).
-    <b>(b)</b> the sibling nairomarket <code class="k">growth_insights/.eval-out/run/claims.jsonl</code> — flat one-line-per-claim.</p>
+    <b>(b)</b> the sibling example-shop <code class="k">growth_insights/.eval-out/run/claims.jsonl</code> — flat one-line-per-claim.</p>
 
   <div class="grid g2">
     <div class="card">
@@ -551,12 +551,12 @@ pi.<span class="fn">on</span>(<span class="s">"tool_call"</span>, (event) => {
       <pre class="code"><span class="c"># sibling: growth_insights/.eval-out/run/claims.jsonl</span>
 {<span class="s">"claim_id"</span>:<span class="s">"MD-D-G6-001"</span>,<span class="s">"tier"</span>:<span class="s">"derived"</span>,
  <span class="s">"analyst"</span>:<span class="s">"karpathy"</span>,<span class="s">"goal"</span>:<span class="s">"g4f7_attribution"</span>,
- <span class="s">"statement"</span>:<span class="s">"blended CPA fell 1,498→1,055 KES…"</span>,
- <span class="s">"result_snapshot"</span>:<span class="s">"pre:1,498/519 post:1,055/158"</span>,
+ <span class="s">"statement"</span>:<span class="s">"blended CPA fell 1,500→1,000 KES…"</span>,
+ <span class="s">"result_snapshot"</span>:<span class="s">"pre:1,500/500 post:1,000/150"</span>,
  <span class="s">"confidence"</span>:<span class="s">"Med"</span>,<span class="s">"cites"</span>:[]}
 <span class="c"># numbers live as prose. no fingerprint. no</span>
 <span class="c"># immutability. no audit join. mutable line.</span></pre>
-      <p class="cap">Sibling repo — verified present at <span class="mono">/…/nairomarket/growth_insights/.eval-out/run/claims.jsonl</span>; sample line above is real.</p>
+      <p class="cap">Sibling repo — verified present at <span class="mono">/…/example-shop/growth_insights/.eval-out/run/claims.jsonl</span>; sample line above is real.</p>
     </div>
 
     <div class="card" style="border-color:var(--clay)">
@@ -597,7 +597,7 @@ pi.<span class="fn">on</span>(<span class="s">"tool_call"</span>, (event) => {
       <tr><td class="t">critique gate</td><td>✗ advisory</td><td>✓ open-high blocks published</td><td><code class="fl">runstate.py:139</code></td></tr>
     </tbody>
   </table>
-  <div class="note honest"><b>Flagged on trust:</b> the nairomarket <span class="mono">growth_insights</span> repo is a <i>sibling</i>, not part of this worktree. Its <span class="mono">claims.jsonl</span> path + sample line were verified by a fact-gather pass; treat the comparison as illustrative of the flat-jsonl pattern the gate replaces, not as in-tree code.</div>
+  <div class="note honest"><b>Flagged on trust:</b> the example-shop <span class="mono">growth_insights</span> repo is a <i>sibling</i>, not part of this worktree. Its <span class="mono">claims.jsonl</span> path + sample line were verified by a fact-gather pass; treat the comparison as illustrative of the flat-jsonl pattern the gate replaces, not as in-tree code.</div>
 </section>
 
 </div>

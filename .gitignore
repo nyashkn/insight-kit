@@ -20,6 +20,7 @@ build/
 
 node_modules/
 bun.lockb
-.html-kit/_archive/
+# Internal working notes / design-synthesis renders — not shipped publicly.
+.html-kit/
 .playwright-cli/
 .eval/

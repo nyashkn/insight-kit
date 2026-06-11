@@ -18,8 +18,6 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -30,7 +28,7 @@ class ParsedToolCall:
     tool_name: str
     input: str                          # capped 2 KB
     output_preview: str                 # capped 500 chars
-    duration_ms: Optional[int]
+    duration_ms: int | None
     error: bool
 
 
@@ -38,12 +36,12 @@ class ParsedToolCall:
 class ParsedTurn:
     role: str                           # assistant | user | system | tool
     persona: str                        # analyst | critic | system
-    model: Optional[str]
-    start_time: Optional[str]           # ISO 8601 (event-level timestamp)
-    end_time: Optional[str]             # same as start_time (omp provides one ts per event)
-    input_tokens: Optional[int]
-    output_tokens: Optional[int]
-    cost_usd: Optional[float]
+    model: str | None
+    start_time: str | None           # ISO 8601 (event-level timestamp)
+    end_time: str | None             # same as start_time (omp provides one ts per event)
+    input_tokens: int | None
+    output_tokens: int | None
+    cost_usd: float | None
     text_preview: str                   # first 500 chars of text content
     tool_calls: list = field(default_factory=list)  # list[ParsedToolCall]
 

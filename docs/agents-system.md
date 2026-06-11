@@ -209,11 +209,11 @@ bootstrap:
   fail_on_missing_global: false
 ```
 
-#### Full Multi-Role Project (dockblocks-ops example)
+#### Full Multi-Role Project (example-ops example)
 
 ```yaml
 version: 1
-project: dockblocks-ops
+project: example-ops
 roles:
   - data-engineer
   - analyst
@@ -227,7 +227,7 @@ personas:
   - retention
 skills:
   local:
-    - dockblocks-etl
+    - example-etl
     - funnel-claims
     - retention-metrics
   global:
