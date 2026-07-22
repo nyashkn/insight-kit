@@ -74,12 +74,12 @@ def test_generated_metric_claim_id_matches_gate_grammar() -> None:
     """A generated metric claim_id satisfies CLAIM_ID_REGEX (the legacy path did not)."""
     from insight_kit.integrations.hamilton.adapter import InsightKitHook
 
-    cid = InsightKitHook._gen_metric_claim_id("DOCK", "D", "cac_march")
+    cid = InsightKitHook._gen_metric_claim_id("DEMO", "D", "cac_march")
     assert CLAIM_ID_REGEX.match(cid), cid
     # namespace shorter than 2 letters falls back to IK; ETL tier token is valid.
     assert CLAIM_ID_REGEX.match(InsightKitHook._gen_metric_claim_id("", "ETL_M", "spend_curated"))
     # explicit id passes through unchanged.
-    assert InsightKitHook._gen_metric_claim_id("DOCK", "D", "n", explicit="DOCK-D-001") == "DOCK-D-001"
+    assert InsightKitHook._gen_metric_claim_id("DEMO", "D", "n", explicit="DEMO-D-001") == "DEMO-D-001"
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +110,7 @@ def test_cac_metric_emits_registered_input_claim(run_dir: Path) -> None:
     rec = read_record(run_dir, claim_ref.record_id)
 
     # valid id, asserted value carried as a field, and provenance is over live rows
-    assert rec["claim_id"] == "DOCK-D-001"
+    assert rec["claim_id"] == "DEMO-D-001"
     assert CLAIM_ID_REGEX.match(rec["claim_id"])
     assert rec["fields"]["cac_kes"]["value"] == pytest.approx(1000.0)
     assert rec["fields"]["cac_kes"]["fmt_hint"] == ",.0f"
@@ -201,7 +201,7 @@ def test_hardcoded_cac_cannot_publish(run_dir: Path) -> None:
 
     # proxy: no input_data → payload provenance → cannot hold 'published'
     ik_claim_emit(
-        "DOCK-D-001",
+        "DEMO-D-001",
         {"cac_kes": (1059, ",.0f")},
         tier="published",
         run_state=rs,
@@ -215,7 +215,7 @@ def test_hardcoded_cac_cannot_publish(run_dir: Path) -> None:
     # live rows: registered_input provenance (the fix)
     rs2 = RunState(run_dir=run_dir)
     ik_claim_emit(
-        "DOCK-D-002",
+        "DEMO-D-002",
         {"cac_kes": (1770, ",.0f")},
         tier="published",
         run_state=rs2,

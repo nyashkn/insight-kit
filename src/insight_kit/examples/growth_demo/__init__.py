@@ -1,6 +1,6 @@
-"""dockblocks_demo — seeded synthetic testbed for agent-driven insight-kit runs.
+"""growth_demo — seeded synthetic testbed for agent-driven insight-kit runs.
 
-A deterministic generator (``datagen``) produces the dockblocks-shaped source
+A deterministic generator (``datagen``) produces the funnel-shaped source
 tables — Meta + Google ad spend, orders with a returning-customer pre-window
 pool, CRM contacts/deals, email lifecycle events — together with the metrics'
 ground truth computed by construction from the same rows. A multi-layer
@@ -20,7 +20,7 @@ via ``days`` / ``scale`` for large agent-session fixtures).
 
 Usage
 -----
-    from insight_kit.examples.dockblocks_demo import datagen, dag
+    from insight_kit.examples.growth_demo import datagen, dag
     demo = datagen.generate(seed=42)
     demo.write_parquet(some_dir)          # optional: parquet on disk
     # run dag.blended_cac via the gate-backed driver; compare to

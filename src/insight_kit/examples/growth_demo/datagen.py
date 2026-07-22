@@ -1,4 +1,4 @@
-"""Seeded dockblocks data generator — ground truth by construction.
+"""Seeded growth-funnel data generator — ground truth by construction.
 
 Every table is produced from a single ``random.Random(seed)`` stream, so the
 same seed yields byte-identical tables on every machine (no wall clock, no
@@ -86,7 +86,7 @@ def _iso(day_index: int) -> str:
 
 
 def generate(seed: int = 42, days: int = 90, scale: float = 1.0) -> DemoData:
-    """Generate the dockblocks testbed for `days` days starting 2026-01-01.
+    """Generate the growth-funnel testbed for `days` days starting 2026-01-01.
 
     Args:
         seed:  RNG seed — same seed, same bytes, always.
@@ -94,6 +94,8 @@ def generate(seed: int = 42, days: int = 90, scale: float = 1.0) -> DemoData:
         scale: multiplies daily volumes (orders, contacts, events) for large
                fixtures; 1.0 keeps CI-sized tables.
     """
+    if days < 1:
+        raise ValueError(f"days must be >= 1, got {days}")
     rng = random.Random(seed)
 
     # ---- ad spend: Meta + Google, per day per campaign -------------------

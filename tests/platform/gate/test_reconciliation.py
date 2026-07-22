@@ -70,11 +70,11 @@ def test_ratio_identity_within_tolerance() -> None:
 def test_failed_reconciliation_emits_refuting_critic(run_dir: Path) -> None:
     """A failed reconciliation emits a critic claim that refutes the target claim."""
     rs = RunState(run_dir=run_dir)
-    target = ik_claim_emit("DOCK-D-001", {"cac_kes": (1059,)}, run_state=rs, run_dir=run_dir)
+    target = ik_claim_emit("DEMO-D-001", {"cac_kes": (1059,)}, run_state=rs, run_dir=run_dir)
 
     result = check_ratio_identity(1059.0, 3000.0, 3.0, label="cac")
     critic_ref = emit_reconciliation_critique(
-        result, target.record_id, "DOCK-C-001", run_state=rs, run_dir=run_dir
+        result, target.record_id, "DEMO-C-001", run_state=rs, run_dir=run_dir
     )
 
     rec = read_record(run_dir, critic_ref.record_id)
@@ -87,11 +87,11 @@ def test_failed_reconciliation_emits_refuting_critic(run_dir: Path) -> None:
 def test_passed_reconciliation_emits_supporting_critic(run_dir: Path) -> None:
     """A passed reconciliation emits a critic claim that supports the target claim."""
     rs = RunState(run_dir=run_dir)
-    target = ik_claim_emit("DOCK-D-002", {"cac_kes": (1000,)}, run_state=rs, run_dir=run_dir)
+    target = ik_claim_emit("DEMO-D-002", {"cac_kes": (1000,)}, run_state=rs, run_dir=run_dir)
 
     result = check_ratio_identity(1000.0, 3000.0, 3.0, label="cac")
     critic_ref = emit_reconciliation_critique(
-        result, target.record_id, "DOCK-C-002", run_state=rs, run_dir=run_dir
+        result, target.record_id, "DEMO-C-002", run_state=rs, run_dir=run_dir
     )
 
     rec = read_record(run_dir, critic_ref.record_id)

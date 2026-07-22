@@ -61,9 +61,9 @@ def new_customer_orders(orders_rows: pa.Table) -> pa.Table:
 
 @tag(
     ik_emit="metric",
-    ik_namespace="DOCK",
+    ik_namespace="DEMO",
     ik_id_tier="D",
-    ik_claim_id="DOCK-D-001",
+    ik_claim_id="DEMO-D-001",
     ik_metric="cac_kes",
     ik_fmt=",.0f",
     ik_grain="month",

@@ -54,9 +54,9 @@ def test_init_kit_creates_subdirs(tmp_path: Path):
 
 # U-14
 def test_init_kit_writes_config_yaml(tmp_path: Path):
-    init_kit(tmp_path, namespace="DOCK")
+    init_kit(tmp_path, namespace="DEMO")
     cfg = (tmp_path / ".insight-kit" / "config.yaml").read_text()
-    assert cfg.startswith("namespace: DOCK")
+    assert cfg.startswith("namespace: DEMO")
 
 
 # U-15

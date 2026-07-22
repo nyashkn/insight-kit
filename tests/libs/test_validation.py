@@ -327,16 +327,16 @@ def test_citation_known_id_passes(kit: Path):
 
 
 def test_citation_unknown_id_raises(kit: Path):
-    """[[CITE: DOCK-D-999]] raises when 999 doesn't exist."""
+    """[[CITE: DEMO-D-999]] raises when 999 doesn't exist."""
     with pytest.raises(ValidationError) as exc_info:
         check_citation_referential_integrity(
-            "Based on [[CITE: DOCK-D-999]] analysis.",
+            "Based on [[CITE: DEMO-D-999]] analysis.",
             None,
             set(),
             kit,
         )
     assert exc_info.value.rule_id == "citation-referential-integrity"
-    assert "DOCK-D-999" in str(exc_info.value)
+    assert "DEMO-D-999" in str(exc_info.value)
 
 
 # ---------- M7: claim-id-duplicate-in-run ----------

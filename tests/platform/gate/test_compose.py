@@ -64,10 +64,10 @@ def _write_narrative(record_dir: Path, content: str) -> Path:
 
 
 def _emit_dock_d_128(run_dir: Path) -> str:
-    """Emit DOCK-D-128 with repeat_value_multiple=2.3 and return the record_id."""
+    """Emit DEMO-D-128 with repeat_value_multiple=2.3 and return the record_id."""
     state = RunState()
     ref = ik_claim_emit(
-        "DOCK-D-128",
+        "DEMO-D-128",
         {"repeat_value_multiple": (2.3, "%.1fx")},
         run_state=state,
         run_dir=run_dir,
@@ -87,16 +87,16 @@ def run_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def dock_run(run_dir: Path):
-    """Emit DOCK-D-128, write chart + narrative siblings. Returns (run_dir, record_id)."""
+    """Emit DEMO-D-128, write chart + narrative siblings. Returns (run_dir, record_id)."""
     record_id = _emit_dock_d_128(run_dir)
     rec_dir = record_path(run_dir, record_id).parent
 
-    _write_chart(rec_dir, "DOCK-D-128")
+    _write_chart(rec_dir, "DEMO-D-128")
 
     narrative_content = (
-        'The multiplier is <ClaimNum claim="DOCK-D-128" field="repeat_value_multiple"/>.'
+        'The multiplier is <ClaimNum claim="DEMO-D-128" field="repeat_value_multiple"/>.'
         '\n\n'
-        '<ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>'
+        '<ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>'
     )
     _write_narrative(rec_dir, narrative_content)
 
@@ -112,27 +112,27 @@ class TestParseRefs:
     def test_parses_claimnum_tag(self):
         from insight_kit.platform.gate.compose import parse_refs
 
-        md = '<ClaimNum claim="DOCK-D-128" field="repeat_value_multiple"/>'
+        md = '<ClaimNum claim="DEMO-D-128" field="repeat_value_multiple"/>'
         refs = parse_refs(md)
         assert len(refs.num_refs) == 1
-        assert refs.num_refs[0].claim == "DOCK-D-128"
+        assert refs.num_refs[0].claim == "DEMO-D-128"
         assert refs.num_refs[0].field_name == "repeat_value_multiple"
 
     def test_parses_claimchart_tag(self):
         from insight_kit.platform.gate.compose import parse_refs
 
-        md = '<ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>'
+        md = '<ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>'
         refs = parse_refs(md)
         assert len(refs.chart_refs) == 1
         assert refs.chart_refs[0].src == "chart.vl.json"
-        assert refs.chart_refs[0].claim == "DOCK-D-128"
+        assert refs.chart_refs[0].claim == "DEMO-D-128"
 
     def test_parses_both_tag_types(self):
         from insight_kit.platform.gate.compose import parse_refs
 
         md = (
-            'See <ClaimNum claim="DOCK-D-128" field="repeat_value_multiple"/> '
-            'and <ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>.'
+            'See <ClaimNum claim="DEMO-D-128" field="repeat_value_multiple"/> '
+            'and <ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>.'
         )
         refs = parse_refs(md)
         assert len(refs.num_refs) == 1
@@ -142,21 +142,21 @@ class TestParseRefs:
         """Attribute order must not affect parsing (field before claim)."""
         from insight_kit.platform.gate.compose import parse_refs
 
-        md = '<ClaimNum field="repeat_value_multiple" claim="DOCK-D-128"/>'
+        md = '<ClaimNum field="repeat_value_multiple" claim="DEMO-D-128"/>'
         refs = parse_refs(md)
         assert len(refs.num_refs) == 1
-        assert refs.num_refs[0].claim == "DOCK-D-128"
+        assert refs.num_refs[0].claim == "DEMO-D-128"
         assert refs.num_refs[0].field_name == "repeat_value_multiple"
 
     def test_attr_order_independent_claimchart(self):
         """Attribute order must not affect parsing (claim before src)."""
         from insight_kit.platform.gate.compose import parse_refs
 
-        md = '<ClaimChart claim="DOCK-D-128" src="chart.vl.json"/>'
+        md = '<ClaimChart claim="DEMO-D-128" src="chart.vl.json"/>'
         refs = parse_refs(md)
         assert len(refs.chart_refs) == 1
         assert refs.chart_refs[0].src == "chart.vl.json"
-        assert refs.chart_refs[0].claim == "DOCK-D-128"
+        assert refs.chart_refs[0].claim == "DEMO-D-128"
 
     def test_empty_markdown_returns_empty(self):
         from insight_kit.platform.gate.compose import parse_refs
@@ -212,7 +212,7 @@ class TestComposeEmbedsChart:
         assert "vegaEmbed" in html
 
         # The spec JSON must be inlined — the claim_id appears in usermeta
-        assert "DOCK-D-128" in html
+        assert "DEMO-D-128" in html
 
         # No <ClaimChart tag should remain in the output
         assert "<ClaimChart" not in html
@@ -247,10 +247,10 @@ class TestComposeUnresolvedClaimNumRaises:
 
         record_id = _emit_dock_d_128(run_dir)
         rec_dir = record_path(run_dir, record_id).parent
-        _write_chart(rec_dir, "DOCK-D-128")
+        _write_chart(rec_dir, "DEMO-D-128")
 
         # Reference a field that does not exist in the claim
-        narrative = '<ClaimNum claim="DOCK-D-128" field="nonexistent_field"/>'
+        narrative = '<ClaimNum claim="DEMO-D-128" field="nonexistent_field"/>'
         _write_narrative(rec_dir, narrative)
 
         with pytest.raises(ComposeError, match="nonexistent_field"):
@@ -262,7 +262,7 @@ class TestComposeUnresolvedClaimNumRaises:
 
         record_id = _emit_dock_d_128(run_dir)
         rec_dir = record_path(run_dir, record_id).parent
-        _write_chart(rec_dir, "DOCK-D-128")
+        _write_chart(rec_dir, "DEMO-D-128")
 
         # Reference a claim_id that was never emitted
         narrative = '<ClaimNum claim="UNKN-D-999" field="repeat_value_multiple"/>'
@@ -283,8 +283,8 @@ class TestComposeBindingMismatchRaises:
         # Write chart bound to a DIFFERENT claim_id than the tag will reference
         _write_chart(rec_dir, "OTHR-D-001")  # usermeta says OTHR-D-001
 
-        # Tag claims DOCK-D-128 but usermeta says OTHR-D-001 → mismatch
-        narrative = '<ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>'
+        # Tag claims DEMO-D-128 but usermeta says OTHR-D-001 → mismatch
+        narrative = '<ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>'
         _write_narrative(rec_dir, narrative)
 
         with pytest.raises(ComposeError):
@@ -300,7 +300,7 @@ class TestComposeMissingSrcRaises:
         rec_dir = record_path(run_dir, record_id).parent
         # Do NOT write any chart file
 
-        narrative = '<ClaimChart src="nope.vl.json" claim="DOCK-D-128"/>'
+        narrative = '<ClaimChart src="nope.vl.json" claim="DEMO-D-128"/>'
         _write_narrative(rec_dir, narrative)
 
         with pytest.raises(ComposeError, match=r"nope\.vl\.json"):
@@ -330,7 +330,7 @@ class TestVerifyChartBindings:
         rec_dir = record_path(run_dir, record_id).parent
         _write_chart(rec_dir, "OTHR-D-001")  # wrong binding in usermeta
 
-        narrative = '<ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>'
+        narrative = '<ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>'
         _write_narrative(rec_dir, narrative)
 
         result = verify_chart_bindings(run_dir, record_id)
@@ -345,7 +345,7 @@ class TestVerifyChartBindings:
         rec_dir = record_path(run_dir, record_id).parent
         # No chart file written
 
-        narrative = '<ClaimChart src="missing.vl.json" claim="DOCK-D-128"/>'
+        narrative = '<ClaimChart src="missing.vl.json" claim="DEMO-D-128"/>'
         _write_narrative(rec_dir, narrative)
 
         result = verify_chart_bindings(run_dir, record_id)

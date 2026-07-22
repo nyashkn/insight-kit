@@ -47,6 +47,7 @@ class LineageTrace:
     direct_upstream: list[str] = field(default_factory=list)
     upstream_closure: list[str] = field(default_factory=list)
     external_inputs: list[str] = field(default_factory=list)
+    overridden: list[str] = field(default_factory=list)
     data_fingerprint_source: str | None = None
     extraction_record_id: str | None = None
     input_rows: dict[str, Any] | None = None
@@ -54,6 +55,17 @@ class LineageTrace:
     def depends_on(self, node_name: str) -> bool:
         """True when `node_name` is anywhere upstream of the claim's node."""
         return node_name in self.upstream_closure
+
+    @property
+    def is_overridden(self) -> bool:
+        """True when any upstream value was replaced at execute time.
+
+        An overridden claim's value did not flow from the registered sources —
+        the closure is truncated at the override points, and consumers (rails,
+        critics, promotion policies) should treat the trace as caller-supplied
+        beyond them.
+        """
+        return bool(self.overridden)
 
 
 def lineage_of(run_dir: Path | str, claim_record_id: str) -> LineageTrace:
@@ -108,6 +120,7 @@ def lineage_of(run_dir: Path | str, claim_record_id: str) -> LineageTrace:
         direct_upstream=list(lineage.get("direct_upstream", [])),
         upstream_closure=list(lineage.get("upstream_closure", [])),
         external_inputs=list(lineage.get("external_inputs", [])),
+        overridden=list(lineage.get("overridden", [])),
         data_fingerprint_source=rec.get("data_fingerprint_source"),
         extraction_record_id=extraction_record_id,
         input_rows=input_rows,

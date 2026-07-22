@@ -303,7 +303,7 @@ def emit_reconciliation_critique(
         target_claim_record_id: content-addressed record_id of the claim checked
                                 (must already exist in run_dir as a claim record).
         critic_claim_id:        gate-valid claim_id for the critic claim
-                                (e.g. "DOCK-C-001").
+                                (e.g. "DEMO-C-001").
         run_state:              RunState accumulator for the run.
         run_dir:                run directory (resolved from env if None).
         statement:              optional override for the critique statement;

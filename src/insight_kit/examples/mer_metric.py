@@ -21,7 +21,7 @@ from hamilton.function_modifiers import tag
 
 @tag(
     ik_emit="metric",
-    ik_namespace="DOCK",
+    ik_namespace="DEMO",
     ik_id_tier="D",
     # NOTE: no ik_claim_id — the adapter generates a gate-valid id from the
     # namespace + tier + node name, proving that path works end to end too.

@@ -94,7 +94,7 @@ class TestMarkdownVegaAdapterExtractTokens:
         """extract_tokens(narrative.md) == VegaLiteAdapter().extract_tokens(spec)."""
         from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter
 
-        claim_id = "DOCK-D-128"
+        claim_id = "DEMO-D-128"
         chart_path = _write_chart(tmp_path, "chart.vl.json", claim_id)
         spec = json.loads(chart_path.read_text())
 
@@ -116,7 +116,7 @@ class TestMarkdownVegaAdapterExtractTokens:
         """Each token from MarkdownVegaAdapter is bound to the correct claim field."""
         from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter
 
-        claim_id = "DOCK-D-128"
+        claim_id = "DEMO-D-128"
         _write_chart(tmp_path, "chart.vl.json", claim_id, data_value=5.0)
         narrative_path = _write_narrative(
             tmp_path,
@@ -134,14 +134,14 @@ class TestMarkdownVegaAdapterExtractTokens:
         """Two <ClaimChart> tags produce tokens from both charts concatenated."""
         from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter
 
-        _write_chart(tmp_path, "chart_a.vl.json", "DOCK-D-128", data_value=1.0)
-        _write_chart(tmp_path, "chart_b.vl.json", "DOCK-D-129", data_value=2.0)
+        _write_chart(tmp_path, "chart_a.vl.json", "DEMO-D-128", data_value=1.0)
+        _write_chart(tmp_path, "chart_b.vl.json", "DEMO-D-129", data_value=2.0)
 
         narrative_path = _write_narrative(
             tmp_path,
             (
-                '<ClaimChart src="chart_a.vl.json" claim="DOCK-D-128"/>\n'
-                '<ClaimChart src="chart_b.vl.json" claim="DOCK-D-129"/>'
+                '<ClaimChart src="chart_a.vl.json" claim="DEMO-D-128"/>\n'
+                '<ClaimChart src="chart_b.vl.json" claim="DEMO-D-129"/>'
             ),
         )
 
@@ -162,7 +162,7 @@ class TestMarkdownVegaAdapterExtractTokens:
         """extract_tokens also accepts a string of narrative content (not just Path)."""
         from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter
 
-        _write_chart(tmp_path, "chart.vl.json", "DOCK-D-128")
+        _write_chart(tmp_path, "chart.vl.json", "DEMO-D-128")
 
         # Pass narrative as a string — adapter must resolve chart relative to cwd
         # or the test must pass a path. Per spec, str input = content string, so
@@ -170,7 +170,7 @@ class TestMarkdownVegaAdapterExtractTokens:
         # We test the Path form here and a raw-string variant below.
         narrative_path = _write_narrative(
             tmp_path,
-            '<ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>',
+            '<ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>',
         )
         tokens = MarkdownVegaAdapter().extract_tokens(str(narrative_path))
         assert len(tokens) >= 1
@@ -181,7 +181,7 @@ class TestMarkdownVegaAdapterExtractTokens:
 
         narrative_path = _write_narrative(
             tmp_path,
-            '<ClaimChart src="ghost.vl.json" claim="DOCK-D-128"/>',
+            '<ClaimChart src="ghost.vl.json" claim="DEMO-D-128"/>',
         )
 
         with pytest.raises(Exception, match=r"ghost\.vl\.json"):
@@ -198,7 +198,7 @@ class TestMarkdownVegaAdapterAuditIntegration:
         """run_render_audit passes (no orphans) when claim index matches the chart."""
         from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter
 
-        claim_id = "DOCK-D-128"
+        claim_id = "DEMO-D-128"
         field_name = "repeat_value_multiple"
         data_value = 2.3
 
@@ -255,10 +255,10 @@ class TestMarkdownVegaAdapterAuditIntegration:
 
         narrative_path = _write_narrative(
             tmp_path,
-            '<ClaimChart src="chart.vl.json" claim="DOCK-D-128"/>',
+            '<ClaimChart src="chart.vl.json" claim="DEMO-D-128"/>',
         )
 
-        claims_index = {"DOCK-D-128": {"repeat_value_multiple": 2.3}}
+        claims_index = {"DEMO-D-128": {"repeat_value_multiple": 2.3}}
         narrative_md = narrative_path.read_text(encoding="utf-8")
 
         report = run_render_audit(
@@ -275,7 +275,7 @@ class TestMarkdownVegaAdapterAuditIntegration:
         """Chart renders 2.3 but claim index says 9.9 → value-mismatch → L5 fail."""
         from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter
 
-        claim_id = "DOCK-D-128"
+        claim_id = "DEMO-D-128"
         field_name = "repeat_value_multiple"
 
         # Chart has 2.3

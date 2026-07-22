@@ -1,4 +1,4 @@
-"""dockblocks_demo generator — determinism, ground truth, planted trap, parquet.
+"""growth_demo generator — determinism, ground truth, planted trap, parquet.
 
 Pure pyarrow + stdlib: runs everywhere the gate runs, no hamilton needed.
 """
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from insight_kit.examples.dockblocks_demo import datagen
+from insight_kit.examples.growth_demo import datagen
 
 
 def test_same_seed_same_bytes() -> None:
@@ -68,3 +68,9 @@ def test_write_parquet_roundtrip(tmp_path: Path) -> None:
     for name, path in paths.items():
         assert path.exists()
         assert pq.read_table(path).equals(demo.tables()[name])
+
+
+def test_days_zero_rejected() -> None:
+    """LOW (review): days=0 must raise cleanly, not ZeroDivisionError in ground truth."""
+    with pytest.raises(ValueError, match="days"):
+        datagen.generate(seed=1, days=0)

@@ -129,19 +129,35 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
     to the captured rows.
     """
 
-    def __init__(self, run_state: RunState, run_dir: Path | str) -> None:
+    def __init__(
+        self,
+        run_state: RunState,
+        run_dir: Path | str,
+        *,
+        emit_timestamp: str | None = None,
+    ) -> None:
         """Init the hook with a gate RunState + run directory.
 
         Args:
             run_state: gate RunState accumulator; records emitted by tagged nodes
                        are registered here.
             run_dir:   run directory the gate writes records under.
+            emit_timestamp: optional fixed ISO timestamp passed to knowledge-record
+                       emits. The gate folds emit time into record fingerprints, so
+                       the default (wall clock) makes record_ids per-run only;
+                       supply a fixed timestamp for cross-run reproducible ids
+                       (golden replays, cached pipelines).
         """
         self.run_state = run_state
         self.run_dir = Path(run_dir)
+        self.emit_timestamp = emit_timestamp
         # Item 7 — populated by run_before_graph_execution from the compiled graph.
         self._graph_deps: dict[str, tuple[str, ...]] = {}
         self._graph_external: frozenset[str] = frozenset()
+        self._graph_overrides: frozenset[str] = frozenset()
+        # claim_ids already emitted by this hook — guards re-execute() on the same
+        # RunState from emitting orphaned provenance for a claim the gate rejects.
+        self._emitted_claim_ids: set[str] = set()
 
     # ---------- graph lineage capture (item 7) ----------
 
@@ -172,7 +188,17 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
                 external.add(node.name)
         self._graph_deps = deps
         self._graph_external = frozenset(external)
-        logger.debug("graph.lineage_captured", nodes=len(deps), external=len(external))
+        # Execute-time overrides replace a node's computed value with a
+        # caller-supplied one — everything upstream of an overridden node is NOT
+        # read this run, so the closure walk must stop there (else the stamped
+        # lineage would assert sources that were never touched).
+        self._graph_overrides = frozenset((overrides or {}).keys())
+        logger.debug(
+            "graph.lineage_captured",
+            nodes=len(deps),
+            external=len(external),
+            overridden=sorted(self._graph_overrides),
+        )
 
     def run_after_graph_execution(
         self,
@@ -191,23 +217,34 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
         Returns None when no graph was captured (e.g. the hook is exercised
         outside a driver run) — the claim then simply carries no lineage field,
         it is never guessed.
+
+        Overridden nodes truncate the walk: an execute-time override replaces
+        that node's value with caller-supplied data, so its static upstreams
+        were never read this run. They are excluded from the closure and the
+        override point is recorded in ``overridden`` — a claim fed through an
+        override says so on its face instead of asserting the bypassed sources.
         """
         if node_name not in self._graph_deps:
             return None
         direct = list(self._graph_deps[node_name])
         seen: set[str] = set()
+        overridden: set[str] = set()
         stack = list(direct)
         while stack:
             upstream = stack.pop()
             if upstream in seen:
                 continue
             seen.add(upstream)
+            if upstream in self._graph_overrides:
+                overridden.add(upstream)
+                continue  # value came from the caller — do not walk past it
             stack.extend(self._graph_deps.get(upstream, ()))
         return {
             "node": node_name,
             "direct_upstream": direct,
             "upstream_closure": sorted(seen),
             "external_inputs": sorted(n for n in seen if n in self._graph_external),
+            "overridden": sorted(overridden),
         }
 
     # Gate tier values accepted by the L1 schema (ClaimTier enum).
@@ -419,11 +456,25 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
             node_name,
             node_tags.get("ik_claim_id"),
         )
+        # Re-executing the same driver/RunState would re-derive this claim_id;
+        # the gate rejects the duplicate claim AFTER the provenance records land,
+        # orphaning them. Skip the whole emission up front instead — a re-run
+        # needs a fresh RunState/driver, not a silently half-written bundle.
+        if claim_id in self._emitted_claim_ids:
+            logger.warning(
+                "metric.claim.duplicate_skipped",
+                claim_id=claim_id,
+                node=node_name,
+                hint="one execute() per RunState — build a fresh driver/RunState to re-run",
+            )
+            return
         value = self._extract_metric_value(result, metric)
         fields: dict[str, Any] = {
             metric: {"value": value, "fmt_hint": node_tags.get("ik_fmt")},
             "node_id": {"value": node_name, "fmt_hint": None},
         }
+        if node_tags.get("ik_statement"):
+            fields["statement"] = {"value": node_tags["ik_statement"], "fmt_hint": None}
         # Item 7 — deterministic lineage: the node's transitive upstream closure
         # from the compiled graph rides on the claim itself, so the ProvenanceRail
         # (and any critic) can see where the number came from without re-running.
@@ -454,6 +505,7 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
                 run_dir=self.run_dir,
                 input_data=input_data,
             )
+            self._emitted_claim_ids.add(claim_id)
             logger.info(
                 "metric.claim.emitted",
                 claim_id=claim_id,
@@ -512,6 +564,7 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
                     node_tags.get("ik_research_query", ""),
                     research_source,
                     snapshot={"source": research_source, "node": node_name},
+                    timestamp=self.emit_timestamp,
                     run_state=self.run_state,
                     run_dir=self.run_dir,
                 )
@@ -533,6 +586,7 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
                 "hamilton",
                 source,
                 snapshot=snapshot,
+                timestamp=self.emit_timestamp,
                 cites=cites or None,
                 run_state=self.run_state,
                 run_dir=self.run_dir,
@@ -627,11 +681,14 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
         """Build a registered-input dict from a node's input rows (V22).
 
         Each Arrow-convertible input becomes a JSON-safe column dict; scalar
-        inputs pass through. When nothing convertible is present the result is
-        None — so the claim falls back to payload provenance and cannot publish,
-        which is the correct outcome for a value with no live upstream rows.
+        inputs ride along ONLY next to at least one row table. A node fed
+        nothing but scalars (e.g. ``cac(spend: float, customers: float)``) gets
+        None — payload provenance, cannot publish. Bare literals are exactly
+        the P1 verdict-from-proxy shape; letting them register as live input
+        would launder a hardcoded number into publishable provenance.
         """
         data: dict[str, Any] = {}
+        has_rows = False
         for name, val in node_kwargs.items():
             arrow = _to_arrow(val)
             if arrow is not None:
@@ -639,11 +696,14 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
                     # json round-trip with default=str guarantees serializability
                     # (e.g. Arrow date/timestamp cells) before the gate fingerprints it.
                     data[name] = json.loads(json.dumps(arrow.to_pydict(), default=str))
+                    has_rows = True
                 except Exception as e:
                     logger.warning("metric.input_rows_skipped", input=name, error=str(e))
             elif val is None or isinstance(val, (int, float, str, bool)):
                 data[name] = val
-        return data or None
+        if not has_rows:
+            return None
+        return data
 
     # ---------- claim id generation ----------
 
@@ -676,13 +736,26 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
 # ---------- driver builder ----------
 
 
-def build_driver(run_state: RunState, run_dir: Path | str, modules: list[Any]) -> Any:
+def build_driver(
+    run_state: RunState,
+    run_dir: Path | str,
+    modules: list[Any],
+    *,
+    emit_timestamp: str | None = None,
+) -> Any:
     """Construct a Hamilton Driver with a gate-backed InsightKitHook adapter.
+
+    One driver + RunState pair per execute(): re-running a metric node against
+    the same RunState re-derives the same claim_id, which the hook skips (with
+    a warning) rather than emitting a duplicate the gate would reject.
 
     Args:
         run_state: gate RunState accumulator the hook emits records into.
         run_dir:   run directory the gate writes records under.
         modules:   Hamilton modules (list of Python modules or module objects).
+        emit_timestamp: optional fixed ISO timestamp for knowledge-record emits —
+                   makes record ids reproducible across identical runs (see
+                   InsightKitHook).
 
     Returns:
         hamilton.driver.Driver instance ready to execute.
@@ -708,7 +781,7 @@ def build_driver(run_state: RunState, run_dir: Path | str, modules: list[Any]) -
     builder = (
         driver.Builder()
         .with_modules(*modules)
-        .with_adapters(InsightKitHook(run_state, run_dir))
+        .with_adapters(InsightKitHook(run_state, run_dir, emit_timestamp=emit_timestamp))
     )
 
     dr = builder.build()

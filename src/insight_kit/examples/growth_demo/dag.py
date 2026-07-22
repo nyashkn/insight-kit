@@ -1,4 +1,4 @@
-"""dockblocks demo DAG — multi-layer Hamilton module over the seeded testbed.
+"""growth demo DAG — multi-layer Hamilton module over the seeded testbed.
 
 Layered so lineage (item 7) is non-trivial: raw inputs -> unified/cleaned
 intermediates -> metric nodes. The metric nodes' direct kwargs are the
@@ -7,9 +7,9 @@ over the exact rows the number was computed from, and its stamped lineage
 closure reaches back to the raw sources.
 
     meta_ads_raw ─┐
-                  ├─ ad_spend_unified ─┬─ blended_cac   (true CAC, DOCK-D-010)
-    google_ads_raw┘                    ├─ demo_mer      (MER,      DOCK-D-011)
-                                       └─ naive_cac     (P5 trap,  DOCK-D-012)
+                  ├─ ad_spend_unified ─┬─ blended_cac   (true CAC, DEMO-D-010)
+    google_ads_raw┘                    ├─ demo_mer      (MER,      DEMO-D-011)
+                                       └─ naive_cac     (P5 trap,  DEMO-D-012)
     orders_raw ── orders_clean ─┬─ new_customer_orders ─ blended_cac
                                 ├─ demo_mer
                                 └─ naive_cac
@@ -56,9 +56,9 @@ def new_customer_orders(orders_clean: pa.Table) -> pa.Table:
 
 @tag(
     ik_emit="metric",
-    ik_namespace="DOCK",
+    ik_namespace="DEMO",
     ik_id_tier="D",
-    ik_claim_id="DOCK-D-010",
+    ik_claim_id="DEMO-D-010",
     ik_metric="blended_cac_kes",
     ik_fmt=",.0f",
     ik_grain="window",
@@ -76,9 +76,9 @@ def blended_cac(ad_spend_unified: pa.Table, new_customer_orders: pa.Table) -> fl
 
 @tag(
     ik_emit="metric",
-    ik_namespace="DOCK",
+    ik_namespace="DEMO",
     ik_id_tier="D",
-    ik_claim_id="DOCK-D-011",
+    ik_claim_id="DEMO-D-011",
     ik_metric="mer",
     ik_fmt=".2f",
     ik_grain="window",
@@ -95,9 +95,9 @@ def demo_mer(ad_spend_unified: pa.Table, orders_clean: pa.Table) -> float:
 
 @tag(
     ik_emit="metric",
-    ik_namespace="DOCK",
+    ik_namespace="DEMO",
     ik_id_tier="D",
-    ik_claim_id="DOCK-D-012",
+    ik_claim_id="DEMO-D-012",
     ik_metric="naive_cac_kes",
     ik_fmt=",.0f",
     ik_grain="window",
