@@ -23,6 +23,7 @@ from hamilton.lifecycle import GraphExecutionHook, NodeExecutionHook
 
 from insight_kit.libs.validation import ValidationError, mint_claim_id
 from insight_kit.platform.gate import (
+    RecordRef,
     RunState,
     finalizeRun,
     ik_claim_emit,
@@ -157,6 +158,11 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
         # claim_ids already emitted by this hook — guards re-execute() on the same
         # RunState from emitting orphaned provenance for a claim the gate rejects.
         self._emitted_claim_ids: set[str] = set()
+        # node_name -> the RecordRef of the claim that node emitted this run. A
+        # downstream metric whose own kwargs are the *values* of these nodes cites
+        # them as input_claims (claim->claim data lineage) — the provenance a
+        # derived metric has instead of live input rows (issue #6 nugget).
+        self._node_to_claim_ref: dict[str, RecordRef] = {}
 
     # ---------- graph lineage capture (item 7) ----------
 
@@ -497,18 +503,33 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
             node_name, node_kwargs, input_data, node_tags, claim_id, lineage=lineage
         )
 
+        # Claim->claim data lineage (T29 / issue #6): when a metric node's own
+        # inputs are the values of upstream claim-emitting nodes (a Hamilton kwarg
+        # binds to the node of the same name), record those claims as input_claims.
+        # Hamilton executes topologically, so an upstream metric has already
+        # emitted and registered its ref by the time this node runs. A Layer-2
+        # metric (e.g. payback = arpu / blended_cac) has no live input rows of its
+        # own — these edges are the provenance it carries in their place.
+        input_claims = [
+            self._node_to_claim_ref[dep].record_id
+            for dep in node_kwargs
+            if dep in self._node_to_claim_ref
+        ]
+
         try:
-            ik_claim_emit(
+            ref = ik_claim_emit(
                 claim_id,
                 fields,
                 tier=gate_tier,
                 selection=selection,
                 cites=cites or None,
+                input_claims=input_claims or None,
                 run_state=self.run_state,
                 run_dir=self.run_dir,
                 input_data=input_data,
             )
             self._emitted_claim_ids.add(claim_id)
+            self._node_to_claim_ref[node_name] = ref
             logger.info(
                 "metric.claim.emitted",
                 claim_id=claim_id,

@@ -18,6 +18,18 @@ closure reaches back to the raw sources.
 spend by DISTINCT customers seen in the window (returning customers included)
 instead of first orders. It is kept in the DAG on purpose — the fixture's
 ground truth knows both answers, so the reconciliation critic can refute it.
+
+The metrics above are a flat layer computed from data. ``cac_payback_ratio``
+adds a second layer — a metric whose inputs are the *values of two upstream
+claims* (``arpu`` and ``blended_cac``), not raw rows::
+
+    arpu         (DEMO-D-013) ─┐
+                               ├─ cac_payback_ratio  (Layer 2, DEMO-D-020)
+    blended_cac  (DEMO-D-010) ─┘
+
+A Layer-2 metric has no live input rows of its own, so the adapter backs it
+with claim->claim data lineage (``input_claims``) instead of a row fingerprint —
+the provenance a derived number carries in place of extracted rows.
 """
 
 from __future__ import annotations
@@ -116,3 +128,50 @@ def naive_cac(ad_spend_unified: pa.Table, orders_clean: pa.Table) -> float:
     spend = float(sum(ad_spend_unified.column("spend_kes").to_pylist()))
     distinct_customers = len(set(orders_clean.column("customer_id").to_pylist()))
     return spend / distinct_customers
+
+
+@tag(
+    ik_emit="metric",
+    ik_namespace="DEMO",
+    ik_id_tier="D",
+    ik_claim_id="DEMO-D-013",
+    ik_metric="arpu_kes",
+    ik_fmt=",.0f",
+    ik_grain="window",
+    ik_filters="customer_order_index=1",
+    ik_statement="ARPU = window order revenue / new customers in window",
+)
+def arpu(orders_clean: pa.Table, new_customer_orders: pa.Table) -> float:
+    """Average revenue per newly-acquired customer in the window."""
+    revenue = float(sum(orders_clean.column("revenue_kes").to_pylist()))
+    new_customers = len(new_customer_orders)
+    if new_customers == 0:
+        raise ValueError("no new customers in window — ARPU denominator is zero")
+    return revenue / new_customers
+
+
+@tag(
+    ik_emit="metric",
+    ik_namespace="DEMO",
+    ik_id_tier="D",
+    ik_claim_id="DEMO-D-020",
+    ik_metric="cac_payback_ratio",
+    ik_fmt=".2f",
+    ik_grain="window",
+    ik_statement=(
+        "CAC payback ratio = ARPU / blended CAC — a Layer-2 metric derived from "
+        "two upstream claims, not from raw rows; >1 means the first order already "
+        "clears acquisition cost"
+    ),
+)
+def cac_payback_ratio(arpu: float, blended_cac: float) -> float:
+    """Layer-2 metric derived purely from two upstream claim values.
+
+    Its kwargs are the *values* of the ``arpu`` (DEMO-D-013) and ``blended_cac``
+    (DEMO-D-010) claim nodes, so it carries no live input rows of its own. The
+    adapter records those two claims as ``input_claims`` (claim->claim data
+    lineage) — the provenance a derived metric has in place of a row fingerprint.
+    """
+    if blended_cac == 0:
+        raise ValueError("blended CAC is zero — payback denominator is zero")
+    return arpu / blended_cac
