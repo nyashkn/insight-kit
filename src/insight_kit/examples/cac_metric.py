@@ -2,7 +2,7 @@
 
 This is the "one real metric, end to end" reference for the Hamilton-as-substrate
 + insight-kit-as-gate stack. It computes blended Customer Acquisition Cost the way
-the nairomarket / Dock Blocks growth work does:
+real growth-analytics work does:
 
     CAC = (Meta ad spend in the window) / (new customers acquired in the window)
 
