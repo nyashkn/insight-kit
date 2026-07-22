@@ -23,7 +23,13 @@ import structlog
 from hamilton.lifecycle import NodeExecutionHook
 
 from insight_kit.libs.validation import ValidationError
-from insight_kit.platform.gate import RunState, finalizeRun, ik_claim_emit
+from insight_kit.platform.gate import (
+    RunState,
+    finalizeRun,
+    ik_claim_emit,
+    ik_research_emit,
+    ik_skill_use_emit,
+)
 
 logger = structlog.get_logger("insight_kit.hamilton")
 
@@ -344,12 +350,22 @@ class InsightKitHook(NodeExecutionHook):
         input_data = self._rows_as_input_data(node_kwargs)
         gate_tier = self._to_gate_tier(node_tags.get("ik_tier", "draft"))
 
+        # Provenance chain (item 1): when the node has live input rows, emit the
+        # knowledge records the claim cites, so the claim is backed by a real
+        # research/skill_use chain — not just a fingerprint. A node with no
+        # convertible input rows emits a claim-only record (payload provenance),
+        # which is the correct P1 outcome (a value with no live upstream).
+        cites = self._emit_metric_provenance(
+            node_name, node_kwargs, input_data, node_tags, claim_id
+        )
+
         try:
             ik_claim_emit(
                 claim_id,
                 fields,
                 tier=gate_tier,
                 selection=selection,
+                cites=cites or None,
                 run_state=self.run_state,
                 run_dir=self.run_dir,
                 input_data=input_data,
@@ -361,12 +377,77 @@ class InsightKitHook(NodeExecutionHook):
                 metric=metric,
                 value=value,
                 registered_input=input_data is not None,
+                cites=cites,
                 tier=gate_tier,
             )
         except ValidationError as e:
             logger.error("metric.claim.rejected", claim_id=claim_id, node=node_name, error=str(e))
         except Exception as e:  # emit failure must never abort the DAG
             logger.error("metric.claim.failed", claim_id=claim_id, node=node_name, error=str(e))
+
+    def _emit_metric_provenance(
+        self,
+        node_name: str,
+        node_kwargs: dict[str, Any],
+        input_data: dict[str, Any] | None,
+        node_tags: dict[str, Any],
+        claim_id: str,
+    ) -> list[str]:
+        """Emit the knowledge records a metric claim cites (item 1).
+
+        Returns the list of record_ids the claim should cite:
+          * skill_use — the data extraction: the node's input rows as the
+            captured snapshot, tool="hamilton", source = the upstream node names.
+            Emitted whenever live input rows are present.
+          * research  — optional: only when the node is tagged with
+            ``ik_research_source`` (and/or ``ik_research_query``), capturing an
+            external doc/source the metric relied on. A pure compute node has no
+            research, so none is faked.
+
+        Emit failures here are logged and swallowed — a missing knowledge record
+        degrades the claim to uncited, it must not abort the DAG.
+        """
+        if not input_data:
+            return []  # no live rows → no knowledge chain (payload claim)
+
+        cites: list[str] = []
+        source = ",".join(node_kwargs.keys()) or node_name
+
+        # Optional research record (only if the node declares an external source).
+        research_source = node_tags.get("ik_research_source")
+        if research_source:
+            try:
+                research_ref = ik_research_emit(
+                    f"{claim_id}-RESEARCH",
+                    node_tags.get("ik_research_ref", f"research:{node_name}"),
+                    node_tags.get("ik_research_query", ""),
+                    research_source,
+                    snapshot={"source": research_source, "node": node_name},
+                    run_state=self.run_state,
+                    run_dir=self.run_dir,
+                )
+                cites.append(research_ref.record_id)
+            except Exception as e:
+                logger.error("metric.research.failed", node=node_name, error=str(e))
+
+        # skill_use record — the extraction the claim is computed from.
+        try:
+            skill_ref = ik_skill_use_emit(
+                f"{claim_id}-EXTRACT",
+                f"hamilton:{node_name}",
+                "hamilton",
+                source,
+                snapshot=input_data,
+                cites=cites or None,
+                run_state=self.run_state,
+                run_dir=self.run_dir,
+                input_data=input_data,
+            )
+            cites.append(skill_ref.record_id)
+        except Exception as e:
+            logger.error("metric.skill_use.failed", node=node_name, error=str(e))
+
+        return cites
 
     # id-grammar tier tokens accepted by CLAIM_ID_REGEX (libs.validation).
     _ID_TIERS: frozenset[str] = frozenset(

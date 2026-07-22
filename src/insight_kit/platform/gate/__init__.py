@@ -87,7 +87,9 @@ from insight_kit.platform.gate.runcheck import (
     check_annual_equals_monthly_sum,
     check_coverage_from_run,
     check_endpoint_coverage_gap,
+    check_ratio_identity,
     derive_used_endpoints,
+    emit_reconciliation_critique,
     ik_run_check,
 )
 from insight_kit.platform.gate.runstate import (
@@ -155,8 +157,10 @@ __all__ = [
     "check_annual_equals_monthly_sum",
     "check_coverage_from_run",
     "check_endpoint_coverage_gap",
+    "check_ratio_identity",
     "compose_record",
     "derive_used_endpoints",
+    "emit_reconciliation_critique",
     "endpoint_index_path",
     "finalizeRun",
     "ik_acquire",

@@ -87,6 +87,13 @@ def test_generated_metric_claim_id_matches_gate_grammar() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _find_claim(rs: RunState):
+    """Return (claim_ref, [skill_use_refs]) from a RunState after a metric emit."""
+    claim = next(r for r in rs.records if r.record_type == "claim")
+    skill_uses = [r for r in rs.records if r.record_type == "skill_use"]
+    return claim, skill_uses
+
+
 @requires_hamilton
 def test_cac_metric_emits_registered_input_claim(run_dir: Path) -> None:
     """E2E: cac_march computes CAC and the hook emits a registered_input claim."""
@@ -99,8 +106,8 @@ def test_cac_metric_emits_registered_input_claim(run_dir: Path) -> None:
 
     assert out["cac_march"] == pytest.approx(1000.0)  # 3000 KES / 3 new customers
 
-    assert len(rs.records) == 1
-    rec = read_record(run_dir, rs.records[0].record_id)
+    claim_ref, _ = _find_claim(rs)
+    rec = read_record(run_dir, claim_ref.record_id)
 
     # valid id, asserted value carried as a field, and provenance is over live rows
     assert rec["claim_id"] == "DOCK-D-001"
@@ -108,6 +115,27 @@ def test_cac_metric_emits_registered_input_claim(run_dir: Path) -> None:
     assert rec["fields"]["cac_kes"]["value"] == pytest.approx(1000.0)
     assert rec["fields"]["cac_kes"]["fmt_hint"] == ",.0f"
     assert rec["data_fingerprint_source"] == "registered_input"
+
+
+@requires_hamilton
+def test_cac_metric_emits_skill_use_chain(run_dir: Path) -> None:
+    """Item 1: the claim cites a real skill_use record capturing the input rows."""
+    from insight_kit.examples import cac_metric
+    from insight_kit.integrations.hamilton import build_driver
+
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [cac_metric])
+    dr.execute(["cac_march"], inputs={"orders_rows": _orders(), "spend_rows": _spend()})
+
+    claim_ref, skill_uses = _find_claim(rs)
+    assert len(skill_uses) == 1  # the extraction record
+    su = read_record(run_dir, skill_uses[0].record_id)
+    assert su["tool"] == "hamilton"
+    assert "spend_rows" in su["source"]  # the upstream inputs are named as the source
+
+    claim = read_record(run_dir, claim_ref.record_id)
+    # the claim cites the skill_use record — provenance is a chain, not just a fingerprint
+    assert skill_uses[0].record_id in claim["cites"]
 
 
 @requires_hamilton
@@ -120,11 +148,40 @@ def test_cac_selection_filter_recorded(run_dir: Path) -> None:
     dr = build_driver(rs, run_dir, [cac_metric])
     dr.execute(["cac_march"], inputs={"orders_rows": _orders(), "spend_rows": _spend()})
 
-    rec = read_record(run_dir, rs.records[0].record_id)
+    claim_ref, _ = _find_claim(rs)
+    rec = read_record(run_dir, claim_ref.record_id)
     sel = rec["selection"]
     assert sel["grain"] == "month"
     assert sel["date_window"] == "2026-03-01/2026-03-31"
     assert sel["filters"] == {"customer_order_index": "1"}
+
+
+@requires_hamilton
+def test_metric_path_is_generic_mer(run_dir: Path) -> None:
+    """Genericity proof: a different metric (MER, a ratio) uses the SAME adapter.
+
+    MER omits ik_claim_id, so the adapter's id generator runs end to end. No engine
+    change distinguishes MER from CAC — only the tags and the formula differ.
+    """
+    from insight_kit.examples import mer_metric
+    from insight_kit.integrations.hamilton import build_driver
+
+    revenue = pa.table({"day": ["2026-03-10", "2026-03-20"], "revenue_kes": [8000, 4000]})
+    spend = pa.table({"day": ["2026-03-10", "2026-03-20"], "spend_kes": [2000, 2000]})
+
+    rs = RunState(run_dir=run_dir)
+    dr = build_driver(rs, run_dir, [mer_metric])
+    out = dr.execute(["mer_march"], inputs={"revenue_rows": revenue, "spend_rows": spend})
+
+    assert out["mer_march"] == pytest.approx(3.0)  # 12000 / 4000
+
+    claim_ref, skill_uses = _find_claim(rs)
+    rec = read_record(run_dir, claim_ref.record_id)
+    assert CLAIM_ID_REGEX.match(rec["claim_id"])  # generated id is gate-valid
+    assert rec["fields"]["mer"]["value"] == pytest.approx(3.0)
+    assert rec["fields"]["mer"]["fmt_hint"] == ".2f"
+    assert rec["data_fingerprint_source"] == "registered_input"
+    assert len(skill_uses) == 1 and skill_uses[0].record_id in rec["cites"]
 
 
 # ---------------------------------------------------------------------------
