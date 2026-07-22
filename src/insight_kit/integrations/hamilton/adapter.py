@@ -14,6 +14,8 @@ Hamilton DAG still surfaces the error to the caller.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -268,7 +270,14 @@ class InsightKitHook(NodeExecutionHook):
         if not success:
             return
 
-        # On success: emit a claim record for nodes tagged with claim_tier.
+        # On success: hardened metric path — a node tagged ik_emit="metric"
+        # emits a typed claim whose value is the metric and whose registered
+        # input is the node's own input rows (V22 registered_input).
+        if node_tags.get("ik_emit") == "metric":
+            self._emit_metric_from_node(node_name, result, node_kwargs, node_tags)
+
+        # On success: legacy statement path — a node tagged claim_tier emits a
+        # statement claim. Independent of the metric path above.
         if node_tags.get("claim_tier"):
             self._emit_claim_from_node(node_name, result, node_tags)
 
@@ -291,6 +300,174 @@ class InsightKitHook(NodeExecutionHook):
             return
 
         self._emit_claim(claim_id, claim_statement, tier=claim_tier, node_name=node_name)
+
+    # ---------- hardened metric emit (ik_emit="metric") ----------
+
+    def _emit_metric_from_node(
+        self,
+        node_name: str,
+        result: Any,
+        node_kwargs: dict[str, Any],
+        node_tags: dict[str, Any],
+    ) -> None:
+        """Emit a typed metric claim, fingerprinting the node's input rows (V22).
+
+        A node tagged ``ik_emit="metric"`` asserts a measured value. The claim's
+        registered input is the node's own input rows (``node_kwargs``), so the
+        fingerprint is over *values*, not source text — a CAC that was not
+        computed from live rows (a hardcoded literal, a value read off code) has
+        no registered input, lands as ``data_fingerprint_source=payload``, and
+        cannot publish (T7). That is the P1 "verdict-from-proxy" guard.
+
+        Tags consumed:
+          ik_metric     — field name for the asserted value (default: slug(node)).
+          ik_claim_id   — explicit gate claim_id; else generated from namespace+tier.
+          ik_namespace  — 2-5 letter namespace for a generated id (default "IK").
+          ik_id_tier    — id-grammar tier token D|R|C|I|V|X|ETL_[RCM] (default "D").
+          ik_fmt        — fmt_hint carried on the field.
+          ik_tier       — gate lifecycle tier draft|published|critic (default draft).
+          ik_grain / ik_date_window / ik_baseline / ik_filters — selection params (V15).
+        """
+        metric = node_tags.get("ik_metric") or _slug(node_name)
+        claim_id = self._gen_metric_claim_id(
+            node_tags.get("ik_namespace", "IK"),
+            node_tags.get("ik_id_tier", "D"),
+            node_name,
+            node_tags.get("ik_claim_id"),
+        )
+        value = self._extract_metric_value(result, metric)
+        fields: dict[str, Any] = {
+            metric: {"value": value, "fmt_hint": node_tags.get("ik_fmt")},
+            "node_id": {"value": node_name, "fmt_hint": None},
+        }
+        selection = self._build_selection(node_tags)
+        input_data = self._rows_as_input_data(node_kwargs)
+        gate_tier = self._to_gate_tier(node_tags.get("ik_tier", "draft"))
+
+        try:
+            ik_claim_emit(
+                claim_id,
+                fields,
+                tier=gate_tier,
+                selection=selection,
+                run_state=self.run_state,
+                run_dir=self.run_dir,
+                input_data=input_data,
+            )
+            logger.info(
+                "metric.claim.emitted",
+                claim_id=claim_id,
+                node=node_name,
+                metric=metric,
+                value=value,
+                registered_input=input_data is not None,
+                tier=gate_tier,
+            )
+        except ValidationError as e:
+            logger.error("metric.claim.rejected", claim_id=claim_id, node=node_name, error=str(e))
+        except Exception as e:  # emit failure must never abort the DAG
+            logger.error("metric.claim.failed", claim_id=claim_id, node=node_name, error=str(e))
+
+    # id-grammar tier tokens accepted by CLAIM_ID_REGEX (libs.validation).
+    _ID_TIERS: frozenset[str] = frozenset(
+        {"D", "R", "C", "I", "V", "X", "ETL_R", "ETL_C", "ETL_M"}
+    )
+
+    @classmethod
+    def _gen_metric_claim_id(
+        cls,
+        namespace: str,
+        id_tier: str,
+        node_name: str,
+        explicit: str | None = None,
+    ) -> str:
+        """Generate a claim_id that satisfies the gate grammar.
+
+        Grammar (libs.validation.CLAIM_ID_REGEX):
+            ^[A-Z]{2,5}-(D|R|C|I|V|X|ETL_[RCM])-\\d{3,}$
+
+        Explicit > generated. A generated id derives a stable 3-digit sequence
+        from a hash of the node name so the same node yields the same id across
+        runs without shared counter state.
+        """
+        if explicit:
+            return explicit
+        ns = re.sub(r"[^A-Z]", "", (namespace or "").upper())[:5]
+        if len(ns) < 2:
+            ns = "IK"
+        tier = id_tier if id_tier in cls._ID_TIERS else "D"
+        num = int(hashlib.sha256(node_name.encode()).hexdigest()[:6], 16) % 900 + 100
+        return f"{ns}-{tier}-{num:03d}"
+
+    @staticmethod
+    def _extract_metric_value(result: Any, metric: str) -> Any:
+        """Pull the asserted scalar from a metric node's return.
+
+        Accepts a plain number (preferred), or an Arrow-convertible table with a
+        column named `metric` (last row wins). Falls back to str() for anything
+        else so the claim still records something inspectable.
+        """
+        if isinstance(result, bool):
+            return result
+        if isinstance(result, (int, float)):
+            return result
+        arrow = _to_arrow(result)
+        if arrow is not None and metric in getattr(arrow, "column_names", []):
+            col = arrow.column(metric).to_pylist()
+            if col:
+                return col[-1]
+        if isinstance(result, str):
+            return result
+        return str(result)
+
+    @staticmethod
+    def _build_selection(node_tags: dict[str, Any]) -> dict[str, Any] | None:
+        """Assemble explicit SelectionParams (V15) from ik_* tags.
+
+        `ik_filters` is a comma-separated `k=v` string (e.g.
+        "customer_order_index=1,channel=meta") parsed into a filters dict.
+        Returns None when no selection tags are present.
+        """
+        sel: dict[str, Any] = {}
+        if node_tags.get("ik_grain"):
+            sel["grain"] = node_tags["ik_grain"]
+        if node_tags.get("ik_date_window"):
+            sel["date_window"] = node_tags["ik_date_window"]
+        if node_tags.get("ik_baseline"):
+            sel["baseline"] = node_tags["ik_baseline"]
+        raw_filters = node_tags.get("ik_filters")
+        if raw_filters:
+            fdict: dict[str, str] = {}
+            for part in str(raw_filters).split(","):
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    fdict[k.strip()] = v.strip()
+            if fdict:
+                sel["filters"] = fdict
+        return sel or None
+
+    @staticmethod
+    def _rows_as_input_data(node_kwargs: dict[str, Any]) -> dict[str, Any] | None:
+        """Build a registered-input dict from a node's input rows (V22).
+
+        Each Arrow-convertible input becomes a JSON-safe column dict; scalar
+        inputs pass through. When nothing convertible is present the result is
+        None — so the claim falls back to payload provenance and cannot publish,
+        which is the correct outcome for a value with no live upstream rows.
+        """
+        data: dict[str, Any] = {}
+        for name, val in node_kwargs.items():
+            arrow = _to_arrow(val)
+            if arrow is not None:
+                try:
+                    # json round-trip with default=str guarantees serializability
+                    # (e.g. Arrow date/timestamp cells) before the gate fingerprints it.
+                    data[name] = json.loads(json.dumps(arrow.to_pydict(), default=str))
+                except Exception as e:
+                    logger.warning("metric.input_rows_skipped", input=name, error=str(e))
+            elif val is None or isinstance(val, (int, float, str, bool)):
+                data[name] = val
+        return data or None
 
     # ---------- claim id generation ----------
 
