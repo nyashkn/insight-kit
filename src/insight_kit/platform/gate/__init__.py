@@ -35,6 +35,9 @@ Public API:
   Available-endpoints index helpers (T31, I.cites, V20):
     endpoint_index_path, write_endpoint_index, read_endpoint_index
 
+  Deterministic DAG lineage read-back (item 7, I.lineage):
+    lineage_of, trace_to_rows, LineageTrace, LineageNotRecordedError
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
@@ -78,6 +81,12 @@ from insight_kit.platform.gate.graph_query import (
     AdjacencyNode,
     GraphAdjacency,
     query_cites,
+)
+from insight_kit.platform.gate.lineage import (
+    LineageNotRecordedError,
+    LineageTrace,
+    lineage_of,
+    trace_to_rows,
 )
 from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter, VegaLiteAdapter
 from insight_kit.platform.gate.runcheck import (
@@ -138,6 +147,8 @@ __all__ = [
     "GraphAdjacency",
     "IntentPayload",
     "InterventionRecord",
+    "LineageNotRecordedError",
+    "LineageTrace",
     "ManifestError",
     "MarkdownVegaAdapter",
     "ProvisionalFeature",
@@ -171,11 +182,13 @@ __all__ = [
     "ik_run_check",
     "ik_skill_use_emit",
     "ik_utility_verdict",
+    "lineage_of",
     "load_claims_index",
     "parse_refs",
     "query_cites",
     "read_endpoint_index",
     "run_render_audit",
+    "trace_to_rows",
     "verify_chart_bindings",
     "write_endpoint_index",
 ]

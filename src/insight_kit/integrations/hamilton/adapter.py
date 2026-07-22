@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
-from hamilton.lifecycle import NodeExecutionHook
+from hamilton.lifecycle import GraphExecutionHook, NodeExecutionHook
 
 from insight_kit.libs.validation import ValidationError
 from insight_kit.platform.gate import (
@@ -112,13 +112,21 @@ def compute_h_dlt_fingerprint(resource_name: str, schema: str) -> str:
 # ---------- InsightKitHook ----------
 
 
-class InsightKitHook(NodeExecutionHook):
+class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
     """Hamilton NodeExecutionHook adapter binding @node lifecycle to the L1 gate.
 
     The hook holds a `RunState` accumulator and a run directory. Every claim a
     tagged node produces is funnelled through `ik_claim_emit` — the same frozen
     gate every other writer uses (V1). Call `finalize()` once the DAG run is
     complete to seal the RunState (V10).
+
+    Item 7 (deterministic lineage): the hook also implements GraphExecutionHook
+    so it sees the compiled `HamiltonGraph` before execution. The per-node
+    dependency map derived from that graph is code-derived — the same function
+    signatures Hamilton compiled, not prose or heuristics — and each metric
+    claim carries its node's full transitive upstream closure as a `lineage`
+    field, with the extraction skill_use snapshot carrying the same trace next
+    to the captured rows.
     """
 
     def __init__(self, run_state: RunState, run_dir: Path | str) -> None:
@@ -131,6 +139,76 @@ class InsightKitHook(NodeExecutionHook):
         """
         self.run_state = run_state
         self.run_dir = Path(run_dir)
+        # Item 7 — populated by run_before_graph_execution from the compiled graph.
+        self._graph_deps: dict[str, tuple[str, ...]] = {}
+        self._graph_external: frozenset[str] = frozenset()
+
+    # ---------- graph lineage capture (item 7) ----------
+
+    def run_before_graph_execution(
+        self,
+        *,
+        graph: Any,
+        final_vars: list[str],
+        inputs: dict[str, Any],
+        overrides: dict[str, Any],
+        execution_path: Any,
+        run_id: str,
+        **future_kwargs: Any,
+    ) -> None:
+        """Capture the compiled graph's dependency structure before execution.
+
+        `graph` is a hamilton.graph_types.HamiltonGraph; each HamiltonNode names
+        its required/optional dependencies, so the upstream map is deterministic
+        (derived from function signatures, not from execution traces).
+        """
+        deps: dict[str, tuple[str, ...]] = {}
+        external: set[str] = set()
+        for node in graph.nodes:
+            required = set(getattr(node, "required_dependencies", ()) or ())
+            optional = set(getattr(node, "optional_dependencies", ()) or ())
+            deps[node.name] = tuple(sorted(required | optional))
+            if getattr(node, "is_external_input", False):
+                external.add(node.name)
+        self._graph_deps = deps
+        self._graph_external = frozenset(external)
+        logger.debug("graph.lineage_captured", nodes=len(deps), external=len(external))
+
+    def run_after_graph_execution(
+        self,
+        *,
+        graph: Any,
+        success: bool,
+        error: Exception | None,
+        run_id: str,
+        **future_kwargs: Any,
+    ) -> None:
+        """No-op: the captured dependency map is kept for post-run queries."""
+
+    def _lineage_for(self, node_name: str) -> dict[str, Any] | None:
+        """Transitive upstream closure of a node from the captured graph.
+
+        Returns None when no graph was captured (e.g. the hook is exercised
+        outside a driver run) — the claim then simply carries no lineage field,
+        it is never guessed.
+        """
+        if node_name not in self._graph_deps:
+            return None
+        direct = list(self._graph_deps[node_name])
+        seen: set[str] = set()
+        stack = list(direct)
+        while stack:
+            upstream = stack.pop()
+            if upstream in seen:
+                continue
+            seen.add(upstream)
+            stack.extend(self._graph_deps.get(upstream, ()))
+        return {
+            "node": node_name,
+            "direct_upstream": direct,
+            "upstream_closure": sorted(seen),
+            "external_inputs": sorted(n for n in seen if n in self._graph_external),
+        }
 
     # Gate tier values accepted by the L1 schema (ClaimTier enum).
     _GATE_TIERS: frozenset[str] = frozenset({"draft", "published"})
@@ -346,6 +424,12 @@ class InsightKitHook(NodeExecutionHook):
             metric: {"value": value, "fmt_hint": node_tags.get("ik_fmt")},
             "node_id": {"value": node_name, "fmt_hint": None},
         }
+        # Item 7 — deterministic lineage: the node's transitive upstream closure
+        # from the compiled graph rides on the claim itself, so the ProvenanceRail
+        # (and any critic) can see where the number came from without re-running.
+        lineage = self._lineage_for(node_name)
+        if lineage is not None:
+            fields["lineage"] = {"value": lineage, "fmt_hint": None}
         selection = self._build_selection(node_tags)
         input_data = self._rows_as_input_data(node_kwargs)
         gate_tier = self._to_gate_tier(node_tags.get("ik_tier", "draft"))
@@ -356,7 +440,7 @@ class InsightKitHook(NodeExecutionHook):
         # convertible input rows emits a claim-only record (payload provenance),
         # which is the correct P1 outcome (a value with no live upstream).
         cites = self._emit_metric_provenance(
-            node_name, node_kwargs, input_data, node_tags, claim_id
+            node_name, node_kwargs, input_data, node_tags, claim_id, lineage=lineage
         )
 
         try:
@@ -392,13 +476,18 @@ class InsightKitHook(NodeExecutionHook):
         input_data: dict[str, Any] | None,
         node_tags: dict[str, Any],
         claim_id: str,
+        *,
+        lineage: dict[str, Any] | None = None,
     ) -> list[str]:
         """Emit the knowledge records a metric claim cites (item 1).
 
         Returns the list of record_ids the claim should cite:
           * skill_use — the data extraction: the node's input rows as the
             captured snapshot, tool="hamilton", source = the upstream node names.
-            Emitted whenever live input rows are present.
+            Emitted whenever live input rows are present. The snapshot carries
+            the rows under ``input_rows`` and (item 7) the node's deterministic
+            upstream ``lineage`` next to them, so a trace from claim → rows →
+            graph position needs no re-execution.
           * research  — optional: only when the node is tagged with
             ``ik_research_source`` (and/or ``ik_research_query``), capturing an
             external doc/source the metric relied on. A pure compute node has no
@@ -430,14 +519,20 @@ class InsightKitHook(NodeExecutionHook):
             except Exception as e:
                 logger.error("metric.research.failed", node=node_name, error=str(e))
 
-        # skill_use record — the extraction the claim is computed from.
+        # skill_use record — the extraction the claim is computed from. The
+        # snapshot pairs the captured rows with the node's graph lineage; the
+        # input_data= param stays the bare rows so the data fingerprint is over
+        # values only (V22), independent of graph shape.
+        snapshot: dict[str, Any] = {"input_rows": input_data}
+        if lineage is not None:
+            snapshot["lineage"] = lineage
         try:
             skill_ref = ik_skill_use_emit(
                 f"{claim_id}-EXTRACT",
                 f"hamilton:{node_name}",
                 "hamilton",
                 source,
-                snapshot=input_data,
+                snapshot=snapshot,
                 cites=cites or None,
                 run_state=self.run_state,
                 run_dir=self.run_dir,
