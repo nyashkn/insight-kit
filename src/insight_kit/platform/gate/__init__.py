@@ -35,6 +35,9 @@ Public API:
   Available-endpoints index helpers (T31, I.cites, V20):
     endpoint_index_path, write_endpoint_index, read_endpoint_index
 
+  Deterministic DAG lineage read-back (item 7, I.lineage):
+    lineage_of, trace_to_rows, LineageTrace, LineageNotRecordedError
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
@@ -79,6 +82,12 @@ from insight_kit.platform.gate.graph_query import (
     GraphAdjacency,
     query_cites,
 )
+from insight_kit.platform.gate.lineage import (
+    LineageNotRecordedError,
+    LineageTrace,
+    lineage_of,
+    trace_to_rows,
+)
 from insight_kit.platform.gate.render_adapters import MarkdownVegaAdapter, VegaLiteAdapter
 from insight_kit.platform.gate.runcheck import (
     CheckEndpointCoverageResult,
@@ -87,7 +96,9 @@ from insight_kit.platform.gate.runcheck import (
     check_annual_equals_monthly_sum,
     check_coverage_from_run,
     check_endpoint_coverage_gap,
+    check_ratio_identity,
     derive_used_endpoints,
+    emit_reconciliation_critique,
     ik_run_check,
 )
 from insight_kit.platform.gate.runstate import (
@@ -136,6 +147,8 @@ __all__ = [
     "GraphAdjacency",
     "IntentPayload",
     "InterventionRecord",
+    "LineageNotRecordedError",
+    "LineageTrace",
     "ManifestError",
     "MarkdownVegaAdapter",
     "ProvisionalFeature",
@@ -155,8 +168,10 @@ __all__ = [
     "check_annual_equals_monthly_sum",
     "check_coverage_from_run",
     "check_endpoint_coverage_gap",
+    "check_ratio_identity",
     "compose_record",
     "derive_used_endpoints",
+    "emit_reconciliation_critique",
     "endpoint_index_path",
     "finalizeRun",
     "ik_acquire",
@@ -167,11 +182,13 @@ __all__ = [
     "ik_run_check",
     "ik_skill_use_emit",
     "ik_utility_verdict",
+    "lineage_of",
     "load_claims_index",
     "parse_refs",
     "query_cites",
     "read_endpoint_index",
     "run_render_audit",
+    "trace_to_rows",
     "verify_chart_bindings",
     "write_endpoint_index",
 ]

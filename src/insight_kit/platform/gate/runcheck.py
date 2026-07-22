@@ -209,6 +209,129 @@ def check_annual_equals_monthly_sum(
     )
 
 
+def check_ratio_identity(
+    ratio: float,
+    numerator: float,
+    denominator: float,
+    *,
+    tolerance: float = 0.01,
+    label: str = "ratio",
+) -> CrossCheckResult:
+    """Reconciliation identity for a ratio/product metric (deductive check).
+
+    Generalizes ``check_annual_equals_monthly_sum`` from the additive identity
+    (total == Σ parts) to the ratio identity (ratio == numerator / denominator).
+    This covers the metric class the CAC/MER work lives in:
+
+        CAC == spend / new_customers
+        MER == revenue / ad_spend
+
+    Independently recomputing the ratio from its two component claims and
+    comparing to the asserted ratio catches the drift class where the headline
+    number and its components silently disagree (the CAC-1059-vs-1770 case).
+
+    A deductive identity: a violation is a proof of a bug, so the caller may
+    emit a *refuting* critique (see ``emit_reconciliation_critique``) that blocks
+    promotion — never merely a warning.
+
+    Args:
+        ratio:       the asserted ratio value under check.
+        numerator:   the asserted numerator (e.g. spend, revenue).
+        denominator: the asserted denominator (e.g. new_customers, ad_spend).
+        tolerance:   relative tolerance (fraction). Keep it per-metric and
+                     empirically calibrated — refunds/FX/timing give real
+                     identities structural slack (brief §04, guardrail 1).
+        label:       metric name for the message (descriptive).
+
+    Returns:
+        CrossCheckResult — passed True iff |ratio - numerator/denominator|
+        within tolerance. A zero denominator with a non-zero numerator is an
+        undefined ratio and always fails (rel_diff = inf).
+    """
+    if denominator == 0:
+        expected = 0.0 if numerator == 0 else float("inf")
+    else:
+        expected = numerator / denominator
+    actual = ratio
+    if expected in (0.0,):
+        rel_diff = 0.0 if actual == expected else float("inf")
+    elif expected == float("inf"):
+        rel_diff = float("inf")
+    else:
+        rel_diff = abs(actual - expected) / abs(expected)
+    passed = rel_diff <= tolerance
+    if passed:
+        message = (
+            f"{label}={actual} matches numerator/denominator "
+            f"({numerator}/{denominator}={expected}) within tolerance {tolerance}"
+        )
+    else:
+        message = (
+            f"{label}={actual} disagrees with numerator/denominator "
+            f"({numerator}/{denominator}={expected}); relative difference "
+            f"{rel_diff:.4f} exceeds tolerance {tolerance} — the headline value "
+            f"and its components disagree (reconciliation failure)"
+        )
+    return CrossCheckResult(
+        passed=passed,
+        expected=expected if expected != float("inf") else 0.0,
+        actual=actual,
+        rel_diff=rel_diff,
+        message=message,
+    )
+
+
+def emit_reconciliation_critique(
+    result: CrossCheckResult,
+    target_claim_record_id: str,
+    critic_claim_id: str,
+    *,
+    run_state: Any,
+    run_dir: Path | None = None,
+    statement: str | None = None,
+) -> Any:
+    """Turn a reconciliation verdict into a critic-tier claim (I.emit, T29).
+
+    A reconciliation always leaves an auditable verdict edge on the claim it
+    checked (constraint-library design: checks leave verdicts):
+      * passed  → a critic claim that ``supports`` the target.
+      * failed  → a critic claim that ``refutes`` the target. The refutes edge
+        is what the pulse/assembly step uses to block promotion to published.
+
+    Args:
+        result:                 the CrossCheckResult from a reconciliation check.
+        target_claim_record_id: content-addressed record_id of the claim checked
+                                (must already exist in run_dir as a claim record).
+        critic_claim_id:        gate-valid claim_id for the critic claim
+                                (e.g. "DEMO-C-001").
+        run_state:              RunState accumulator for the run.
+        run_dir:                run directory (resolved from env if None).
+        statement:              optional override for the critique statement;
+                                defaults to result.message.
+
+    Returns:
+        RecordRef for the emitted critic claim.
+    """
+    from insight_kit.platform.gate.emit import ik_claim_emit
+
+    fields = {
+        "reconciliation": {"value": statement or result.message, "fmt_hint": None},
+        "expected": {"value": result.expected, "fmt_hint": None},
+        "actual": {"value": result.actual, "fmt_hint": None},
+        "rel_diff": {"value": result.rel_diff, "fmt_hint": None},
+        "passed": {"value": result.passed, "fmt_hint": None},
+    }
+    return ik_claim_emit(
+        critic_claim_id,
+        fields,
+        tier="critic",
+        supports=[target_claim_record_id] if result.passed else None,
+        refutes=[target_claim_record_id] if not result.passed else None,
+        run_state=run_state,
+        run_dir=run_dir,
+    )
+
+
 # ---------------------------------------------------------------------------
 # T32 — endpoint coverage gap check (V16/I.runcheck)
 # ---------------------------------------------------------------------------

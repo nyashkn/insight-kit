@@ -147,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_init = sub.add_parser("init", help="scaffold .insight-kit/ in a project")
     p_init.add_argument("--path", default=".", help="project root (default: cwd)")
-    p_init.add_argument("--namespace", required=True, help="claim namespace prefix (e.g. DOCK, MD)")
+    p_init.add_argument("--namespace", required=True, help="claim namespace prefix (e.g. DEMO, MD)")
     p_init.add_argument("--force", action="store_true", help="overwrite existing .insight-kit/")
     p_init.set_defaults(func=cmd_init)
 
@@ -155,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     p_info.set_defaults(func=cmd_info)
 
     p_annotate = sub.add_parser("annotate", help="record binary annotation on a claim")
-    p_annotate.add_argument("claim_id", help="claim identifier (e.g. DOCK-D-001)")
+    p_annotate.add_argument("claim_id", help="claim identifier (e.g. DEMO-D-001)")
     p_annotate.add_argument(
         "--acted",
         action=argparse.BooleanOptionalAction,

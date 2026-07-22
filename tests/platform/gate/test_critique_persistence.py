@@ -24,7 +24,7 @@ from insight_kit.platform.gate.store import events_dir, record_path
 # Fixtures
 # ---------------------------------------------------------------------------
 
-CLAIM_ID = "DOCK-D-128"
+CLAIM_ID = "DEMO-D-128"
 FIELDS = {"value": 42}
 
 

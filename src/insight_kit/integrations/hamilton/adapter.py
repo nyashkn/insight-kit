@@ -14,14 +14,22 @@ Hamilton DAG still surfaces the error to the caller.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from pathlib import Path
 from typing import Any
 
 import structlog
-from hamilton.lifecycle import NodeExecutionHook
+from hamilton.lifecycle import GraphExecutionHook, NodeExecutionHook
 
 from insight_kit.libs.validation import ValidationError
-from insight_kit.platform.gate import RunState, finalizeRun, ik_claim_emit
+from insight_kit.platform.gate import (
+    RunState,
+    finalizeRun,
+    ik_claim_emit,
+    ik_research_emit,
+    ik_skill_use_emit,
+)
 
 logger = structlog.get_logger("insight_kit.hamilton")
 
@@ -104,25 +112,140 @@ def compute_h_dlt_fingerprint(resource_name: str, schema: str) -> str:
 # ---------- InsightKitHook ----------
 
 
-class InsightKitHook(NodeExecutionHook):
+class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
     """Hamilton NodeExecutionHook adapter binding @node lifecycle to the L1 gate.
 
     The hook holds a `RunState` accumulator and a run directory. Every claim a
     tagged node produces is funnelled through `ik_claim_emit` — the same frozen
     gate every other writer uses (V1). Call `finalize()` once the DAG run is
     complete to seal the RunState (V10).
+
+    Item 7 (deterministic lineage): the hook also implements GraphExecutionHook
+    so it sees the compiled `HamiltonGraph` before execution. The per-node
+    dependency map derived from that graph is code-derived — the same function
+    signatures Hamilton compiled, not prose or heuristics — and each metric
+    claim carries its node's full transitive upstream closure as a `lineage`
+    field, with the extraction skill_use snapshot carrying the same trace next
+    to the captured rows.
     """
 
-    def __init__(self, run_state: RunState, run_dir: Path | str) -> None:
+    def __init__(
+        self,
+        run_state: RunState,
+        run_dir: Path | str,
+        *,
+        emit_timestamp: str | None = None,
+    ) -> None:
         """Init the hook with a gate RunState + run directory.
 
         Args:
             run_state: gate RunState accumulator; records emitted by tagged nodes
                        are registered here.
             run_dir:   run directory the gate writes records under.
+            emit_timestamp: optional fixed ISO timestamp passed to knowledge-record
+                       emits. The gate folds emit time into record fingerprints, so
+                       the default (wall clock) makes record_ids per-run only;
+                       supply a fixed timestamp for cross-run reproducible ids
+                       (golden replays, cached pipelines).
         """
         self.run_state = run_state
         self.run_dir = Path(run_dir)
+        self.emit_timestamp = emit_timestamp
+        # Item 7 — populated by run_before_graph_execution from the compiled graph.
+        self._graph_deps: dict[str, tuple[str, ...]] = {}
+        self._graph_external: frozenset[str] = frozenset()
+        self._graph_overrides: frozenset[str] = frozenset()
+        # claim_ids already emitted by this hook — guards re-execute() on the same
+        # RunState from emitting orphaned provenance for a claim the gate rejects.
+        self._emitted_claim_ids: set[str] = set()
+
+    # ---------- graph lineage capture (item 7) ----------
+
+    def run_before_graph_execution(
+        self,
+        *,
+        graph: Any,
+        final_vars: list[str],
+        inputs: dict[str, Any],
+        overrides: dict[str, Any],
+        execution_path: Any,
+        run_id: str,
+        **future_kwargs: Any,
+    ) -> None:
+        """Capture the compiled graph's dependency structure before execution.
+
+        `graph` is a hamilton.graph_types.HamiltonGraph; each HamiltonNode names
+        its required/optional dependencies, so the upstream map is deterministic
+        (derived from function signatures, not from execution traces).
+        """
+        deps: dict[str, tuple[str, ...]] = {}
+        external: set[str] = set()
+        for node in graph.nodes:
+            required = set(getattr(node, "required_dependencies", ()) or ())
+            optional = set(getattr(node, "optional_dependencies", ()) or ())
+            deps[node.name] = tuple(sorted(required | optional))
+            if getattr(node, "is_external_input", False):
+                external.add(node.name)
+        self._graph_deps = deps
+        self._graph_external = frozenset(external)
+        # Execute-time overrides replace a node's computed value with a
+        # caller-supplied one — everything upstream of an overridden node is NOT
+        # read this run, so the closure walk must stop there (else the stamped
+        # lineage would assert sources that were never touched).
+        self._graph_overrides = frozenset((overrides or {}).keys())
+        logger.debug(
+            "graph.lineage_captured",
+            nodes=len(deps),
+            external=len(external),
+            overridden=sorted(self._graph_overrides),
+        )
+
+    def run_after_graph_execution(
+        self,
+        *,
+        graph: Any,
+        success: bool,
+        error: Exception | None,
+        run_id: str,
+        **future_kwargs: Any,
+    ) -> None:
+        """No-op: the captured dependency map is kept for post-run queries."""
+
+    def _lineage_for(self, node_name: str) -> dict[str, Any] | None:
+        """Transitive upstream closure of a node from the captured graph.
+
+        Returns None when no graph was captured (e.g. the hook is exercised
+        outside a driver run) — the claim then simply carries no lineage field,
+        it is never guessed.
+
+        Overridden nodes truncate the walk: an execute-time override replaces
+        that node's value with caller-supplied data, so its static upstreams
+        were never read this run. They are excluded from the closure and the
+        override point is recorded in ``overridden`` — a claim fed through an
+        override says so on its face instead of asserting the bypassed sources.
+        """
+        if node_name not in self._graph_deps:
+            return None
+        direct = list(self._graph_deps[node_name])
+        seen: set[str] = set()
+        overridden: set[str] = set()
+        stack = list(direct)
+        while stack:
+            upstream = stack.pop()
+            if upstream in seen:
+                continue
+            seen.add(upstream)
+            if upstream in self._graph_overrides:
+                overridden.add(upstream)
+                continue  # value came from the caller — do not walk past it
+            stack.extend(self._graph_deps.get(upstream, ()))
+        return {
+            "node": node_name,
+            "direct_upstream": direct,
+            "upstream_closure": sorted(seen),
+            "external_inputs": sorted(n for n in seen if n in self._graph_external),
+            "overridden": sorted(overridden),
+        }
 
     # Gate tier values accepted by the L1 schema (ClaimTier enum).
     _GATE_TIERS: frozenset[str] = frozenset({"draft", "published"})
@@ -268,7 +391,14 @@ class InsightKitHook(NodeExecutionHook):
         if not success:
             return
 
-        # On success: emit a claim record for nodes tagged with claim_tier.
+        # On success: hardened metric path — a node tagged ik_emit="metric"
+        # emits a typed claim whose value is the metric and whose registered
+        # input is the node's own input rows (V22 registered_input).
+        if node_tags.get("ik_emit") == "metric":
+            self._emit_metric_from_node(node_name, result, node_kwargs, node_tags)
+
+        # On success: legacy statement path — a node tagged claim_tier emits a
+        # statement claim. Independent of the metric path above.
         if node_tags.get("claim_tier"):
             self._emit_claim_from_node(node_name, result, node_tags)
 
@@ -291,6 +421,289 @@ class InsightKitHook(NodeExecutionHook):
             return
 
         self._emit_claim(claim_id, claim_statement, tier=claim_tier, node_name=node_name)
+
+    # ---------- hardened metric emit (ik_emit="metric") ----------
+
+    def _emit_metric_from_node(
+        self,
+        node_name: str,
+        result: Any,
+        node_kwargs: dict[str, Any],
+        node_tags: dict[str, Any],
+    ) -> None:
+        """Emit a typed metric claim, fingerprinting the node's input rows (V22).
+
+        A node tagged ``ik_emit="metric"`` asserts a measured value. The claim's
+        registered input is the node's own input rows (``node_kwargs``), so the
+        fingerprint is over *values*, not source text — a CAC that was not
+        computed from live rows (a hardcoded literal, a value read off code) has
+        no registered input, lands as ``data_fingerprint_source=payload``, and
+        cannot publish (T7). That is the P1 "verdict-from-proxy" guard.
+
+        Tags consumed:
+          ik_metric     — field name for the asserted value (default: slug(node)).
+          ik_claim_id   — explicit gate claim_id; else generated from namespace+tier.
+          ik_namespace  — 2-5 letter namespace for a generated id (default "IK").
+          ik_id_tier    — id-grammar tier token D|R|C|I|V|X|ETL_[RCM] (default "D").
+          ik_fmt        — fmt_hint carried on the field.
+          ik_tier       — gate lifecycle tier draft|published|critic (default draft).
+          ik_grain / ik_date_window / ik_baseline / ik_filters — selection params (V15).
+        """
+        metric = node_tags.get("ik_metric") or _slug(node_name)
+        claim_id = self._gen_metric_claim_id(
+            node_tags.get("ik_namespace", "IK"),
+            node_tags.get("ik_id_tier", "D"),
+            node_name,
+            node_tags.get("ik_claim_id"),
+        )
+        # Re-executing the same driver/RunState would re-derive this claim_id;
+        # the gate rejects the duplicate claim AFTER the provenance records land,
+        # orphaning them. Skip the whole emission up front instead — a re-run
+        # needs a fresh RunState/driver, not a silently half-written bundle.
+        if claim_id in self._emitted_claim_ids:
+            logger.warning(
+                "metric.claim.duplicate_skipped",
+                claim_id=claim_id,
+                node=node_name,
+                hint="one execute() per RunState — build a fresh driver/RunState to re-run",
+            )
+            return
+        value = self._extract_metric_value(result, metric)
+        fields: dict[str, Any] = {
+            metric: {"value": value, "fmt_hint": node_tags.get("ik_fmt")},
+            "node_id": {"value": node_name, "fmt_hint": None},
+        }
+        if node_tags.get("ik_statement"):
+            fields["statement"] = {"value": node_tags["ik_statement"], "fmt_hint": None}
+        # Item 7 — deterministic lineage: the node's transitive upstream closure
+        # from the compiled graph rides on the claim itself, so the ProvenanceRail
+        # (and any critic) can see where the number came from without re-running.
+        lineage = self._lineage_for(node_name)
+        if lineage is not None:
+            fields["lineage"] = {"value": lineage, "fmt_hint": None}
+        selection = self._build_selection(node_tags)
+        input_data = self._rows_as_input_data(node_kwargs)
+        gate_tier = self._to_gate_tier(node_tags.get("ik_tier", "draft"))
+
+        # Provenance chain (item 1): when the node has live input rows, emit the
+        # knowledge records the claim cites, so the claim is backed by a real
+        # research/skill_use chain — not just a fingerprint. A node with no
+        # convertible input rows emits a claim-only record (payload provenance),
+        # which is the correct P1 outcome (a value with no live upstream).
+        cites = self._emit_metric_provenance(
+            node_name, node_kwargs, input_data, node_tags, claim_id, lineage=lineage
+        )
+
+        try:
+            ik_claim_emit(
+                claim_id,
+                fields,
+                tier=gate_tier,
+                selection=selection,
+                cites=cites or None,
+                run_state=self.run_state,
+                run_dir=self.run_dir,
+                input_data=input_data,
+            )
+            self._emitted_claim_ids.add(claim_id)
+            logger.info(
+                "metric.claim.emitted",
+                claim_id=claim_id,
+                node=node_name,
+                metric=metric,
+                value=value,
+                registered_input=input_data is not None,
+                cites=cites,
+                tier=gate_tier,
+            )
+        except ValidationError as e:
+            logger.error("metric.claim.rejected", claim_id=claim_id, node=node_name, error=str(e))
+        except Exception as e:  # emit failure must never abort the DAG
+            logger.error("metric.claim.failed", claim_id=claim_id, node=node_name, error=str(e))
+
+    def _emit_metric_provenance(
+        self,
+        node_name: str,
+        node_kwargs: dict[str, Any],
+        input_data: dict[str, Any] | None,
+        node_tags: dict[str, Any],
+        claim_id: str,
+        *,
+        lineage: dict[str, Any] | None = None,
+    ) -> list[str]:
+        """Emit the knowledge records a metric claim cites (item 1).
+
+        Returns the list of record_ids the claim should cite:
+          * skill_use — the data extraction: the node's input rows as the
+            captured snapshot, tool="hamilton", source = the upstream node names.
+            Emitted whenever live input rows are present. The snapshot carries
+            the rows under ``input_rows`` and (item 7) the node's deterministic
+            upstream ``lineage`` next to them, so a trace from claim → rows →
+            graph position needs no re-execution.
+          * research  — optional: only when the node is tagged with
+            ``ik_research_source`` (and/or ``ik_research_query``), capturing an
+            external doc/source the metric relied on. A pure compute node has no
+            research, so none is faked.
+
+        Emit failures here are logged and swallowed — a missing knowledge record
+        degrades the claim to uncited, it must not abort the DAG.
+        """
+        if not input_data:
+            return []  # no live rows → no knowledge chain (payload claim)
+
+        cites: list[str] = []
+        source = ",".join(node_kwargs.keys()) or node_name
+
+        # Optional research record (only if the node declares an external source).
+        research_source = node_tags.get("ik_research_source")
+        if research_source:
+            try:
+                research_ref = ik_research_emit(
+                    f"{claim_id}-RESEARCH",
+                    node_tags.get("ik_research_ref", f"research:{node_name}"),
+                    node_tags.get("ik_research_query", ""),
+                    research_source,
+                    snapshot={"source": research_source, "node": node_name},
+                    timestamp=self.emit_timestamp,
+                    run_state=self.run_state,
+                    run_dir=self.run_dir,
+                )
+                cites.append(research_ref.record_id)
+            except Exception as e:
+                logger.error("metric.research.failed", node=node_name, error=str(e))
+
+        # skill_use record — the extraction the claim is computed from. The
+        # snapshot pairs the captured rows with the node's graph lineage; the
+        # input_data= param stays the bare rows so the data fingerprint is over
+        # values only (V22), independent of graph shape.
+        snapshot: dict[str, Any] = {"input_rows": input_data}
+        if lineage is not None:
+            snapshot["lineage"] = lineage
+        try:
+            skill_ref = ik_skill_use_emit(
+                f"{claim_id}-EXTRACT",
+                f"hamilton:{node_name}",
+                "hamilton",
+                source,
+                snapshot=snapshot,
+                timestamp=self.emit_timestamp,
+                cites=cites or None,
+                run_state=self.run_state,
+                run_dir=self.run_dir,
+                input_data=input_data,
+            )
+            cites.append(skill_ref.record_id)
+        except Exception as e:
+            logger.error("metric.skill_use.failed", node=node_name, error=str(e))
+
+        return cites
+
+    # id-grammar tier tokens accepted by CLAIM_ID_REGEX (libs.validation).
+    _ID_TIERS: frozenset[str] = frozenset(
+        {"D", "R", "C", "I", "V", "X", "ETL_R", "ETL_C", "ETL_M"}
+    )
+
+    @classmethod
+    def _gen_metric_claim_id(
+        cls,
+        namespace: str,
+        id_tier: str,
+        node_name: str,
+        explicit: str | None = None,
+    ) -> str:
+        """Generate a claim_id that satisfies the gate grammar.
+
+        Grammar (libs.validation.CLAIM_ID_REGEX):
+            ^[A-Z]{2,5}-(D|R|C|I|V|X|ETL_[RCM])-\\d{3,}$
+
+        Explicit > generated. A generated id derives a stable 3-digit sequence
+        from a hash of the node name so the same node yields the same id across
+        runs without shared counter state.
+        """
+        if explicit:
+            return explicit
+        ns = re.sub(r"[^A-Z]", "", (namespace or "").upper())[:5]
+        if len(ns) < 2:
+            ns = "IK"
+        tier = id_tier if id_tier in cls._ID_TIERS else "D"
+        num = int(hashlib.sha256(node_name.encode()).hexdigest()[:6], 16) % 900 + 100
+        return f"{ns}-{tier}-{num:03d}"
+
+    @staticmethod
+    def _extract_metric_value(result: Any, metric: str) -> Any:
+        """Pull the asserted scalar from a metric node's return.
+
+        Accepts a plain number (preferred), or an Arrow-convertible table with a
+        column named `metric` (last row wins). Falls back to str() for anything
+        else so the claim still records something inspectable.
+        """
+        if isinstance(result, bool):
+            return result
+        if isinstance(result, (int, float)):
+            return result
+        arrow = _to_arrow(result)
+        if arrow is not None and metric in getattr(arrow, "column_names", []):
+            col = arrow.column(metric).to_pylist()
+            if col:
+                return col[-1]
+        if isinstance(result, str):
+            return result
+        return str(result)
+
+    @staticmethod
+    def _build_selection(node_tags: dict[str, Any]) -> dict[str, Any] | None:
+        """Assemble explicit SelectionParams (V15) from ik_* tags.
+
+        `ik_filters` is a comma-separated `k=v` string (e.g.
+        "customer_order_index=1,channel=meta") parsed into a filters dict.
+        Returns None when no selection tags are present.
+        """
+        sel: dict[str, Any] = {}
+        if node_tags.get("ik_grain"):
+            sel["grain"] = node_tags["ik_grain"]
+        if node_tags.get("ik_date_window"):
+            sel["date_window"] = node_tags["ik_date_window"]
+        if node_tags.get("ik_baseline"):
+            sel["baseline"] = node_tags["ik_baseline"]
+        raw_filters = node_tags.get("ik_filters")
+        if raw_filters:
+            fdict: dict[str, str] = {}
+            for part in str(raw_filters).split(","):
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    fdict[k.strip()] = v.strip()
+            if fdict:
+                sel["filters"] = fdict
+        return sel or None
+
+    @staticmethod
+    def _rows_as_input_data(node_kwargs: dict[str, Any]) -> dict[str, Any] | None:
+        """Build a registered-input dict from a node's input rows (V22).
+
+        Each Arrow-convertible input becomes a JSON-safe column dict; scalar
+        inputs ride along ONLY next to at least one row table. A node fed
+        nothing but scalars (e.g. ``cac(spend: float, customers: float)``) gets
+        None — payload provenance, cannot publish. Bare literals are exactly
+        the P1 verdict-from-proxy shape; letting them register as live input
+        would launder a hardcoded number into publishable provenance.
+        """
+        data: dict[str, Any] = {}
+        has_rows = False
+        for name, val in node_kwargs.items():
+            arrow = _to_arrow(val)
+            if arrow is not None:
+                try:
+                    # json round-trip with default=str guarantees serializability
+                    # (e.g. Arrow date/timestamp cells) before the gate fingerprints it.
+                    data[name] = json.loads(json.dumps(arrow.to_pydict(), default=str))
+                    has_rows = True
+                except Exception as e:
+                    logger.warning("metric.input_rows_skipped", input=name, error=str(e))
+            elif val is None or isinstance(val, (int, float, str, bool)):
+                data[name] = val
+        if not has_rows:
+            return None
+        return data
 
     # ---------- claim id generation ----------
 
@@ -323,13 +736,26 @@ class InsightKitHook(NodeExecutionHook):
 # ---------- driver builder ----------
 
 
-def build_driver(run_state: RunState, run_dir: Path | str, modules: list[Any]) -> Any:
+def build_driver(
+    run_state: RunState,
+    run_dir: Path | str,
+    modules: list[Any],
+    *,
+    emit_timestamp: str | None = None,
+) -> Any:
     """Construct a Hamilton Driver with a gate-backed InsightKitHook adapter.
+
+    One driver + RunState pair per execute(): re-running a metric node against
+    the same RunState re-derives the same claim_id, which the hook skips (with
+    a warning) rather than emitting a duplicate the gate would reject.
 
     Args:
         run_state: gate RunState accumulator the hook emits records into.
         run_dir:   run directory the gate writes records under.
         modules:   Hamilton modules (list of Python modules or module objects).
+        emit_timestamp: optional fixed ISO timestamp for knowledge-record emits —
+                   makes record ids reproducible across identical runs (see
+                   InsightKitHook).
 
     Returns:
         hamilton.driver.Driver instance ready to execute.
@@ -355,7 +781,7 @@ def build_driver(run_state: RunState, run_dir: Path | str, modules: list[Any]) -
     builder = (
         driver.Builder()
         .with_modules(*modules)
-        .with_adapters(InsightKitHook(run_state, run_dir))
+        .with_adapters(InsightKitHook(run_state, run_dir, emit_timestamp=emit_timestamp))
     )
 
     dr = builder.build()
