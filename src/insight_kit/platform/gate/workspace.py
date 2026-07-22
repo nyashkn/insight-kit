@@ -13,7 +13,11 @@ Invariants carried over from the single-run gate:
   * V3 spirit — new_run_dir never adopts an existing bundle silently
     (a dir with records/ or run.json raises FileExistsError).
   * V7 analog — runs.jsonl is regenerable from runs/*/run.json bundles via
-    reindex_runs; rebuilt rows are byte-identical to seal-written rows.
+    reindex_runs; row CONTENT is identical per run, file order is
+    canonicalized to (completedAt, run_id), and a second reindex is
+    byte-identical to the first.  File order in runs.jsonl (append = seal
+    order) is a storage detail — the canonical order every query sees is
+    (completedAt, run_id).
   * V10 mirror — seal_run is idempotent: a run_id already in the manifest
     returns its existing entry, never a duplicate row.
   * V16 — guard_republished_claims records the critique event, then enforces
@@ -37,18 +41,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from insight_kit.libs.validation import ValidationError as LayerAValidationError
 from insight_kit.platform.gate.emit import ik_claim_emit
 from insight_kit.platform.gate.runstate import (
     CritiqueGateError,
     CritiqueState,
+    RecordRef,
     RunState,
     apply_critique,
     finalizeRun,
     write_run_json,
 )
-from insight_kit.platform.gate.store import index_path, read_record
+from insight_kit.platform.gate.store import index_path, read_record, reindex
 
-_RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+# Filesystem-safe run ids; the lookahead rejects dot-only names ("."/".."/…)
+# that would escape or alias the runs/ directory.
+_RUN_ID_RE = re.compile(r"^(?!\.+$)[A-Za-z0-9._-]+$")
 _NAMESPACE_RE = re.compile(r"^[A-Z]{2,5}")
 
 # Tiers the republish guard watches. Critic-tier claims are never guarded —
@@ -58,6 +66,14 @@ _GUARDED_TIERS = frozenset({"draft", "published"})
 
 class RunNotSealedError(LookupError):
     """Raised when an operation needs a sealed run that has no run.json / completedAt."""
+
+
+class WorkspaceNotFoundError(LookupError):
+    """Raised when a workspace_dir passed to a workspace query does not exist.
+
+    A typo'd or deleted workspace path must never silently answer "no runs /
+    no refutations" — that would blind every query and the republish guard.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +193,9 @@ def new_run_dir(
     """Create workspace_dir/runs/<run_id>/ and return it.
 
     An explicit run_id wins and must be filesystem-safe
-    (``^[A-Za-z0-9._-]+$`` — ValueError otherwise).  The default run_id is
+    (``^[A-Za-z0-9._-]+$`` and not only dots — ValueError otherwise; a
+    dot-only id like ``..`` would write the bundle outside runs/).  The
+    default run_id is
     derived from ``started_at`` (ISO-8601 string) or, if None, the current
     UTC time, in compact form ``YYYYMMDDTHHMMSSZ``; on collision with an
     existing dir the suffix ``-2``, ``-3``, ... is appended (deterministic,
@@ -193,7 +211,8 @@ def new_run_dir(
     if run_id is not None:
         if not _RUN_ID_RE.match(run_id):
             raise ValueError(
-                f"run_id {run_id!r} is not filesystem-safe: it must match ^[A-Za-z0-9._-]+$."
+                f"run_id {run_id!r} is not filesystem-safe: it must match "
+                "^[A-Za-z0-9._-]+$ and must not be only dots."
             )
     else:
         if started_at is not None:
@@ -231,6 +250,13 @@ def _build_entry(workspace_dir: Path, run_id: str) -> RunEntry:
     rows (order = emission order), and each critic claim's record.json for its
     refutes/supports edges.  Raises RunNotSealedError when the run has no
     run.json or no completedAt (never guess — an unsealed run is a fact).
+
+    A missing or stale records.jsonl (row count disagreeing with run.json's
+    record_ids/record_count) is never trusted: it is regenerated from the
+    record.json set via store.reindex (the V7 mechanism — deterministic, not
+    guessing) and re-read.  If it STILL disagrees the bundle is corrupt and
+    RunNotSealedError is raised — never emit a silently contradictory
+    manifest row.
     """
     run_dir = workspace_dir / "runs" / run_id
     run_json = run_dir / "run.json"
@@ -245,15 +271,33 @@ def _build_entry(workspace_dir: Path, run_id: str) -> RunEntry:
             f"run {run_id!r} has run.json but no completedAt — it was never finalized."
         )
 
-    claim_rows: list[dict[str, Any]] = []
-    idx = index_path(run_dir)
-    if idx.exists():
-        for line in idx.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            row = json.loads(line)
-            if row.get("record_type") == "claim":
-                claim_rows.append(row)
+    record_ids = meta.get("record_ids")
+    expected_rows = len(record_ids) if record_ids is not None else int(meta.get("record_count", 0))
+
+    def _read_index_rows() -> list[dict[str, Any]] | None:
+        idx = index_path(run_dir)
+        if not idx.exists():
+            return None
+        return [
+            json.loads(line)
+            for line in idx.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    rows = _read_index_rows()
+    if rows is None or len(rows) != expected_rows:
+        # Never trust a missing/stale index — regenerate it from the
+        # record.json set (V7) and re-read.
+        reindex(run_dir)
+        rows = _read_index_rows() or []
+        if len(rows) != expected_rows:
+            raise RunNotSealedError(
+                f"run {run_id!r} bundle is corrupt: records.jsonl has {len(rows)} rows "
+                f"after reindex but run.json expects {expected_rows} records — refusing "
+                "to emit a silently contradictory manifest row."
+            )
+
+    claim_rows = [row for row in rows if row.get("record_type") == "claim"]
 
     # Resolve verdict edges: critic claims' refutes/supports record-id lists
     # within the same run point at the records they verdict.
@@ -293,6 +337,39 @@ def _build_entry(workspace_dir: Path, run_id: str) -> RunEntry:
 # ---------------------------------------------------------------------------
 
 
+def _read_manifest_rows(workspace_dir: Path) -> list[RunEntry]:
+    """Parse runs.jsonl rows in FILE order (append = seal order).
+
+    File order is a storage detail — callers wanting the canonical
+    (completed_at, run_id) order must sort (list_runs does).
+    """
+    manifest = _manifest_path(workspace_dir)
+    entries: list[RunEntry] = []
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        entries.append(_entry_from_dict(json.loads(line)))
+    return entries
+
+
+def _scan_bundles(workspace_dir: Path) -> tuple[list[RunEntry], list[str]]:
+    """Build entries for every sealed bundle under runs/*/ (canonical order).
+
+    Dirs without a usable run.json are skipped and returned second.
+    """
+    runs_root = workspace_dir / "runs"
+    entries: list[RunEntry] = []
+    skipped: list[str] = []
+    if runs_root.exists():
+        for run_path in sorted(p for p in runs_root.iterdir() if p.is_dir()):
+            try:
+                entries.append(_build_entry(workspace_dir, run_path.name))
+            except RunNotSealedError:
+                skipped.append(run_path.name)
+    entries.sort(key=lambda e: (e.completed_at, e.run_id))
+    return entries, skipped
+
+
 def seal_run(
     workspace_dir: Path | str,
     run_dir: Path | str,
@@ -304,14 +381,19 @@ def seal_run(
 
     run_dir MUST be a direct child of workspace_dir/runs/ (ValueError
     otherwise).  Idempotent (V10 mirror): if the run_id already has a
-    manifest row the existing entry is returned and no duplicate is
-    appended.  Otherwise finalizeRun (itself idempotent) + write_run_json
-    run first, then the row is built by scanning the sealed bundle — the
-    same scan reindex_runs uses, so rebuilt rows equal seal-written rows.
+    manifest ROW the existing entry is returned and no duplicate is
+    appended — the check reads the manifest file itself, so a sealed bundle
+    whose row went missing (interrupted seal, deleted manifest) is re-rowed
+    rather than silently skipped.  Otherwise finalizeRun (itself idempotent)
+    + write_run_json run first, then the row is built by scanning the sealed
+    bundle — the same scan reindex_runs uses, so rebuilt rows equal
+    seal-written rows.
     """
     workspace_dir = Path(workspace_dir).resolve()
     run_dir = Path(run_dir).resolve()
-    runs_root = workspace_dir / "runs"
+    # Resolve the final runs component too: a symlinked runs/ dir must
+    # canonicalize to the same real path run_dir.resolve() reaches.
+    runs_root = (workspace_dir / "runs").resolve()
     if run_dir.parent != runs_root:
         raise ValueError(
             f"run_dir {run_dir} is not under {runs_root} — seal_run only seals "
@@ -319,15 +401,16 @@ def seal_run(
         )
     run_id = run_dir.name
 
-    for existing in list_runs(workspace_dir):
-        if existing.run_id == run_id:
-            return existing
+    manifest = _manifest_path(workspace_dir)
+    if manifest.exists():
+        for existing in _read_manifest_rows(workspace_dir):
+            if existing.run_id == run_id:
+                return existing
 
     finalizeRun(run_state)
     write_run_json(run_dir, run_state, extra)
 
     entry = _build_entry(workspace_dir, run_id)
-    manifest = _manifest_path(workspace_dir)
     manifest.parent.mkdir(parents=True, exist_ok=True)
     with manifest.open("a", encoding="utf-8") as f:
         f.write(_dumps(_entry_to_dict(entry)))
@@ -336,41 +419,45 @@ def seal_run(
 
 
 def list_runs(workspace_dir: Path | str) -> list[RunEntry]:
-    """Parse runs.jsonl in file order (seal order = chronology).
+    """Sealed-run entries in CANONICAL order: (completed_at, run_id).
 
-    Missing manifest → empty list. Blank lines are skipped.
+    runs.jsonl file order (append = seal order) is a storage detail; entries
+    are sorted by the canonical key regardless of file order, so
+    claim_history / claim_by_id / standing_refutations see the same order
+    before and after reindex_runs.
+
+    A nonexistent workspace_dir raises WorkspaceNotFoundError — a typo'd
+    path must never silently answer "no runs".  When the workspace exists
+    but runs.jsonl is missing, sealed bundles under runs/*/ are scanned
+    in memory instead; the manifest is NOT recreated (reads must not
+    write).  An existing-but-empty workspace still yields [].  Blank
+    manifest lines are skipped.
     """
-    manifest = _manifest_path(Path(workspace_dir))
-    if not manifest.exists():
-        return []
-    entries: list[RunEntry] = []
-    for line in manifest.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        entries.append(_entry_from_dict(json.loads(line)))
+    workspace_dir = Path(workspace_dir)
+    if not workspace_dir.exists():
+        raise WorkspaceNotFoundError(
+            f"workspace {workspace_dir} does not exist — refusing to answer "
+            "workspace queries for a path that was never a workspace."
+        )
+    if _manifest_path(workspace_dir).exists():
+        entries = _read_manifest_rows(workspace_dir)
+        entries.sort(key=lambda e: (e.completed_at, e.run_id))
+        return entries
+    entries, _skipped = _scan_bundles(workspace_dir)
     return entries
 
 
 def reindex_runs(workspace_dir: Path | str) -> tuple[int, list[str]]:
     """Rebuild runs.jsonl from runs/*/run.json bundles (V7 analog).
 
-    Sealed runs are sorted by completedAt (tie-break run_id); dirs without a
-    usable run.json are skipped and returned in the second element.
-    Overwrites runs.jsonl.  Rebuilt rows equal seal-written rows for the
-    same runs — both come from the same bundle scan.
+    Sealed runs are written in canonical (completedAt, run_id) order; dirs
+    without a usable run.json are skipped and returned in the second
+    element.  Overwrites runs.jsonl.  Row CONTENT is identical per run to
+    the seal-written row (same bundle scan); file order is canonicalized,
+    so a second reindex is byte-identical to the first (idempotent).
     """
     workspace_dir = Path(workspace_dir).resolve()
-    runs_root = workspace_dir / "runs"
-
-    entries: list[RunEntry] = []
-    skipped: list[str] = []
-    if runs_root.exists():
-        for run_path in sorted(p for p in runs_root.iterdir() if p.is_dir()):
-            try:
-                entries.append(_build_entry(workspace_dir, run_path.name))
-            except RunNotSealedError:
-                skipped.append(run_path.name)
-    entries.sort(key=lambda e: (e.completed_at, e.run_id))
+    entries, skipped = _scan_bundles(workspace_dir)
 
     manifest = _manifest_path(workspace_dir)
     manifest.parent.mkdir(parents=True, exist_ok=True)
@@ -387,7 +474,7 @@ def reindex_runs(workspace_dir: Path | str) -> tuple[int, list[str]]:
 
 
 def claim_history(workspace_dir: Path | str, claim_id: str) -> list[ClaimSighting]:
-    """Every sighting of claim_id across sealed runs, in manifest order."""
+    """Every sighting of claim_id across sealed runs, in canonical run order."""
     return [
         sighting
         for entry in list_runs(workspace_dir)
@@ -431,9 +518,10 @@ class RepublishFinding:
 
     record_id is the NEW record in the current run; prior_* fields carry the
     provenance of the standing refutation; critic_record_id is the guard's
-    freshly emitted critic claim.  downgrade_required is True when the V16
-    gate fired on the new record (published tier) — the caller must
-    downgrade before rendering.
+    critic claim (freshly emitted, or reused on re-invocation; None when the
+    emit was rejected — the critique still applied).  downgrade_required is
+    True when the V16 gate fired on the new record (published tier or board
+    audience) — the caller must downgrade before rendering.
     """
 
     claim_id: str
@@ -446,17 +534,23 @@ class RepublishFinding:
     downgrade_required: bool
 
 
-def _guard_critic_claim_id(claim_id: str, prior_run_id: str) -> str:
+def _guard_critic_claim_id(claim_id: str, prior_run_id: str, new_record_id: str) -> str:
     """Deterministic gate-valid claim_id for the guard's critic claim.
 
     Namespace is the target claim_id's leading ``[A-Z]{2,5}`` segment; the
-    number derives from sha256 of "claim_id|prior_run_id" (hamilton adapter
-    hash-to-number scheme) so identical workspaces yield identical ids.
+    number derives from sha256 of "claim_id|prior_run_id|new_record_id"
+    (hamilton adapter hash-to-number scheme) so identical workspaces yield
+    identical ids.  Salting with the target record id makes the id stable
+    across re-invocations for the SAME target record (guard idempotency)
+    while distinct targets get distinct ids.  The 9-digit number space
+    (100_000_000..999_999_999 — CLAIM_ID_REGEX allows ``\\d{3,}``) makes
+    collisions between distinct targets, or with human-authored 3-digit
+    ``<NS>-X-NNN`` ids, unrealistic.
     """
     match = _NAMESPACE_RE.match(claim_id)
     namespace = match.group(0) if match else "IK"
-    digest = hashlib.sha256(f"{claim_id}|{prior_run_id}".encode()).hexdigest()
-    return f"{namespace}-X-{int(digest[:6], 16) % 900 + 100}"
+    digest = hashlib.sha256(f"{claim_id}|{prior_run_id}|{new_record_id}".encode()).hexdigest()
+    return f"{namespace}-X-{100_000_000 + int(digest[:12], 16) % 900_000_000}"
 
 
 def guard_republished_claims(
@@ -476,20 +570,44 @@ def guard_republished_claims(
       2. applies a severity=high critique to the new record via
          apply_critique — the critique event lands on the record's events
          log on every path (V16 record-then-enforce); a CritiqueGateError
-         (published tier) is caught and surfaced as downgrade_required=True.
+         (published tier / board audience) is caught and surfaced as
+         downgrade_required=True.
+
+    Idempotent (V10 mirror): the guard's critic claim_id is deterministic
+    per target record, so a re-invocation on the same run finds the critic
+    already in the run, reuses it, and returns an equal findings list — no
+    duplicate emission, no duplicate critique event, rejectionCount stays 0.
+
+    Guard critiques are cross-run surfacings, not critique-fix rounds of
+    THIS run — run_state.critiqueRounds (the V16 fix-round budget) is
+    preserved across every guard apply_critique call.
 
     SURFACE, NEVER BLOCK: the guard raises nothing for guard hits; it
     returns findings.  (Doctrine: only deductive identities may block.)
+    Even a rejected critic emit (LayerAValidationError) only nulls
+    critic_record_id on the finding — the critique still applies.
     """
     run_dir = Path(run_dir)
     standing = standing_refutations(workspace_dir)
     findings: list[RepublishFinding] = []
 
     # Snapshot — emitting guard critics appends to run_state.records.
-    for ref in list(run_state.records):
+    snapshot = list(run_state.records)
+
+    # Build the idempotency lookup ONCE from the entry snapshot: stored
+    # claim_id -> record_id for every claim record already in the run.  A
+    # critic emitted by a prior guard invocation is found here by its
+    # deterministic claim_id.
+    claim_records: list[tuple[RecordRef, dict[str, Any]]] = []
+    record_id_by_claim_id: dict[str, str] = {}
+    for ref in snapshot:
         if ref.record_type != "claim":
             continue
         record = read_record(run_dir, ref.record_id)
+        claim_records.append((ref, record))
+        record_id_by_claim_id[str(record.get("claim_id"))] = ref.record_id
+
+    for ref, record in claim_records:
         tier = str(record.get("tier"))
         if tier not in _GUARDED_TIERS:
             continue
@@ -497,39 +615,73 @@ def guard_republished_claims(
         prior = standing.get(claim_id)
         if prior is None:
             continue
+        audience = record.get("audience")
+
+        critic_claim_id = _guard_critic_claim_id(claim_id, prior.run_id, ref.record_id)
+        existing_critic_id = record_id_by_claim_id.get(critic_claim_id)
+        if existing_critic_id is not None:
+            # Re-invocation: this target's critic was already emitted and its
+            # critique already applied.  Reuse the record and recompute the
+            # gate exposure from the record itself — no second emission, no
+            # double critique event, no rounds spend.
+            findings.append(
+                RepublishFinding(
+                    claim_id=claim_id,
+                    record_id=ref.record_id,
+                    tier=tier,
+                    prior_run_id=prior.run_id,
+                    prior_record_id=prior.record_id,
+                    prior_refuting_record_ids=list(prior.refuted_by),
+                    critic_record_id=existing_critic_id,
+                    downgrade_required=(tier == "published" or audience == "board"),
+                )
+            )
+            continue
 
         reason = (
             f"claim_id {claim_id} was refuted in run {prior.run_id} and "
             "republished without a superseding verdict"
         )
-        critic_ref = ik_claim_emit(
-            _guard_critic_claim_id(claim_id, prior.run_id),
-            {
-                "checked": claim_id,
-                "prior_run_id": prior.run_id,
-                "prior_record_id": prior.record_id,
-                "prior_refuting_record_ids": list(prior.refuted_by),
-                "reason": reason,
-                "passed": False,
-            },
-            tier="critic",
-            refutes=[ref.record_id],
-            run_state=run_state,
-            run_dir=run_dir,
-        )
+        critic_record_id: str | None
+        try:
+            critic_ref = ik_claim_emit(
+                critic_claim_id,
+                {
+                    "checked": claim_id,
+                    "prior_run_id": prior.run_id,
+                    "prior_record_id": prior.record_id,
+                    "prior_refuting_record_ids": list(prior.refuted_by),
+                    "reason": reason,
+                    "passed": False,
+                },
+                tier="critic",
+                refutes=[ref.record_id],
+                run_state=run_state,
+                run_dir=run_dir,
+            )
+            critic_record_id = critic_ref.record_id
+        except LayerAValidationError:
+            # Belt-and-braces: surface, never block — a rejected critic emit
+            # must not abort the guard; the critique below still applies.
+            critic_record_id = None
 
         downgrade_required = False
+        # Guard critiques are cross-run surfacings, not critique-fix rounds
+        # of THIS run — the guard must not spend the run's V16 fix-round
+        # budget, so critiqueRounds is restored on every path (return,
+        # CritiqueGateError, unexpected error).
+        saved_rounds = run_state.critiqueRounds
         try:
             gate_result = apply_critique(
                 run_state=run_state,
                 record_id=ref.record_id,
                 record_type="claim",
                 tier=tier,
-                audience=None,
+                audience=audience,
                 critique=CritiqueState.open(
                     severity="high",
                     reason=reason,
-                    critic_id=critic_ref.record_id,
+                    critic_id=critic_record_id,
                     target_record_id=ref.record_id,
                 ),
                 run_dir=run_dir,
@@ -537,6 +689,8 @@ def guard_republished_claims(
             downgrade_required = bool(gate_result.get("downgraded"))
         except CritiqueGateError:
             downgrade_required = True
+        finally:
+            run_state.critiqueRounds = saved_rounds
 
         findings.append(
             RepublishFinding(
@@ -546,7 +700,7 @@ def guard_republished_claims(
                 prior_run_id=prior.run_id,
                 prior_record_id=prior.record_id,
                 prior_refuting_record_ids=list(prior.refuted_by),
-                critic_record_id=critic_ref.record_id,
+                critic_record_id=critic_record_id,
                 downgrade_required=downgrade_required,
             )
         )

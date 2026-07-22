@@ -42,7 +42,7 @@ Public API:
   manifest, claim history queries, persistent refuted-claim republish guard:
     new_run_dir, seal_run, list_runs, reindex_runs, claim_history, claim_by_id,
     standing_refutations, guard_republished_claims, ClaimSighting, RunEntry,
-    RepublishFinding, RunNotSealedError
+    RepublishFinding, RunNotSealedError, WorkspaceNotFoundError
 
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
@@ -50,6 +50,7 @@ Public API:
 Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
 V15, V16, V18, V21, T30, T31, T32, T33.
 """
+
 from __future__ import annotations
 
 from insight_kit.platform.gate.acquire import (
@@ -140,6 +141,7 @@ from insight_kit.platform.gate.workspace import (
     RepublishFinding,
     RunEntry,
     RunNotSealedError,
+    WorkspaceNotFoundError,
     claim_by_id,
     claim_history,
     guard_republished_claims,
@@ -187,6 +189,7 @@ __all__ = [
     "SkillUseRecord",
     "UtilityVerdict",
     "VegaLiteAdapter",
+    "WorkspaceNotFoundError",
     "audit_l5",
     "audit_l6",
     "check_annual_equals_monthly_sum",
