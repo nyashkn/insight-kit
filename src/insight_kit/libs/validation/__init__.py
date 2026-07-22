@@ -4,8 +4,10 @@ Fires at emit time through the L1 gate (`insight_kit.gate`). Raises
 ValidationError with rule_id + suggestion so the calling agent can self-correct
 within the same run.
 """
+
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -15,6 +17,34 @@ import yaml
 # ---------- error class ----------
 
 CLAIM_ID_REGEX = re.compile(r"^[A-Z]{2,5}-(D|R|C|I|V|X|ETL_[RCM])-\d{3,}$")
+
+# Tier tokens the id grammar accepts (the (D|R|C|I|V|X|ETL_[RCM]) alternation).
+_ID_TIER_TOKENS = frozenset({"D", "R", "C", "I", "V", "X", "ETL_R", "ETL_C", "ETL_M"})
+
+
+def mint_claim_id(namespace: str, tier_token: str, seed: str, *, digits: int = 3) -> str:
+    """Deterministically mint a claim_id that satisfies CLAIM_ID_REGEX.
+
+    The single home for the "namespace + tier token + hashed number" id
+    grammar, shared by every generator so none drifts from CLAIM_ID_REGEX or
+    from each other. Callers: the Hamilton adapter (metric ids, ``digits=3``,
+    hash of the node name) and the workspace republish guard (critic ids,
+    ``digits=9`` — a wide space so guard ids don't collide with each other or
+    with human-authored 3-digit ``<NS>-X-NNN`` ids).
+
+    namespace is sanitized to ``[A-Z]{2,5}`` (fallback ``"IK"`` when fewer than
+    two letters survive); tier_token falls back to ``"D"`` when it is not a
+    grammar tier token; the number is a ``digits``-wide value with no leading
+    zero, derived from sha256(seed) so the same seed always yields the same id
+    with no shared counter state.
+    """
+    ns = re.sub(r"[^A-Z]", "", (namespace or "").upper())[:5]
+    if len(ns) < 2:
+        ns = "IK"
+    tier = tier_token if tier_token in _ID_TIER_TOKENS else "D"
+    low = 10 ** (digits - 1)
+    num = low + int(hashlib.sha256(seed.encode()).hexdigest()[: 2 * digits], 16) % (9 * low)
+    return f"{ns}-{tier}-{num}"
 
 
 class ValidationError(ValueError):
@@ -60,9 +90,7 @@ def check_claim_id_namespace(claim_id: str, namespace: str) -> None:
     if not claim_id.startswith(f"{namespace}-"):
         raise ValidationError(
             rule_id="claim-id-namespace",
-            message=(
-                f"claim_id={claim_id!r} must start with namespace {namespace!r}-"
-            ),
+            message=(f"claim_id={claim_id!r} must start with namespace {namespace!r}-"),
             suggestion=(
                 f"claim_id={claim_id!r} must start with {namespace!r}-. "
                 f"Example: '{namespace}-D-001'"
@@ -364,5 +392,3 @@ def check_metric_id_allowed(name: str, kit_root: Path) -> None:
             f".insight-kit/templates/glossary.yaml."
         ),
     )
-
-

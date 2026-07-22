@@ -38,12 +38,19 @@ Public API:
   Deterministic DAG lineage read-back (item 7, I.lineage):
     lineage_of, trace_to_rows, LineageTrace, LineageNotRecordedError
 
+  Cross-run workspace substrate (I.workspace): dated run dirs, runs.jsonl
+  manifest, claim history queries, persistent refuted-claim republish guard:
+    new_run_dir, seal_run, list_runs, reindex_runs, claim_history, claim_by_id,
+    standing_refutations, guard_republished_claims, ClaimSighting, RunEntry,
+    RepublishFinding, RunNotSealedError, WorkspaceNotFoundError
+
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
 
 Cites: C1, C5, I.emit, I.schema, I.run, I.runcheck, I.events, I.audit, V12, V14,
 V15, V16, V18, V21, T30, T31, T32, T33.
 """
+
 from __future__ import annotations
 
 from insight_kit.platform.gate.acquire import (
@@ -129,6 +136,21 @@ from insight_kit.platform.gate.verdict import (
     UtilityVerdict,
     ik_utility_verdict,
 )
+from insight_kit.platform.gate.workspace import (
+    ClaimSighting,
+    RepublishFinding,
+    RunEntry,
+    RunNotSealedError,
+    WorkspaceNotFoundError,
+    claim_by_id,
+    claim_history,
+    guard_republished_claims,
+    list_runs,
+    new_run_dir,
+    reindex_runs,
+    seal_run,
+    standing_refutations,
+)
 
 __all__ = [
     "AcquireResult",
@@ -139,6 +161,7 @@ __all__ = [
     "CheckResult",
     "ClaimFieldRef",
     "ClaimRecord",
+    "ClaimSighting",
     "ClaimTier",
     "ComposeError",
     "CoverageInfo",
@@ -157,23 +180,30 @@ __all__ = [
     "RecordSchema",
     "RenderAdapter",
     "RenderedToken",
+    "RepublishFinding",
     "ResearchRecord",
+    "RunEntry",
+    "RunNotSealedError",
     "RunState",
     "SelectionParams",
     "SkillUseRecord",
     "UtilityVerdict",
     "VegaLiteAdapter",
+    "WorkspaceNotFoundError",
     "audit_l5",
     "audit_l6",
     "check_annual_equals_monthly_sum",
     "check_coverage_from_run",
     "check_endpoint_coverage_gap",
     "check_ratio_identity",
+    "claim_by_id",
+    "claim_history",
     "compose_record",
     "derive_used_endpoints",
     "emit_reconciliation_critique",
     "endpoint_index_path",
     "finalizeRun",
+    "guard_republished_claims",
     "ik_acquire",
     "ik_claim_emit",
     "ik_feature_get",
@@ -183,11 +213,16 @@ __all__ = [
     "ik_skill_use_emit",
     "ik_utility_verdict",
     "lineage_of",
+    "list_runs",
     "load_claims_index",
+    "new_run_dir",
     "parse_refs",
     "query_cites",
     "read_endpoint_index",
+    "reindex_runs",
     "run_render_audit",
+    "seal_run",
+    "standing_refutations",
     "trace_to_rows",
     "verify_chart_bindings",
     "write_endpoint_index",
