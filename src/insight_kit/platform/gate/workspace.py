@@ -36,7 +36,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -114,7 +115,10 @@ class RunEntry:
     """One runs.jsonl manifest row: a sealed run and its claim sightings.
 
     claims holds sightings of ALL tiers (including critic) in records.jsonl
-    order — seal order within the run is emission order.
+    order: emission order on a freshly-sealed bundle. (If the index had to be
+    regenerated from record.json — a corrupt/missing index — store.reindex
+    orders by record_id instead; verdict resolution is order-independent, so
+    only within-run presentation order is affected.)
     """
 
     run_id: str
@@ -128,22 +132,20 @@ class RunEntry:
 # ---------------------------------------------------------------------------
 
 
+# The canonical order every query sees, regardless of runs.jsonl file order
+# (append = seal order). Defined once so a new read path can't drift from it.
+def _canonical_key(entry: RunEntry) -> tuple[str, str]:
+    return (entry.completed_at, entry.run_id)
+
+
 def _dumps(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def _sighting_to_dict(sighting: ClaimSighting) -> dict[str, Any]:
-    return {
-        "run_id": sighting.run_id,
-        "record_id": sighting.record_id,
-        "claim_id": sighting.claim_id,
-        "tier": sighting.tier,
-        "completed_at": sighting.completed_at,
-        "refuted_by": sighting.refuted_by,
-        "supported_by": sighting.supported_by,
-    }
-
-
+# The serialize side is a pure 1:1 field mirror (asdict recurses into the
+# nested claims), so dataclasses.asdict IS the row dict — sort_keys makes key
+# order irrelevant on disk. The deserialize side stays explicit: it coerces
+# record_count and normalizes the edge lists / missing keys (schema stability).
 def _sighting_from_dict(row: dict[str, Any]) -> ClaimSighting:
     return ClaimSighting(
         run_id=row["run_id"],
@@ -154,15 +156,6 @@ def _sighting_from_dict(row: dict[str, Any]) -> ClaimSighting:
         refuted_by=list(row.get("refuted_by") or []),
         supported_by=list(row.get("supported_by") or []),
     )
-
-
-def _entry_to_dict(entry: RunEntry) -> dict[str, Any]:
-    return {
-        "run_id": entry.run_id,
-        "completed_at": entry.completed_at,
-        "record_count": entry.record_count,
-        "claims": [_sighting_to_dict(s) for s in entry.claims],
-    }
 
 
 def _entry_from_dict(row: dict[str, Any]) -> RunEntry:
@@ -177,6 +170,20 @@ def _entry_from_dict(row: dict[str, Any]) -> RunEntry:
 def _manifest_path(workspace_dir: Path) -> Path:
     """Path to runs.jsonl."""
     return workspace_dir / "runs.jsonl"
+
+
+def _write_manifest_rows(manifest: Path, entries: Iterable[RunEntry], *, mode: str) -> None:
+    """Write manifest rows in one canonical format (append or overwrite).
+
+    Single row spelling for both the seal-append (mode="a") and reindex
+    overwrite (mode="w") sites, so the V7 invariant "seal-written row ==
+    reindex-written row" cannot drift between them.
+    """
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    with manifest.open(mode, encoding="utf-8") as f:
+        for entry in entries:
+            f.write(_dumps(asdict(entry)))
+            f.write("\n")
 
 
 # ---------------------------------------------------------------------------
@@ -247,8 +254,10 @@ def _build_entry(workspace_dir: Path, run_id: str) -> RunEntry:
     """Build a manifest row from a sealed run bundle on disk.
 
     Reads run.json for completedAt/record_count, records.jsonl for the claim
-    rows (order = emission order), and each critic claim's record.json for its
-    refutes/supports edges.  Raises RunNotSealedError when the run has no
+    rows (records.jsonl order — emission order on a freshly-sealed bundle;
+    record_id order if the index had to be regenerated, see below), and each
+    critic claim's record.json for its refutes/supports edges.  Raises
+    RunNotSealedError when the run has no
     run.json or no completedAt (never guess — an unsealed run is a fact).
 
     A missing or stale records.jsonl (row count disagreeing with run.json's
@@ -366,7 +375,7 @@ def _scan_bundles(workspace_dir: Path) -> tuple[list[RunEntry], list[str]]:
                 entries.append(_build_entry(workspace_dir, run_path.name))
             except RunNotSealedError:
                 skipped.append(run_path.name)
-    entries.sort(key=lambda e: (e.completed_at, e.run_id))
+    entries.sort(key=_canonical_key)
     return entries, skipped
 
 
@@ -401,20 +410,23 @@ def seal_run(
         )
     run_id = run_dir.name
 
+    # Idempotency (V10): if this run_id already has a manifest ROW, return it.
+    # Scan run_id off the raw lines — no need to deserialize every prior run's
+    # full claim list just to compare one string.
     manifest = _manifest_path(workspace_dir)
     if manifest.exists():
-        for existing in _read_manifest_rows(workspace_dir):
-            if existing.run_id == run_id:
-                return existing
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if row.get("run_id") == run_id:
+                return _entry_from_dict(row)
 
     finalizeRun(run_state)
     write_run_json(run_dir, run_state, extra)
 
     entry = _build_entry(workspace_dir, run_id)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    with manifest.open("a", encoding="utf-8") as f:
-        f.write(_dumps(_entry_to_dict(entry)))
-        f.write("\n")
+    _write_manifest_rows(manifest, [entry], mode="a")
     return entry
 
 
@@ -441,7 +453,7 @@ def list_runs(workspace_dir: Path | str) -> list[RunEntry]:
         )
     if _manifest_path(workspace_dir).exists():
         entries = _read_manifest_rows(workspace_dir)
-        entries.sort(key=lambda e: (e.completed_at, e.run_id))
+        entries.sort(key=_canonical_key)
         return entries
     entries, _skipped = _scan_bundles(workspace_dir)
     return entries
@@ -458,13 +470,7 @@ def reindex_runs(workspace_dir: Path | str) -> tuple[int, list[str]]:
     """
     workspace_dir = Path(workspace_dir).resolve()
     entries, skipped = _scan_bundles(workspace_dir)
-
-    manifest = _manifest_path(workspace_dir)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    with manifest.open("w", encoding="utf-8") as f:
-        for entry in entries:
-            f.write(_dumps(_entry_to_dict(entry)))
-            f.write("\n")
+    _write_manifest_rows(_manifest_path(workspace_dir), entries, mode="w")
     return len(entries), skipped
 
 
@@ -619,78 +625,67 @@ def guard_republished_claims(
 
         critic_claim_id = _guard_critic_claim_id(claim_id, prior.run_id, ref.record_id)
         existing_critic_id = record_id_by_claim_id.get(critic_claim_id)
+        critic_record_id: str | None
         if existing_critic_id is not None:
             # Re-invocation: this target's critic was already emitted and its
             # critique already applied.  Reuse the record and recompute the
             # gate exposure from the record itself — no second emission, no
             # double critique event, no rounds spend.
-            findings.append(
-                RepublishFinding(
-                    claim_id=claim_id,
-                    record_id=ref.record_id,
-                    tier=tier,
-                    prior_run_id=prior.run_id,
-                    prior_record_id=prior.record_id,
-                    prior_refuting_record_ids=list(prior.refuted_by),
-                    critic_record_id=existing_critic_id,
-                    downgrade_required=(tier == "published" or audience == "board"),
+            critic_record_id = existing_critic_id
+            downgrade_required = tier == "published" or audience == "board"
+        else:
+            reason = (
+                f"claim_id {claim_id} was refuted in run {prior.run_id} and "
+                "republished without a superseding verdict"
+            )
+            try:
+                critic_ref = ik_claim_emit(
+                    critic_claim_id,
+                    {
+                        "checked": claim_id,
+                        "prior_run_id": prior.run_id,
+                        "prior_record_id": prior.record_id,
+                        "prior_refuting_record_ids": list(prior.refuted_by),
+                        "reason": reason,
+                        "passed": False,
+                    },
+                    tier="critic",
+                    refutes=[ref.record_id],
+                    run_state=run_state,
+                    run_dir=run_dir,
                 )
-            )
-            continue
+                critic_record_id = critic_ref.record_id
+            except LayerAValidationError:
+                # Belt-and-braces: surface, never block — a rejected critic
+                # emit must not abort the guard; the critique below still applies.
+                critic_record_id = None
 
-        reason = (
-            f"claim_id {claim_id} was refuted in run {prior.run_id} and "
-            "republished without a superseding verdict"
-        )
-        critic_record_id: str | None
-        try:
-            critic_ref = ik_claim_emit(
-                critic_claim_id,
-                {
-                    "checked": claim_id,
-                    "prior_run_id": prior.run_id,
-                    "prior_record_id": prior.record_id,
-                    "prior_refuting_record_ids": list(prior.refuted_by),
-                    "reason": reason,
-                    "passed": False,
-                },
-                tier="critic",
-                refutes=[ref.record_id],
-                run_state=run_state,
-                run_dir=run_dir,
-            )
-            critic_record_id = critic_ref.record_id
-        except LayerAValidationError:
-            # Belt-and-braces: surface, never block — a rejected critic emit
-            # must not abort the guard; the critique below still applies.
-            critic_record_id = None
-
-        downgrade_required = False
-        # Guard critiques are cross-run surfacings, not critique-fix rounds
-        # of THIS run — the guard must not spend the run's V16 fix-round
-        # budget, so critiqueRounds is restored on every path (return,
-        # CritiqueGateError, unexpected error).
-        saved_rounds = run_state.critiqueRounds
-        try:
-            gate_result = apply_critique(
-                run_state=run_state,
-                record_id=ref.record_id,
-                record_type="claim",
-                tier=tier,
-                audience=audience,
-                critique=CritiqueState.open(
-                    severity="high",
-                    reason=reason,
-                    critic_id=critic_record_id,
-                    target_record_id=ref.record_id,
-                ),
-                run_dir=run_dir,
-            )
-            downgrade_required = bool(gate_result.get("downgraded"))
-        except CritiqueGateError:
-            downgrade_required = True
-        finally:
-            run_state.critiqueRounds = saved_rounds
+            downgrade_required = False
+            # Guard critiques are cross-run surfacings, not critique-fix rounds
+            # of THIS run — the guard must not spend the run's V16 fix-round
+            # budget, so critiqueRounds is restored on every path (return,
+            # CritiqueGateError, unexpected error).
+            saved_rounds = run_state.critiqueRounds
+            try:
+                gate_result = apply_critique(
+                    run_state=run_state,
+                    record_id=ref.record_id,
+                    record_type="claim",
+                    tier=tier,
+                    audience=audience,
+                    critique=CritiqueState.open(
+                        severity="high",
+                        reason=reason,
+                        critic_id=critic_record_id,
+                        target_record_id=ref.record_id,
+                    ),
+                    run_dir=run_dir,
+                )
+                downgrade_required = bool(gate_result.get("downgraded"))
+            except CritiqueGateError:
+                downgrade_required = True
+            finally:
+                run_state.critiqueRounds = saved_rounds
 
         findings.append(
             RepublishFinding(
