@@ -35,7 +35,7 @@ jobs:
       - name: Set up Python ${{ matrix.python }}
         run: uv python install ${{ matrix.python }}
       - name: Install
-        run: uv sync --extra dev --extra polars
+        run: uv sync --extra dev --extra polars --extra hamilton
       - name: Lint (ruff)
         run: uv run ruff check src tests
       - name: Test
