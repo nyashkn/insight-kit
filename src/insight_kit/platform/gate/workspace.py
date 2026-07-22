@@ -33,7 +33,6 @@ Cites: V3, V7, V10, V16, I.store, I.run, I.workspace.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from collections.abc import Iterable
@@ -43,6 +42,7 @@ from pathlib import Path
 from typing import Any
 
 from insight_kit.libs.validation import ValidationError as LayerAValidationError
+from insight_kit.libs.validation import mint_claim_id
 from insight_kit.platform.gate.emit import ik_claim_emit
 from insight_kit.platform.gate.runstate import (
     CritiqueGateError,
@@ -544,19 +544,18 @@ def _guard_critic_claim_id(claim_id: str, prior_run_id: str, new_record_id: str)
     """Deterministic gate-valid claim_id for the guard's critic claim.
 
     Namespace is the target claim_id's leading ``[A-Z]{2,5}`` segment; the
-    number derives from sha256 of "claim_id|prior_run_id|new_record_id"
-    (hamilton adapter hash-to-number scheme) so identical workspaces yield
-    identical ids.  Salting with the target record id makes the id stable
-    across re-invocations for the SAME target record (guard idempotency)
-    while distinct targets get distinct ids.  The 9-digit number space
-    (100_000_000..999_999_999 — CLAIM_ID_REGEX allows ``\\d{3,}``) makes
+    number is minted from the seed "claim_id|prior_run_id|new_record_id" via
+    the shared libs.validation minter so identical workspaces yield identical
+    ids.  Salting with the target record id makes the id stable across
+    re-invocations for the SAME target record (guard idempotency) while
+    distinct targets get distinct ids.  The 9-digit number space makes
     collisions between distinct targets, or with human-authored 3-digit
     ``<NS>-X-NNN`` ids, unrealistic.
     """
     match = _NAMESPACE_RE.match(claim_id)
     namespace = match.group(0) if match else "IK"
-    digest = hashlib.sha256(f"{claim_id}|{prior_run_id}|{new_record_id}".encode()).hexdigest()
-    return f"{namespace}-X-{100_000_000 + int(digest[:12], 16) % 900_000_000}"
+    seed = f"{claim_id}|{prior_run_id}|{new_record_id}"
+    return mint_claim_id(namespace, "X", seed, digits=9)
 
 
 def guard_republished_claims(

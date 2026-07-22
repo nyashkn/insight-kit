@@ -15,14 +15,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from pathlib import Path
 from typing import Any
 
 import structlog
 from hamilton.lifecycle import GraphExecutionHook, NodeExecutionHook
 
-from insight_kit.libs.validation import ValidationError
+from insight_kit.libs.validation import ValidationError, mint_claim_id
 from insight_kit.platform.gate import (
     RunState,
     finalizeRun,
@@ -289,7 +288,13 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
                 run_state=self.run_state,
                 run_dir=self.run_dir,
             )
-            logger.info("claim.emitted", claim_id=claim_id, node=node_name, tier=gate_tier, hamilton_tier=tier)
+            logger.info(
+                "claim.emitted",
+                claim_id=claim_id,
+                node=node_name,
+                tier=gate_tier,
+                hamilton_tier=tier,
+            )
         except ValidationError as e:
             logger.error("claim.emit_rejected", claim_id=claim_id, node=node_name, error=str(e))
         except Exception as e:
@@ -404,9 +409,7 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
 
     # ---------- emit methods ----------
 
-    def _emit_claim_from_node(
-        self, node_name: str, result: Any, node_tags: dict[str, Any]
-    ) -> None:
+    def _emit_claim_from_node(self, node_name: str, result: Any, node_tags: dict[str, Any]) -> None:
         """Emit a structured claim record based on @tag(claim_tier=...)."""
         claim_tier = node_tags.get("claim_tier", "derived")
         claim_statement = node_tags.get("claim_statement")
@@ -598,11 +601,6 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
 
         return cites
 
-    # id-grammar tier tokens accepted by CLAIM_ID_REGEX (libs.validation).
-    _ID_TIERS: frozenset[str] = frozenset(
-        {"D", "R", "C", "I", "V", "X", "ETL_R", "ETL_C", "ETL_M"}
-    )
-
     @classmethod
     def _gen_metric_claim_id(
         cls,
@@ -617,17 +615,12 @@ class InsightKitHook(NodeExecutionHook, GraphExecutionHook):
             ^[A-Z]{2,5}-(D|R|C|I|V|X|ETL_[RCM])-\\d{3,}$
 
         Explicit > generated. A generated id derives a stable 3-digit sequence
-        from a hash of the node name so the same node yields the same id across
-        runs without shared counter state.
+        from a hash of the node name (via the shared libs.validation minter) so
+        the same node yields the same id across runs without shared counter state.
         """
         if explicit:
             return explicit
-        ns = re.sub(r"[^A-Z]", "", (namespace or "").upper())[:5]
-        if len(ns) < 2:
-            ns = "IK"
-        tier = id_tier if id_tier in cls._ID_TIERS else "D"
-        num = int(hashlib.sha256(node_name.encode()).hexdigest()[:6], 16) % 900 + 100
-        return f"{ns}-{tier}-{num:03d}"
+        return mint_claim_id(namespace, id_tier, node_name, digits=3)
 
     @staticmethod
     def _extract_metric_value(result: Any, metric: str) -> Any:
