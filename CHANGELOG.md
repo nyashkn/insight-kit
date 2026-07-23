@@ -39,6 +39,14 @@ the git log. This changelog starts at `0.2.0`.
   lands as `payload` provenance and records the upstream claims it was derived
   from as `input_claims` (claim→claim data lineage), so a derived number still
   traces back to what produced it.
+- **Agent skills + method spec**: a harness-agnostic method (`docs/method/`) for
+  the producer loop (discover → compose → run → seal → verify) and the critic
+  council (perspective-diverse lenses, majority-refute, verdicts as gated
+  critic claims), bound to Claude Code as two directly-invocable skills
+  (`.claude/skills/insight-kit-analyst`, `.claude/skills/insight-kit-critic`) and
+  four archetype agents (`.claude/agents/ik-critic-*`). Gate logic stays L1
+  Python, archetype prompts stay data, the binding stays thin — so a `pi`
+  binding can reuse the same spec. Includes a `verify_run.py` self-check helper.
 - **Measure catalog** (`integrations.hamilton.catalog`): a static semantic layer
   read from the compiled Hamilton graph and `@tag` metadata (no execution, no
   data). Distinguishes base from derived measures, advertises the `claim_id`
