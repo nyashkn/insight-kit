@@ -25,6 +25,13 @@ the git log. This changelog starts at `0.2.0`.
   whose `claim_id` carries a standing refutation from a sealed run, emitting a
   critic-tier claim and applying a high-severity critique. Surface-never-block:
   the guard returns findings rather than raising.
+- **Refutation contagion** (`guard_refuted_inputs`): extends the republish guard
+  one edge outward — flags current-run claims that *derive* (transitively, via
+  `input_claims`) from a refuted claim, whether the refutation is standing
+  (cross-run) or in-run. Emits a marked contagion critic and critique per
+  contaminated claim; idempotent and surface-never-block like the republish
+  guard. A refuted number no longer taints only itself — everything computed
+  from it is flagged too.
 - **Hamilton graph lineage**: the adapter stamps each metric claim's upstream
   closure, and the gate exposes `lineage_of` / `trace_to_rows` to read the
   provenance chain back from a sealed bundle.

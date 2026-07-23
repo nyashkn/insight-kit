@@ -26,6 +26,7 @@ from insight_kit.platform.gate import (
     claim_by_id,
     claim_history,
     emit_reconciliation_critique,
+    guard_refuted_inputs,
     guard_republished_claims,
     ik_claim_emit,
     list_runs,
@@ -761,3 +762,176 @@ def test_nonexistent_workspace_raises_typed_error(tmp_path: Path) -> None:
     rs = RunState(run_dir=run_dir)
     with pytest.raises(WorkspaceNotFoundError):
         guard_republished_claims(missing, run_state=rs, run_dir=run_dir)
+
+
+# ---------------------------------------------------------------------------
+# 19. guard_refuted_inputs — refutation contagion along input_claims
+# ---------------------------------------------------------------------------
+
+
+class TestGuardRefutedInputs:
+    def test_derived_from_standing_refutation_is_flagged(self, tmp_path: Path) -> None:
+        # r1 refuted DEMO-D-010 (a base measure). The current run republishes it
+        # AND stands a derived metric on it.
+        _sealed_run(tmp_path, "r1", "DEMO-D-010", verdict="refuted")
+        run_dir, rs = _current_run(tmp_path)
+        base = ik_claim_emit("DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir)
+        derived = ik_claim_emit(
+            "DEMO-D-020",
+            {"metric": 2},
+            input_claims=[base.record_id],
+            run_state=rs,
+            run_dir=run_dir,
+        )
+
+        findings = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+
+        # Only the DERIVED claim is a contagion finding: the republished base is
+        # the republish guard's job, and here acts only as a taint source.
+        assert len(findings) == 1
+        f = findings[0]
+        assert f.claim_id == "DEMO-D-020"
+        assert f.record_id == derived.record_id
+        assert f.refuted_ancestor_claim_id == "DEMO-D-010"
+        assert f.refuted_ancestor_record_id == base.record_id
+        assert f.source == "standing"
+        assert f.path == [derived.record_id, base.record_id]
+        assert f.tier == "draft"
+        assert f.downgrade_required is False
+        assert f.critic_record_id is not None
+
+        critic = read_record(run_dir, f.critic_record_id)
+        assert critic["tier"] == "critic"
+        assert critic["refutes"] == [derived.record_id]
+        assert critic["fields"]["guard"]["value"] == "refuted_inputs"
+        assert critic["fields"]["checked"]["value"] == "DEMO-D-020"
+        assert critic["fields"]["refuted_ancestor_claim_id"]["value"] == "DEMO-D-010"
+        assert critic["fields"]["source"]["value"] == "standing"
+        assert critic["fields"]["path"]["value"] == [derived.record_id, base.record_id]
+        assert critic["fields"]["passed"]["value"] is False
+
+        # V16 record-then-enforce: the critique landed on the derived record.
+        event_log = run_dir / "records" / derived.record_id / "events" / "critique.jsonl"
+        assert event_log.exists()
+
+    def test_in_run_refutation_propagates_transitively(self, tmp_path: Path) -> None:
+        # No standing refutation; a genuine critic refutes the base THIS run.
+        # The taint must reach both the direct and the transitive derivative.
+        run_dir, rs = _current_run(tmp_path)
+        base = ik_claim_emit("DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir)
+        mid = ik_claim_emit(
+            "DEMO-D-020", {"metric": 2}, input_claims=[base.record_id], run_state=rs, run_dir=run_dir
+        )
+        top = ik_claim_emit(
+            "DEMO-D-030", {"metric": 1}, input_claims=[mid.record_id], run_state=rs, run_dir=run_dir
+        )
+        ik_claim_emit(
+            "DEMO-X-900",
+            {"passed": False},
+            tier="critic",
+            refutes=[base.record_id],
+            run_state=rs,
+            run_dir=run_dir,
+        )
+
+        findings = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+        flagged = {f.claim_id: f for f in findings}
+
+        # base is directly refuted -> NOT a contagion finding; mid + top inherit.
+        assert set(flagged) == {"DEMO-D-020", "DEMO-D-030"}
+        assert flagged["DEMO-D-020"].source == "in_run"
+        assert flagged["DEMO-D-020"].path == [mid.record_id, base.record_id]
+        assert flagged["DEMO-D-030"].path == [top.record_id, mid.record_id, base.record_id]
+        assert flagged["DEMO-D-030"].refuted_ancestor_record_id == base.record_id
+
+    def test_clean_chain_no_findings_no_critic(self, tmp_path: Path) -> None:
+        run_dir, rs = _current_run(tmp_path)
+        base = ik_claim_emit("DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir)
+        ik_claim_emit(
+            "DEMO-D-020", {"metric": 2}, input_claims=[base.record_id], run_state=rs, run_dir=run_dir
+        )
+        before = len(rs.records)
+
+        findings = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+
+        assert findings == []
+        assert len(rs.records) == before  # no critic emitted
+
+    def test_idempotent_reinvocation(self, tmp_path: Path) -> None:
+        _sealed_run(tmp_path, "r1", "DEMO-D-010", verdict="refuted")
+        run_dir, rs = _current_run(tmp_path)
+        base = ik_claim_emit("DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir)
+        ik_claim_emit(
+            "DEMO-D-020", {"metric": 2}, input_claims=[base.record_id], run_state=rs, run_dir=run_dir
+        )
+
+        first = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+        records_after_first = len(rs.records)
+        rounds_after_first = rs.critiqueRounds
+        second = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+
+        assert [f.record_id for f in first] == [f.record_id for f in second]
+        assert [f.critic_record_id for f in first] == [f.critic_record_id for f in second]
+        assert len(rs.records) == records_after_first  # no second critic emission
+        assert rs.critiqueRounds == rounds_after_first  # no fix-round budget spent
+
+    def test_published_derivative_requires_downgrade(self, tmp_path: Path) -> None:
+        _sealed_run(tmp_path, "r1", "DEMO-D-010", verdict="refuted")
+        run_dir, rs = _current_run(tmp_path, publishable=True)
+        base = ik_claim_emit(
+            "DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir, input_data=b"rows"
+        )
+        ik_claim_emit(
+            "DEMO-D-020",
+            {"metric": 2},
+            tier="published",
+            input_claims=[base.record_id],
+            run_state=rs,
+            run_dir=run_dir,
+            input_data=b"rows2",
+        )
+
+        findings = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+        f = next(f for f in findings if f.claim_id == "DEMO-D-020")
+
+        assert f.tier == "published"
+        assert f.downgrade_required is True
+
+    def test_supported_ancestor_is_not_contagious(self, tmp_path: Path) -> None:
+        # r1 refuted, r2 supported -> the ancestor's refutation is cleared, so a
+        # derivative in the current run must NOT be flagged.
+        _sealed_run(tmp_path, "r1", "DEMO-D-010", verdict="refuted")
+        _sealed_run(tmp_path, "r2", "DEMO-D-010", verdict="supported")
+        run_dir, rs = _current_run(tmp_path)
+        base = ik_claim_emit("DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir)
+        ik_claim_emit(
+            "DEMO-D-020", {"metric": 2}, input_claims=[base.record_id], run_state=rs, run_dir=run_dir
+        )
+
+        assert guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir) == []
+
+    def test_guard_critic_does_not_reseed_itself(self, tmp_path: Path) -> None:
+        # Regression for the self-reseed idempotency hole: the contagion critic
+        # refutes the derived claim, but must be excluded from the in_run seed so
+        # a re-invocation does not reclassify the derived claim as a source and
+        # shrink the findings list.
+        run_dir, rs = _current_run(tmp_path)
+        base = ik_claim_emit("DEMO-D-010", {"metric": 5}, run_state=rs, run_dir=run_dir)
+        ik_claim_emit(
+            "DEMO-D-020", {"metric": 2}, input_claims=[base.record_id], run_state=rs, run_dir=run_dir
+        )
+        ik_claim_emit(
+            "DEMO-X-900",
+            {"passed": False},
+            tier="critic",
+            refutes=[base.record_id],
+            run_state=rs,
+            run_dir=run_dir,
+        )
+
+        first = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+        second = guard_refuted_inputs(tmp_path, run_state=rs, run_dir=run_dir)
+
+        assert {f.claim_id for f in first} == {"DEMO-D-020"}
+        assert {f.claim_id for f in second} == {"DEMO-D-020"}  # unchanged: no shrink
+        assert [f.critic_record_id for f in first] == [f.critic_record_id for f in second]

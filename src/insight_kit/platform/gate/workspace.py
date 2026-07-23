@@ -700,3 +700,247 @@ def guard_republished_claims(
         )
 
     return findings
+
+
+# ---------------------------------------------------------------------------
+# guard_refuted_inputs — refutation contagion along input_claims (T29 + V16)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ContagionFinding:
+    """One claim contaminated by deriving from a refuted claim.
+
+    The contaminated claim was NOT itself refuted — it inherited the taint
+    through its input_claims chain, and would otherwise pass unflagged.  path
+    is the record_id chain from the contaminated record up to the refuted
+    ancestor (both ends inclusive).  source is why the ancestor counts as
+    refuted: "standing" (a standing refutation carried from a sealed run) or
+    "in_run" (a non-guard critic refuted it in THIS run).  critic_record_id is
+    the guard's critic claim (None if its emit was rejected — the critique
+    still applied).  downgrade_required mirrors the republish guard: True when
+    the V16 gate fired on the contaminated record (published tier / board).
+    """
+
+    claim_id: str
+    record_id: str
+    tier: str
+    refuted_ancestor_claim_id: str
+    refuted_ancestor_record_id: str
+    source: str
+    path: list[str]
+    critic_record_id: str | None
+    downgrade_required: bool
+
+
+def _is_contagion_critic(record: dict[str, Any]) -> bool:
+    """True for a critic this guard emitted (marked guard="refuted_inputs").
+
+    Such critics refute the very claims this guard flags, so they must be
+    excluded when building the in_run refuted set — otherwise a contagion
+    critic would re-seed its own target and the findings list would shrink on
+    re-invocation, breaking idempotency.
+    """
+    entry = (record.get("fields") or {}).get("guard")
+    return isinstance(entry, dict) and entry.get("value") == "refuted_inputs"
+
+
+def _contagion_critic_claim_id(claim_id: str, ancestor_record_id: str, record_id: str) -> str:
+    """Deterministic gate-valid claim_id for a contagion critic.
+
+    Seeded distinctly ("contagion|…") from the republish guard so the two
+    guards never mint the same id for one target.  Salted with the tainted
+    ancestor and the target record so the id is stable across re-invocations
+    (idempotency) yet distinct per (contaminated record, ancestor).
+    """
+    match = _NAMESPACE_RE.match(claim_id)
+    namespace = match.group(0) if match else "IK"
+    seed = f"contagion|{claim_id}|{ancestor_record_id}|{record_id}"
+    return mint_claim_id(namespace, "X", seed, digits=9)
+
+
+def guard_refuted_inputs(
+    workspace_dir: Path | str,
+    *,
+    run_state: RunState,
+    run_dir: Path | str,
+) -> list[ContagionFinding]:
+    """Flag current-run claims that DERIVE from a refuted claim (contagion).
+
+    The republish guard answers "was THIS claim refuted?".  This guard extends
+    that one edge outward: "does this claim's input_claims chain reach anything
+    refuted?".  A claim is refuted-at-the-source when either
+
+      * its claim_id carries a standing refutation from a SEALED run
+        (source "standing"), or
+      * a non-guard critic in the CURRENT run refutes its record (source
+        "in_run").
+
+    Taint propagates transitively along input_claims (a DAG): if U is refuted
+    and D lists U in input_claims, D is contaminated; if E derives from D, E is
+    contaminated too.  A claim that is ITSELF refuted-at-the-source is not a
+    contagion finding — the republish guard or the refuting critic already
+    surfaces it — it only acts as a source of taint for its descendants.
+
+    For each contaminated draft/published claim the guard, mirroring
+    guard_republished_claims:
+
+      1. emits a critic-tier claim refuting the contaminated record, carrying
+         the refuted ancestor's provenance and the input_claims path, and
+      2. applies a severity=high critique via apply_critique (V16 record-then-
+         enforce); a CritiqueGateError surfaces as downgrade_required=True.
+
+    Idempotent: the contagion critic's claim_id is deterministic per
+    (contaminated record, ancestor), and the guard's own critics are excluded
+    from the in_run refuted set, so a re-invocation reuses the existing critic,
+    re-critiques nothing, spends no fix-round budget, and returns an equal
+    findings list.
+
+    SURFACE, NEVER BLOCK: returns findings; raises nothing for a contagion hit.
+    """
+    run_dir = Path(run_dir)
+    standing = standing_refutations(workspace_dir)
+
+    # Snapshot — emitting contagion critics appends to run_state.records.
+    snapshot = list(run_state.records)
+
+    # Index every current-run claim record once.
+    record_by_id: dict[str, dict[str, Any]] = {}
+    for ref in snapshot:
+        if ref.record_type != "claim":
+            continue
+        record_by_id[ref.record_id] = read_record(run_dir, ref.record_id)
+
+    # Refuted seed: record_ids that count as refuted-at-the-source, mapped to
+    # why.  standing is assigned first (it wins over in_run for the same id);
+    # in_run skips this guard's own critics so a contagion critic can't re-seed
+    # its own target.
+    seed_source: dict[str, str] = {}
+    for rid, record in record_by_id.items():
+        if str(record.get("claim_id")) in standing:
+            seed_source[rid] = "standing"
+    for record in record_by_id.values():
+        if record.get("tier") != "critic" or _is_contagion_critic(record):
+            continue
+        for target_id in record.get("refutes") or []:
+            seed_source.setdefault(target_id, "in_run")
+
+    # Transitive reach: memoized DFS up input_claims, returning the shortest
+    # path from a record to its nearest refuted ancestor (both inclusive), or
+    # None.  Deterministic — inputs visited in sorted order.  input_claims is a
+    # DAG (claims reference earlier-emitted claims); on_stack guards the
+    # pathological cycle defensively.
+    memo: dict[str, list[str] | None] = {}
+
+    def _reach(rid: str, on_stack: frozenset[str]) -> list[str] | None:
+        if rid in memo:
+            return memo[rid]
+        if rid in on_stack:
+            return None
+        record = record_by_id.get(rid)
+        if record is None:
+            memo[rid] = None
+            return None
+        best: list[str] | None = None
+        for up in sorted(record.get("input_claims") or []):
+            if up in seed_source:
+                cand: list[str] | None = [rid, up]
+            else:
+                sub = _reach(up, on_stack | {rid})
+                cand = [rid, *sub] if sub is not None else None
+            if cand is not None and (best is None or len(cand) < len(best)):
+                best = cand
+        memo[rid] = best
+        return best
+
+    # Idempotency lookup: stored claim_id -> record_id for the snapshot.
+    record_id_by_claim_id: dict[str, str] = {
+        str(rec.get("claim_id")): rid for rid, rec in record_by_id.items()
+    }
+
+    findings: list[ContagionFinding] = []
+    for rid, record in record_by_id.items():
+        tier = str(record.get("tier"))
+        if tier not in _GUARDED_TIERS or rid in seed_source:
+            continue
+        path = _reach(rid, frozenset())
+        if path is None:
+            continue
+
+        ancestor_rid = path[-1]
+        ancestor_claim_id = str(record_by_id[ancestor_rid].get("claim_id"))
+        source = seed_source[ancestor_rid]
+        claim_id = str(record.get("claim_id"))
+        audience = record.get("audience")
+        reason = (
+            f"claim_id {claim_id} derives (via input_claims) from refuted claim "
+            f"{ancestor_claim_id} [{source}]; the derivation is contaminated until the "
+            "ancestor's refutation is superseded"
+        )
+
+        critic_claim_id = _contagion_critic_claim_id(claim_id, ancestor_rid, rid)
+        existing_critic_id = record_id_by_claim_id.get(critic_claim_id)
+        if existing_critic_id is not None:
+            critic_record_id: str | None = existing_critic_id
+            downgrade_required = tier == "published" or audience == "board"
+        else:
+            try:
+                critic_ref = ik_claim_emit(
+                    critic_claim_id,
+                    {
+                        "checked": claim_id,
+                        "guard": "refuted_inputs",
+                        "refuted_ancestor_claim_id": ancestor_claim_id,
+                        "refuted_ancestor_record_id": ancestor_rid,
+                        "source": source,
+                        "path": list(path),
+                        "reason": reason,
+                        "passed": False,
+                    },
+                    tier="critic",
+                    refutes=[rid],
+                    run_state=run_state,
+                    run_dir=run_dir,
+                )
+                critic_record_id = critic_ref.record_id
+            except LayerAValidationError:
+                critic_record_id = None
+
+            downgrade_required = False
+            saved_rounds = run_state.critiqueRounds
+            try:
+                gate_result = apply_critique(
+                    run_state=run_state,
+                    record_id=rid,
+                    record_type="claim",
+                    tier=tier,
+                    audience=audience,
+                    critique=CritiqueState.open(
+                        severity="high",
+                        reason=reason,
+                        critic_id=critic_record_id,
+                        target_record_id=rid,
+                    ),
+                    run_dir=run_dir,
+                )
+                downgrade_required = bool(gate_result.get("downgraded"))
+            except CritiqueGateError:
+                downgrade_required = True
+            finally:
+                run_state.critiqueRounds = saved_rounds
+
+        findings.append(
+            ContagionFinding(
+                claim_id=claim_id,
+                record_id=rid,
+                tier=tier,
+                refuted_ancestor_claim_id=ancestor_claim_id,
+                refuted_ancestor_record_id=ancestor_rid,
+                source=source,
+                path=list(path),
+                critic_record_id=critic_record_id,
+                downgrade_required=downgrade_required,
+            )
+        )
+
+    return findings
