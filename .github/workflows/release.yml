@@ -1,0 +1,58 @@
+name: Release
+
+# Cut a GitHub Release when a version tag is pushed. The release notes are the
+# matching section of CHANGELOG.md, and the built sdist + wheel are attached.
+# Flow: bump pyproject version -> stamp the CHANGELOG section -> merge to main
+# -> `git tag vX.Y.Z && git push origin vX.Y.Z`.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Guard — tag matches pyproject version
+        # A tag whose version disagrees with pyproject is a mistake; fail loudly
+        # rather than publish a mislabelled release.
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          proj_version="$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          if [ "$tag_version" != "$proj_version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME -> $tag_version but pyproject version is $proj_version"
+            exit 1
+          fi
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Extract changelog section
+        # Print the body of the "## [<version>]" section, stopping at the next
+        # "## [" header. Falls back to a stub if the section is missing.
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" '
+            index($0, "## [" ver "]") == 1 { flag=1; next }
+            flag && index($0, "## [") == 1 { exit }
+            flag { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "Release $version. See CHANGELOG.md." > release-notes.md
+          fi
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: dist/*
+          fail_on_unmatched_files: true

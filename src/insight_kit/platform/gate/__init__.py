@@ -41,8 +41,9 @@ Public API:
   Cross-run workspace substrate (I.workspace): dated run dirs, runs.jsonl
   manifest, claim history queries, persistent refuted-claim republish guard:
     new_run_dir, seal_run, list_runs, reindex_runs, claim_history, claim_by_id,
-    standing_refutations, guard_republished_claims, ClaimSighting, RunEntry,
-    RepublishFinding, RunNotSealedError, WorkspaceNotFoundError
+    standing_refutations, guard_republished_claims, guard_refuted_inputs
+    (refutation contagion along input_claims), ClaimSighting, RunEntry,
+    RepublishFinding, ContagionFinding, RunNotSealedError, WorkspaceNotFoundError
 
   Key types:
     ClaimTier, FieldEntry, CoverageInfo, SelectionParams, IntentPayload, RealizedPayload
@@ -138,12 +139,14 @@ from insight_kit.platform.gate.verdict import (
 )
 from insight_kit.platform.gate.workspace import (
     ClaimSighting,
+    ContagionFinding,
     RepublishFinding,
     RunEntry,
     RunNotSealedError,
     WorkspaceNotFoundError,
     claim_by_id,
     claim_history,
+    guard_refuted_inputs,
     guard_republished_claims,
     list_runs,
     new_run_dir,
@@ -164,6 +167,7 @@ __all__ = [
     "ClaimSighting",
     "ClaimTier",
     "ComposeError",
+    "ContagionFinding",
     "CoverageInfo",
     "CrossCheckResult",
     "FieldEntry",
@@ -203,6 +207,7 @@ __all__ = [
     "emit_reconciliation_critique",
     "endpoint_index_path",
     "finalizeRun",
+    "guard_refuted_inputs",
     "guard_republished_claims",
     "ik_acquire",
     "ik_claim_emit",

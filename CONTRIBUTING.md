@@ -101,6 +101,21 @@ gitleaks pre-commit hook catches most secrets, but machine-specific paths
 (`/Users/...`, sibling-repo names) should be parameterized via env vars or
 fixtures.
 
+## Releasing
+
+Releases are cut from tags by `.github/workflows/release.yml`. To ship a version:
+
+1. Bump `version` in `pyproject.toml`.
+2. Move the accumulated notes under `## [Unreleased]` in `CHANGELOG.md` into a
+   new `## [X.Y.Z] - YYYY-MM-DD` section (leave `## [Unreleased]` empty above it).
+3. Merge to `main`.
+4. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+
+The workflow verifies the tag matches `pyproject`, builds the sdist + wheel, and
+opens a GitHub Release whose notes are the matching `CHANGELOG.md` section with
+the artifacts attached. SemVer applies; pre-1.0, a minor may carry a breaking
+change (called out under **Changed**/**Removed** in the changelog).
+
 ## License
 
 By contributing, you agree your contributions are licensed under the
