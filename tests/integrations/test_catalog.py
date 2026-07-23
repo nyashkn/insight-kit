@@ -111,3 +111,33 @@ def test_format_catalog_is_readable() -> None:
     assert "cac_payback_ratio" in text
     assert "DEMO-D-010" in text
     assert "derived <- arpu, blended_cac" in text
+
+
+def test_authoring_guide_covers_the_tag_contract_and_composition_rule() -> None:
+    """The brief tells an agent HOW to author a measure, not just what exists.
+
+    Closes the ergonomics gap the analyst-agent E2E surfaced: discovery was
+    sufficient, but the ik_* authoring contract lived only in adapter docstrings.
+    """
+    from insight_kit.integrations.hamilton import authoring_guide
+
+    guide = authoring_guide()
+    # the tags an agent must know to author a measure
+    for tag_name in ("ik_emit", "ik_claim_id", "ik_metric", "ik_grain", "ik_statement"):
+        assert tag_name in guide
+    # the composition rule: reference by name -> input_claims for free, same grain
+    assert "name them as parameters" in guide
+    assert "input_claims" in guide
+    assert "same grain" in guide
+
+
+@requires_hamilton
+def test_format_catalog_is_self_contained_by_default_and_optional() -> None:
+    from insight_kit.examples.growth_demo import dag
+    from insight_kit.integrations.hamilton import catalog, format_catalog
+
+    cat = catalog([dag])
+    # default render includes the authoring contract (self-contained brief)
+    assert "to add a measure" in format_catalog(cat)
+    # opt-out is honored
+    assert "to add a measure" not in format_catalog(cat, authoring=False)

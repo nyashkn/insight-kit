@@ -158,8 +158,53 @@ def catalog(modules: list[Any]) -> Catalog:
     return Catalog(measures=tuple(specs), inputs=inputs)
 
 
-def format_catalog(cat: Catalog) -> str:
-    """Render the catalog as the brief an analyst agent reads before composing."""
+# The @tag contract for authoring a measure. Kept here — next to discovery —
+# so the brief an agent reads to know WHAT exists also tells it HOW to add one,
+# without hunting through adapter internals. (name, required?, description).
+MEASURE_TAG_REFERENCE: tuple[tuple[str, bool, str], ...] = (
+    ("ik_emit", True, 'must be "metric" — marks the node as a measure'),
+    ("ik_metric", False, "field name the value lands under (default: slug of the node name)"),
+    ("ik_claim_id", False, "explicit gate claim_id; else minted from namespace+tier+node name"),
+    ("ik_namespace", False, '2-5 uppercase letters for a minted id (default "IK")'),
+    ("ik_id_tier", False, 'id-grammar tier token D|R|C|I|V|X|ETL_[RCM] (default "D")'),
+    ("ik_statement", False, "human-readable definition of the measure"),
+    ("ik_grain", False, "selection grain, e.g. window/day/channel — match it when composing"),
+    ("ik_filters", False, 'comma-separated k=v selection filters, e.g. "channel=meta"'),
+    ("ik_date_window", False, "selection date window"),
+    ("ik_baseline", False, "selection baseline"),
+    ("ik_fmt", False, 'display format hint, e.g. ",.0f" or ".2f"'),
+    ("ik_tier", False, 'lifecycle tier draft|published (default "draft")'),
+)
+
+
+def authoring_guide() -> str:
+    """How to author a new measure — the @tag contract + the composition rule.
+
+    Returned as text an agent can read before the COMPOSE step. The key rule an
+    agent needs is the last line: reference an existing measure BY NAME in the
+    new node's signature and the adapter records it as input_claims automatically.
+    """
+    lines = ["to add a measure: tag a Hamilton node with @tag(...):"]
+    for name, required, desc in MEASURE_TAG_REFERENCE:
+        flag = "required" if required else "optional"
+        lines.append(f"  {name:16} ({flag}) {desc}")
+    lines += [
+        "",
+        "to derive from existing measures: name them as parameters of the new node —",
+        "Hamilton binds each kwarg to the measure of the same name, and the adapter",
+        "records those measures as input_claims (claim->claim provenance) for free.",
+        "Only compose measures that share the same grain.",
+    ]
+    return "\n".join(lines)
+
+
+def format_catalog(cat: Catalog, *, authoring: bool = True) -> str:
+    """Render the catalog as the brief an analyst agent reads before composing.
+
+    With ``authoring=True`` (default) the render is self-contained: it appends
+    the @tag authoring contract, so the same brief covers both discovering what
+    measures exist and authoring a new one.
+    """
     lines: list[str] = [f"measure catalog — {len(cat.measures)} measures"]
     if cat.inputs:
         lines.append(f"raw inputs: {', '.join(cat.inputs)}")
@@ -176,4 +221,6 @@ def format_catalog(cat: Catalog) -> str:
         lines.append(meta)
         if m.statement:
             lines.append(f"    {m.statement}")
+    if authoring:
+        lines += ["", authoring_guide()]
     return "\n".join(lines)
